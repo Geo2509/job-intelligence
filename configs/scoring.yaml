@@ -1,0 +1,891 @@
+# Scoring config generated from scoring_jobs.py.
+# Weights and export parameters are copied without changing the scoring formula.
+export:
+  output_file: scored_jobs.csv
+  xlsx_output_file: scored_jobs.xlsx
+  top_report_limit: 50
+  top_output_file: top_50_jobs.csv
+  top_xlsx_output_file: top_jobs.xlsx
+  top_jobs_min_score: 70
+  search_description_limit: 6000
+  output_columns:
+  - job_score
+  - apply_priority
+  - source
+  - title
+  - company
+  - location
+  - url
+  - clickable
+  - score_reason
+priority:
+  high_score: 500
+  medium_score: 350
+positive_weights:
+  shipping coordinator: 45
+  freight coordinator: 45
+  booking coordinator: 45
+  ocean freight coordinator: 50
+  logistics: 25
+  freight: 25
+  logistics operations: 40
+  freight operations: 40
+  container booking: 45
+  shipment coordinator: 45
+  operations coordinator: 40
+  workflow automation: 40
+  shipping line: 40
+  carrier coordination: 40
+  local agent coordination: 40
+  port operations: 40
+  container shipping: 45
+  ocean export: 45
+  ocean import: 45
+  freight forwarding: 45
+  maritime: 30
+  maritime logistics: 45
+  international logistics: 40
+  china logistics: 40
+  asia logistics: 40
+  cargo operations: 40
+  container operations: 45
+  vessel operations: 40
+  terminal operator: 45
+  port authority: 45
+  shipping analyst: 50
+  container analyst: 50
+  trade analyst: 40
+  intelligence: 20
+  market intelligence: 40
+  business intelligence: 35
+  supply chain: 35
+  supply chain operations: 40
+  transport planning: 45
+  dispatch: 35
+  fleet coordination: 35
+  export operations: 45
+  import operations: 45
+  customs: 30
+  customs documentation: 40
+  transportation: 30
+  shipment tracking: 35
+  booking management: 40
+  carrier operations: 40
+  trade operations: 40
+  logistica: 35
+  magazzino: 30
+  ai training: 40
+  ai trainer: 40
+  ai data annotator: 50
+  ai annotation: 45
+  ai annotator: 45
+  data annotation: 40
+  data annotator: 45
+  data labeling: 35
+  annotation: 35
+  ukrainian language: 60
+  russian language: 60
+  ukrainian: 50
+  russian: 50
+  украинский: 50
+  українська: 50
+  русский: 50
+  російська: 50
+  llm: 35
+  prompt engineering: 30
+  prompt: 25
+  python: 35
+  pandas: 35
+  automation: 35
+  api: 20
+  csv: 15
+  excel: 25
+  google sheets: 35
+  google sheet: 30
+  spreadsheet: 20
+  excel reporting: 35
+  google workspace: 30
+  dashboard: 25
+  kpi: 25
+  analytics: 25
+  monitoring: 20
+  data entry: 25
+  inserimento dati: 35
+  addetto inserimento dati: 45
+  gestione dati: 30
+  gestione documentale: 30
+  controllo dati: 30
+  data quality: 35
+  quality assurance: 30
+  data operations: 35
+  data processing: 30
+  reporting analyst: 35
+  reporting: 25
+  operations analyst: 40
+  workflow analyst: 35
+  workflow management: 35
+  process improvement: 30
+  business operations: 30
+  crm/data quality: 35
+  crm data quality: 35
+  automation support: 35
+  data analyst: 40
+  analyst: 15
+  osint: 25
+  research assistant: 30
+  research: 15
+  customer support: 20
+  support: 10
+  supporto operativo: 30
+  supporto amministrativo: 30
+  virtual assistant: 20
+  admin: 10
+  administrative: 20
+  documentation specialist: 35
+  document control: 35
+  operational support: 35
+  administrative support: 35
+  office administration: 30
+  secretarial: 25
+  impiegato amministrativo: 40
+  amministrativo: 25
+  amministrazione: 25
+  amministrazione operativa: 35
+  back office: 25
+  back office amministrativo: 40
+  back office commerciale: 20
+  impiegato back office: 35
+  ufficio operativo: 30
+  operatore segretariale: 45
+  coordinamento operativo: 40
+  ufficio logistico: 40
+  spedizioni: 40
+  trasporti: 35
+  import export: 40
+  ufficio acquisti: 25
+  buyer support: 20
+  controllo qualità: 25
+  qualità: 15
+  customer operations: 30
+  operations support: 35
+  booking specialist: 40
+  pricing analyst: 30
+  rate management: 35
+  remote: 20
+  entry level: 20
+  junior: 20
+  ocean freight: 25
+  sea freight: 25
+  shipping documentation: 24
+  bill of lading: 28
+  b/l: 20
+  port agent: 26
+  ship agent: 26
+  vessel agent: 26
+  shipping agency: 22
+  husbandry: 24
+  import documentation: 18
+  export documentation: 18
+  incoterms: 15
+  cmr: 12
+  packing list: 12
+  commercial invoice: 12
+  russian speaking: 18
+  ukrainian speaking: 18
+  naples: 15
+  napoli: 15
+  campania: 10
+combo_weights:
+- phrases:
+  - ukrainian
+  - remote
+  points: 60
+  reason: ukrainian + remote
+- phrases:
+  - russian
+  - remote
+  points: 60
+  reason: russian + remote
+- phrases:
+  - украинский
+  - remote
+  points: 60
+  reason: украинский + remote
+- phrases:
+  - українська
+  - remote
+  points: 60
+  reason: українська + remote
+- phrases:
+  - русский
+  - remote
+  points: 60
+  reason: русский + remote
+- phrases:
+  - російська
+  - remote
+  points: 60
+  reason: російська + remote
+- phrases:
+  - ukrainian
+  - data annotation
+  points: 75
+  reason: ukrainian + data annotation
+- phrases:
+  - russian
+  - data annotation
+  points: 75
+  reason: russian + data annotation
+- phrases:
+  - ukrainian
+  - annotation
+  points: 60
+  reason: ukrainian + annotation
+- phrases:
+  - russian
+  - annotation
+  points: 60
+  reason: russian + annotation
+- phrases:
+  - ukrainian
+  - customer support
+  points: 50
+  reason: ukrainian + customer support
+- phrases:
+  - russian
+  - customer support
+  points: 50
+  reason: russian + customer support
+- phrases:
+  - ukrainian
+  - ai
+  points: 55
+  reason: ukrainian + ai
+- phrases:
+  - russian
+  - ai
+  points: 55
+  reason: russian + ai
+- phrases:
+  - python
+  - remote
+  points: 25
+  reason: python + remote
+- phrases:
+  - google sheets
+  - remote
+  points: 25
+  reason: google sheets + remote
+- phrases:
+  - shipping
+  - analyst
+  points: 40
+  reason: shipping + analyst
+- phrases:
+  - container
+  - analyst
+  points: 45
+  reason: container + analyst
+- phrases:
+  - logistics
+  - remote
+  points: 25
+  reason: logistics + remote
+- phrases:
+  - excel
+  - reporting
+  points: 25
+  reason: excel + reporting
+- phrases:
+  - operations
+  - remote
+  points: 20
+  reason: operations + remote
+- phrases:
+  - italian
+  - english
+  points: 20
+  reason: italian + english
+- phrases:
+  - logistics
+  - data
+  points: 35
+  reason: logistics + data
+- phrases:
+  - operations
+  - reporting
+  points: 30
+  reason: operations + reporting
+- phrases:
+  - google sheets
+  - automation
+  points: 35
+  reason: google sheets + automation
+- phrases:
+  - russian
+  - analyst
+  points: 45
+  reason: russian + analyst
+- phrases:
+  - russian
+  - monitoring
+  points: 50
+  reason: russian + monitoring
+- phrases:
+  - russian
+  - osint
+  points: 60
+  reason: russian + osint
+- phrases:
+  - ukrainian
+  - analyst
+  points: 45
+  reason: ukrainian + analyst
+- phrases:
+  - ukrainian
+  - monitoring
+  points: 50
+  reason: ukrainian + monitoring
+- phrases:
+  - ukrainian
+  - osint
+  points: 60
+  reason: ukrainian + osint
+- phrases:
+  - russian
+  - reporting
+  points: 45
+  reason: russian + reporting
+- phrases:
+  - ukrainian
+  - reporting
+  points: 45
+  reason: ukrainian + reporting
+- phrases:
+  - russian
+  - data
+  points: 45
+  reason: russian + data
+- phrases:
+  - ukrainian
+  - data
+  points: 45
+  reason: ukrainian + data
+- phrases:
+  - russian
+  - support
+  points: 40
+  reason: russian + support
+- phrases:
+  - ukrainian
+  - support
+  points: 40
+  reason: ukrainian + support
+- phrases:
+  - russian
+  - ai annotation
+  points: 80
+  reason: russian + ai annotation
+- phrases:
+  - ukrainian
+  - ai annotation
+  points: 80
+  reason: ukrainian + ai annotation
+- phrases:
+  - русский
+  - ai
+  points: 55
+  reason: русский + ai
+- phrases:
+  - українська
+  - ai
+  points: 55
+  reason: українська + ai
+- phrases:
+  - русский
+  - annotation
+  points: 60
+  reason: русский + annotation
+- phrases:
+  - українська
+  - annotation
+  points: 60
+  reason: українська + annotation
+- phrases:
+  - logistics
+  - analyst
+  points: 40
+  reason: logistics + analyst
+- phrases:
+  - supply chain
+  - analytics
+  points: 40
+  reason: supply chain + analytics
+- phrases:
+  - maritime
+  - intelligence
+  points: 50
+  reason: maritime + intelligence
+- phrases:
+  - freight
+  - operations
+  points: 40
+  reason: freight + operations
+- phrases:
+  - python
+  - automation
+  points: 35
+  reason: python + automation
+- phrases:
+  - monitoring
+  - reporting
+  points: 35
+  reason: monitoring + reporting
+- phrases:
+  - ocean freight
+  - documentation
+  points: 35
+  reason: ocean freight + documentation
+- phrases:
+  - sea freight
+  - documentation
+  points: 35
+  reason: sea freight + documentation
+- phrases:
+  - bill of lading
+  - export
+  points: 30
+  reason: bill of lading + export
+- phrases:
+  - bill of lading
+  - import
+  points: 30
+  reason: bill of lading + import
+- phrases:
+  - freight forwarding
+  - russian
+  points: 30
+  reason: freight forwarding + russian
+- phrases:
+  - freight forwarding
+  - ukrainian
+  points: 30
+  reason: freight forwarding + ukrainian
+- phrases:
+  - shipping agency
+  - naples
+  points: 35
+  reason: shipping agency + naples
+- phrases:
+  - ship agent
+  - naples
+  points: 40
+  reason: ship agent + naples
+- phrases:
+  - port agent
+  - naples
+  points: 40
+  reason: port agent + naples
+- phrases:
+  - vessel agent
+  - naples
+  points: 40
+  reason: vessel agent + naples
+- phrases:
+  - husbandry
+  - naples
+  points: 35
+  reason: husbandry + naples
+- phrases:
+  - port operations
+  - naples
+  points: 35
+  reason: port operations + naples
+- phrases:
+  - remote
+  - ocean freight
+  points: 30
+  reason: remote + ocean freight
+- phrases:
+  - hybrid
+  - ocean freight
+  points: 20
+  reason: hybrid + ocean freight
+negative_weights:
+  for hire: -100
+  '[for hire]': -100
+  looking for work: -80
+  open to freelance: -80
+  i'm available: -80
+  resume builder: -70
+  how do i: -60
+  what should i do: -60
+  advice: -50
+  warning: -60
+  do not work: -90
+  stuck in a remote job: -90
+  portfolio: -40
+  freelance: -40
+  freelancing: -50
+  clients: -30
+  message me: -40
+  dm me with: -40
+  music: -70
+  tutor: -60
+  chemistry: -60
+  chatter: -80
+  dating: -80
+  onlyfans: -100
+  senior: -25
+  lead: -20
+  manager: -15
+  director: -35
+  principal: -35
+  crypto: -50
+  blockchain: -50
+  web3: -50
+  nsfw: -80
+  adult: -80
+  sales: -20
+  commerciale: -20
+  vendite: -25
+  commessi: -50
+  autista: -35
+  elettricista: -35
+  saldatore: -50
+  montatore: -40
+  manutentore: -40
+  tecnologo alimentare: -40
+  medical: -30
+  nurse: -50
+  pharmacist: -40
+  machine learning engineer: -80
+  network engineer: -80
+  internal audit: -60
+  pure bi analyst: -60
+  data scientist: -70
+  cybersecurity: -80
+  devops: -80
+  warehouse picker: -20
+  forklift: -25
+  driver: -20
+  courier: -25
+  truck driver: -30
+  delivery driver: -30
+  senior software engineer: -40
+  full stack developer: -40
+  chef: -40
+  sales manager only: -20
+hard_exclude_title:
+- senior
+- director
+- principal
+- lead
+- devops
+- machine learning engineer
+- network engineer
+- engineering
+- full-stack
+- full stack
+- react developer
+- developer
+- developers
+- designer
+- software developer
+- software engineer
+- engineer
+- architect
+- manager
+- member of technical staff
+- penetration tester
+- technician
+- sourcer
+- founder
+- founders associate
+- healthcare
+- security
+- soc analyst
+- internal audit
+- pure bi analyst
+- data scientist
+- cybersecurity
+source_bonus:
+  remotive: 15
+  arbeitnow: 10
+  himalayas: 10
+  remotejobs_org: 15
+  remotefirstjobs: 15
+  jobicy: 15
+  workanywhere: 15
+  smartjobspa: 10
+  attalgroup: 10
+  direzionelavoro: 10
+  duckduckgo: 5
+  reddit: 0
+min_score_by_source:
+  remotefirstjobs: 120
+  smartjobspa: 60
+  attalgroup: 60
+  direzionelavoro: 60
+  duckduckgo: 25
+filters:
+  # Copied from filter_jobs.py without changing values.
+  reddit:
+    keywords:
+    - shipping coordinator
+    - freight coordinator
+    - booking coordinator
+    - ocean freight coordinator
+    - logistics operations
+    - freight operations
+    - container booking
+    - shipment coordinator
+    - operations coordinator
+    - workflow automation
+    - shipping line
+    - carrier coordination
+    - local agent coordination
+    - port operations
+    - container shipping
+    - ocean export
+    - ocean import
+    - freight forwarding
+    - maritime logistics
+    - international logistics
+    - china logistics
+    - asia logistics
+    - cargo operations
+    - python
+    - data
+    - excel
+    - google sheets
+    - remote
+    - support
+    - analyst
+    - entry
+    - assistant
+    - admin
+    - virtual assistant
+    - research
+    - annotation
+    - data annotation
+    - data annotator
+    - data operations
+    - reporting analyst
+    - operations analyst
+    - workflow analyst
+    - business operations
+    - crm/data quality
+    - crm data quality
+    - automation support
+    - ai data annotator
+    - ai annotation
+    - ai annotator
+    - ukrainian
+    - ukrainian language
+    - russian
+    - russian language
+    - украинский
+    - українська
+    - русский
+    - російська
+    - ai
+    hiring_keywords:
+    - hiring
+    - '[hiring]'
+    - job
+    - jobs
+    - opening
+    - role
+    - position
+    - vacancy
+    - we are looking
+    - apply
+    excluded:
+    - senior
+    - blockchain
+    - crypto
+    - machine learning engineer
+    - network engineer
+    - internal audit
+    - pure bi analyst
+    - data scientist
+    - cybersecurity
+    - devops
+    - nsfw
+    - onlyfans
+    - adult
+    - web3
+    - for hire
+    - '[for hire]'
+    - looking for work
+    - open to freelance
+    - available for
+    - resume builder
+    - how do i
+    - what should i do
+    - any recommendations
+    - advice
+    - warning
+    - do not work
+    - stuck in a remote job
+    - microphone recommendations
+    - workstation check
+    - doom scrolling
+    - grocery haul
+    - tutor
+    - chemistry
+    - music tutor
+  # Copied from himalayas_filter.py without changing values.
+  himalayas:
+    good_keywords:
+    - shipping coordinator
+    - freight coordinator
+    - booking coordinator
+    - ocean freight coordinator
+    - logistics operations
+    - freight operations
+    - container booking
+    - shipment coordinator
+    - operations coordinator
+    - workflow automation
+    - shipping line
+    - carrier coordination
+    - local agent coordination
+    - port operations
+    - container shipping
+    - ocean export
+    - ocean import
+    - freight forwarding
+    - maritime logistics
+    - international logistics
+    - china logistics
+    - asia logistics
+    - cargo operations
+    - python
+    - data
+    - excel
+    - google sheets
+    - support
+    - analyst
+    - research
+    - annotation
+    - data annotation
+    - data annotator
+    - data operations
+    - reporting analyst
+    - operations analyst
+    - workflow analyst
+    - business operations
+    - crm/data quality
+    - crm data quality
+    - automation support
+    - ai data annotator
+    - ai annotation
+    - ai annotator
+    - ukrainian
+    - ukrainian language
+    - russian
+    - russian language
+    - украинский
+    - українська
+    - русский
+    - російська
+    - ai
+    - assistant
+    - admin
+    - customer support
+    - virtual assistant
+    - automation
+    - entry
+    - junior
+    strong_keywords:
+    - shipping coordinator
+    - freight coordinator
+    - booking coordinator
+    - ocean freight coordinator
+    - logistics operations
+    - freight operations
+    - container booking
+    - shipment coordinator
+    - operations coordinator
+    - workflow automation
+    - shipping line
+    - carrier coordination
+    - local agent coordination
+    - port operations
+    - container shipping
+    - ocean export
+    - ocean import
+    - freight forwarding
+    - maritime logistics
+    - international logistics
+    - china logistics
+    - asia logistics
+    - cargo operations
+    - data operations
+    - operations analyst
+    - reporting analyst
+    - workflow analyst
+    - business operations
+    - crm/data quality
+    - crm data quality
+    - automation support
+    - customer support
+    - data annotation
+    - data annotator
+    - ai data annotator
+    - ai annotation
+    - ai annotator
+    - linguistic ai
+    - ai auditor
+    - ukrainian
+    - ukrainian language
+    - russian
+    - russian language
+    - украинский
+    - українська
+    - русский
+    - російська
+    bad_keywords:
+    - senior
+    - director
+    - vp
+    - principal
+    - manager
+    - cybersecurity
+    - pharmacist
+    - nurse
+    - salesforce
+    - supplier quality
+    - siteops
+    - inpatient coder
+    - software engineer
+    - developer
+    - devops
+    - machine learning engineer
+    - network engineer
+    - internal audit
+    - pure bi analyst
+    - data scientist
+    - sales
+    - medical
+    - relocation
+    - physiotherapist
+    - therapist
+    - head of supply chain
+    - investment banking
+    - rust engineer
+    - data architect
+    - dba
+    - team lead
+    europe_locations:
+    - italy
+    - spain
+    - poland
+    - greece
+    - portugal
+    - europe
+    - remote
+    - worldwide
+    - emea

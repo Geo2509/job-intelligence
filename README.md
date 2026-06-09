@@ -1,0 +1,478 @@
+# Job Intelligence
+
+Проект `job-intelligence` предназначен для сбора вакансий из разных онлайн-источников, фильтрации релевантных объявлений и оценки их качества с помощью кастомной системы скоринга.
+
+## Описание
+
+Проект состоит из набора скриптов-коллекторов, которые извлекают вакансии из API и веб-ресурсов, а также вспомогательных скриптов для фильтрации и ранжирования.
+
+Цели:
+- собрать вакансии из нескольких источников;
+- отфильтровать релевантные предложения по ключевым словам;
+- назначить каждой вакансии баллы на основе позитивных и негативных сигнатур;
+- экспортировать итоговую таблицу в CSV и XLSX.
+
+## Структура
+
+Главные файлы:
+- `scoring_jobs.py` — основной скрипт нормализации, подсчета баллов и экспорта результата;
+- `duckduckgo_collector.py` — ищет вакансии и карьерные страницы через DuckDuckGo;
+- `job_queries.py` — общие поисковые запросы для морской логистики и Naples-направления;
+- `export_search_queries.py` — экспортирует поисковые запросы в `search_queries.csv`;
+- `filter_jobs.py` — фильтр для Reddit-постов, сохраняет `filtered_jobs.csv`;
+- `himalayas_filter.py` — фильтрует вакансии из `himalayas_jobs.csv`, сохраняет `filtered_himalayas_jobs.csv`;
+- `*collector.py` — скрипты для сбора вакансий из источников.
+
+Собранные CSV-файлы:
+- `arbeitnow_jobs.csv`
+- `remotive_jobs.csv`
+- `remotejobs_org_jobs.csv`
+- `remotefirstjobs_jobs.csv`
+- `jobicy_jobs.csv`
+- `workanywhere_jobs.csv`
+- `smartjobspa_jobs.csv`
+- `attalgroup_jobs.csv`
+- `direzionelavoro_jobs.csv`
+- `himalayas_jobs.csv`
+- `reddit_jobs.csv`
+- `duckduckgo_jobs.csv`
+
+Выходные отчеты:
+- `filtered_jobs.csv`
+- `filtered_himalayas_jobs.csv`
+- `scored_jobs.csv`
+- `scored_jobs.xlsx`
+- `top_50_jobs.csv`
+- `top_50_jobs.xlsx`
+
+## Последние изменения
+
+- Добавлен `duckduckgo_collector.py` и входной файл `duckduckgo_jobs.csv`.
+- DuckDuckGo collector расширен до 182 уникальных поисковых запросов.
+- В DuckDuckGo-запросы добавлены направления из существующих collector-ов:
+  `data annotation`, `data annotator`, `AI data annotator`, `AI trainer`,
+  `data analyst`, `data operations`, `reporting analyst`, `operations analyst`,
+  `workflow analyst`, `data entry`, `Google Sheets`, `Google Workspace`,
+  `Excel`, `spreadsheet`, `virtual assistant`, `customer support`,
+  `automation support`, `python automation`.
+- В DuckDuckGo-запросы также добавлены site-поиски по `himalayas.app`,
+  `remotive.com`, `remotejobs.org`, `jobicy.com`, `workanywhere.pro`,
+  `linkedin.com/jobs`, `it.indeed.com` и `infojobs.it`.
+- Морской блок DuckDuckGo использует `MARITIME_QUERIES` и
+  `NAPLES_MARITIME_COMPANY_QUERIES` из `job_queries.py`.
+- `scoring_jobs.py` теперь учитывает `duckduckgo_jobs.csv`, если файл существует,
+  и не падает, если файл отсутствует или пустой.
+- Для DuckDuckGo добавлены `SOURCE_BONUS = 5` и `MIN_SCORE_BY_SOURCE = 25`.
+- Финальный короткий отчет расширен с TOP-20 до TOP-50:
+  `top_50_jobs.csv` и `top_50_jobs.xlsx`.
+- Старые файлы `top_20_jobs.csv` и `top_20_jobs.xlsx` больше не используются.
+
+Последний проверенный запуск:
+- `duckduckgo_jobs.csv` — 3002 строки;
+- `scored_jobs.csv` — 3078 строк;
+- DuckDuckGo в `scored_jobs.csv` — 2267 строк;
+- `top_50_jobs.csv` — 50 строк, из них 13 из DuckDuckGo.
+
+## Требования
+
+Используются стандартные библиотеки Python и сторонние пакеты:
+- Python 3.10+
+- pandas
+- requests
+- ddgs
+
+Если используется виртуальное окружение, активируйте его перед запуском.
+
+Пример установки зависимостей:
+
+```bash
+python -m pip install pandas requests ddgs
+```
+
+## Как запускать
+
+### 1. Сбор вакансий
+
+Для каждого источника запускайте соответствующий скрипт.
+Примеры:
+
+```bash
+python arbeitnow_collector.py
+python remotive_collector.py
+python remotejobs_org_collector.py
+python remotefirstjobs_collector.py
+python jobicy_collector.py
+python workanywhere_collector.py
+python smartjobspa_collector.py
+python attalgroup_collector.py
+python direzionelavoro_collector.py
+python himalayas_collector.py
+python reddit_collector.py
+python duckduckgo_collector.py
+```
+
+Для `remotive` в проекте есть два скрипта: `remotive_collector` и `remotive_collector.py`.
+
+`remotefirstjobs_collector.py` использует базовые запросы и дополнительно подключает `MARITIME_QUERIES` из `job_queries.py`.
+
+### DuckDuckGo collector
+
+`duckduckgo_collector.py` ищет вакансии и карьерные страницы через DuckDuckGo по итальянским, удаленным, логистическим, административным, data/AI и spreadsheet-направлениям.
+
+Запуск:
+
+```bash
+python duckduckgo_collector.py
+```
+
+Выход:
+
+```text
+duckduckgo_jobs.csv
+```
+
+После этого:
+
+```bash
+python scoring_jobs.py
+```
+
+Итоговые файлы:
+- `scored_jobs.csv`
+- `scored_jobs.xlsx`
+- `top_50_jobs.csv`
+- `top_50_jobs.xlsx`
+
+DuckDuckGo используется как discovery-layer. Он может находить не только вакансии, но и карьерные страницы компаний, поэтому для него используется небольшой `SOURCE_BONUS` и повышенный `MIN_SCORE_BY_SOURCE`.
+
+Collector фильтрует мусорные домены, удаляет дубли по URL и добавляет сигнал `preferred_domain` для результатов с job-board, career и `lavora-con-noi` доменов. Ошибка одного поискового запроса не останавливает сбор: скрипт печатает ошибку и продолжает следующий запрос.
+
+### Ручной поиск по морской логистике
+
+Чтобы получить CSV с готовыми поисковыми ссылками:
+
+```bash
+python export_search_queries.py
+```
+
+Скрипт создаст `search_queries.csv` с морскими запросами и отдельными запросами по maritime-компаниям Неаполя.
+
+### 2. Фильтрация
+
+- `python filter_jobs.py` — фильтрует `reddit_jobs.csv` и сохраняет `filtered_jobs.csv`.
+- `python himalayas_filter.py` — фильтрует `himalayas_jobs.csv` и сохраняет `filtered_himalayas_jobs.csv`.
+
+### 3. Сортировка и скоринг
+
+Запустите основной скрипт:
+
+```bash
+python scoring_jobs.py
+```
+
+Он соберет данные из всех доступных файлов, нормализует их, применит скоринг и создаст:
+- `scored_jobs.csv`
+- `scored_jobs.xlsx`
+- `top_50_jobs.csv`
+- `top_50_jobs.xlsx`
+
+## Как работает `scoring_jobs.py`
+
+### Нормализация
+
+Скрипт загружает данные из нескольких CSV-файлов и приводит их к общей форме:
+- `source`
+- `title`
+- `company`
+- `location`
+- `url`
+- `description`
+- `source_score` (для Reddit берется рейтинг поста)
+
+### Отбор
+
+Перед расчетом баллов выполняется фильтрация по `SIGNAL_PATTERN` — вакансии без хотя бы одной ключевой сигнатуры отбрасываются.
+
+### Скоринг
+
+Баллы считаются так:
+- `POSITIVE_WEIGHTS` — добавочные баллы за целевые фразы в тексте;
+- `COMBO_WEIGHTS` — дополнительные бонусы за сочетания фраз;
+- `NEGATIVE_WEIGHTS` — штрафы за нежелательные фразы;
+- `HARD_EXCLUDE_TITLE` — жесткие исключения по заголовку, сразу дают `-100`.
+
+Также есть бонусы за источник в `SOURCE_BONUS` и минимальный порог `MIN_SCORE_BY_SOURCE` для некоторых источников.
+
+#### Морской блок
+
+Проект ориентирован на **морскую логистику**, особенно:
+
+**Ключевые фразы:**
+- `ocean freight`, `sea freight`, `freight forwarding` — основные направления
+- `bill of lading`, `shipping documentation`, `export/import documentation` — документация
+- `port agent`, `ship agent`, `vessel agent`, `shipping agency` — агентства
+- `cargo operations`, `container shipping`, `vessel operations`
+- `husbandry` — услуги в портах
+
+**Региональный фокус:**
+- Naples (Napoli) как региональный центр с реальными агентствами: Agenzia Genovese, F. Andolfi, Rigel, Wilhelmsen
+- Ключевые поисковые запросы в `MARITIME_QUERIES` для поиска как удалённых позиций, так и местных агентств
+
+## Удалённый запуск через GitHub Actions
+
+Проект можно запускать полностью удалённо через GitHub Actions, без локального компьютера:
+
+```bash
+python -m src.main --queries configs/queries.yaml --scoring configs/scoring.yaml
+```
+
+Единый запуск выполняет:
+- все текущие collectors;
+- фильтрацию Reddit и Himalayas;
+- scoring с текущей формулой;
+- экспорт итогов в `output/latest/jobs_scored.csv` и `output/latest/jobs_scored.xlsx`;
+- создание `output/latest/run_summary.md`;
+- отправку HTML email-отчёта, если включены email-настройки.
+
+### Конфигурация queries
+
+Все текущие поисковые запросы перенесены в:
+
+```text
+configs/queries.yaml
+```
+
+В файле сохранена группировка по источникам:
+- `job_queries.maritime` и `job_queries.naples_maritime_company`;
+- `duckduckgo`;
+- `remotefirstjobs`;
+- `jobicy`;
+- `reddit`;
+- `workanywhere`.
+
+Чтобы изменить запросы, отредактируйте только `configs/queries.yaml`. Не нужно менять Python-код collectors.
+
+### Конфигурация scoring
+
+Все текущие веса scoring перенесены в:
+
+```text
+configs/scoring.yaml
+```
+
+В файле сохранены:
+- `positive_weights`;
+- `negative_weights`;
+- `combo_weights`;
+- `hard_exclude_title`;
+- `source_bonus`;
+- `min_score_by_source`;
+- `filters` для Reddit и Himalayas;
+- параметры экспорта.
+
+Формула подсчёта score осталась в `scoring_jobs.py`; YAML меняет только значения весов, порогов и существующие списки фильтрации.
+
+### Запуск workflow с телефона
+
+1. Откройте репозиторий на GitHub.
+2. Перейдите в `Actions`.
+3. Выберите workflow `Run Job Collectors`.
+4. Нажмите `Run workflow`.
+5. При необходимости измените inputs:
+   - `queries_file`: по умолчанию `configs/queries.yaml`;
+   - `scoring_file`: по умолчанию `configs/scoring.yaml`;
+   - `email_enabled`: `true` или `false`.
+6. Нажмите зелёную кнопку запуска.
+
+### Скачать artifact
+
+После завершения workflow:
+
+1. Откройте завершённый run в `Actions`.
+2. Внизу страницы найдите `Artifacts`.
+3. Скачайте artifact `job-results`.
+
+Внутри будут файлы из `output/latest/`, включая:
+- `jobs_scored.csv`;
+- `jobs_scored.xlsx`;
+- `top_jobs.xlsx`;
+- `run_summary.md`.
+
+### Email-отчёт
+
+Email отправляется только если:
+
+```text
+EMAIL_ENABLED=true
+```
+
+HTML-письмо содержит статистику запуска и TOP-20 вакансий прямо в теле письма: title, score, source, краткое описание, причины высокого score и прямую ссылку.
+Также письмо показывает статистику этапов (`Collected`, `After deduplication`, `After filtering`, `After scoring threshold`, `Top jobs emailed`) и блок `Apply Priority`:
+- `HIGH` — score >= 500;
+- `MEDIUM` — score >= 350;
+- `LOW` — score < 350.
+
+Тема письма:
+
+```text
+Job Intelligence Report — YYYY-MM-DD
+```
+
+Чтобы отключить отправку email, запустите workflow с:
+
+```text
+email_enabled=false
+```
+
+или установите переменную окружения:
+
+```text
+EMAIL_ENABLED=false
+```
+
+### GitHub Secrets для email
+
+В GitHub откройте `Settings` -> `Secrets and variables` -> `Actions` и добавьте secrets:
+
+```text
+EMAIL_SMTP_HOST
+EMAIL_SMTP_PORT
+EMAIL_SMTP_USER
+EMAIL_SMTP_PASSWORD
+EMAIL_FROM
+EMAIL_TO
+```
+
+Если `EMAIL_ENABLED=true`, но какой-то secret отсутствует, pipeline завершится понятной ошибкой с именами недостающих переменных.
+
+**Языковая специализация:**
+- `russian speaking`, `ukrainian speaking` — критические сигналы
+- Комбо-бонусы за `freight forwarding + russian/ukrainian`
+
+**Стратегия поиска:**
+1. **Основная формула:** `ocean freight + documentation + Russian/Ukrainian + Italy/Naples`
+2. **Альтернативная:** `ship agency / port agent + Naples + part-time / freelance / local representative`
+
+### Дедупликация
+
+Перед экспортом убираются дубликаты по:
+- `url`
+- комбинации `source`, `title`, `company`
+
+### Экспорт
+
+Финальный набор сортируется по `job_score` по убыванию и сохраняется в:
+- `scored_jobs.csv`
+- `scored_jobs.xlsx`
+- `top_50_jobs.csv`
+- `top_jobs.xlsx`
+
+`top_50_jobs.csv` и `top_jobs.xlsx` берут первые 50 строк из финального отсортированного DataFrame, оставляя только вакансии с `job_score >= 70`.
+
+В Excel создается столбец `clickable`, который хранит текст `Open`, а ссылка в URL добавляется в XLSX как гиперссылка.
+
+## Дополнительные детали
+
+### Источники данных
+
+Проект собирает данные из следующих платформ:
+- ArbeitNow
+- Remotive
+- Remotejobs.org
+- RemoteFirstJobs
+- Jobicy
+- WorkAnywhere
+- SmartJobSpa
+- Attalgroup
+- DirezioneLavoro
+- Himalayas
+- Reddit
+- DuckDuckGo
+
+### Итальянские источники
+
+Скрипт `arca24_collector.py` служит общей базой для итальянских сайтов с похожей структурой и может использоваться для источников `smartjobspa`, `attalgroup` и `direzionelavoro`.
+
+## Добавление нового источника
+
+Чтобы добавить новый источник:
+1. Создайте новый collector-скрипт, который сохраняет CSV.
+2. Добавьте normalize-функцию в `scoring_jobs.py`.
+3. Укажите `source` для нормализации.
+4. При необходимости добавьте `SOURCE_BONUS` и `MIN_SCORE_BY_SOURCE`.
+5. Запустите `python scoring_jobs.py`.
+
+## Структура данных
+
+Итоговый `scored_jobs.csv` содержит колонки:
+- `job_score` — итоговый балл вакансии;
+- `source` — источник вакансии;
+- `title` — заголовок вакансии;
+- `company` — компания;
+- `location` — локация;
+- `url` — ссылка;
+- `clickable` — текст для открытия ссылки в XLSX;
+- `score_reason` — причина начисления баллов.
+
+## Замечания
+
+- `scoring_jobs.py` не использует сторонние библиотеки для записи XLSX: он формирует файл руками через `zipfile` и XML.
+- Скрипты ориентированы на CSV-файлы в корне проекта.
+- `filter_jobs.py` и `himalayas_filter.py` используют разные наборы ключевых слов и предназначены для конкретных источников.
+
+## Рекомендации
+
+### Базовый workflow
+
+- Чтобы получить актуальные данные, предварительно запустите все нужные collector-скрипты.
+- Затем отфильтруйте данные там, где это необходимо.
+- В конце выполните `python scoring_jobs.py`.
+
+### Стратегия поиска по Неаполю
+
+`MARITIME_QUERIES` и `NAPLES_MARITIME_COMPANY_QUERIES` оптимизированы для поиска позиций в морской логистике Неаполя.
+
+**Где искать:**
+- Agenzia Genovese, F. Andolfi, Rigel, Wilhelmsen — реальные агентства
+- Платформы: remotejobs.org, jobicy, arbeitnow для удалённых позиций
+- Локальные итальянские платформы: smartjobspa, attalgroup, direzionelavoro
+
+**На что обратить внимание:**
+- Вакансии с баллом > 100 — сильные кандидаты
+- Комбинации языков (Russian/Ukrainian) + морские роли получают 30-80 баллов бонуса
+- Naples/Napoli + агентства получают дополнительные 35-40 баллов
+
+---
+
+## Морской блок (Maritime Block)
+
+Проект оптимизирован для поиска позиций в **морской логистике** (ocean freight, shipping, port operations) с фокусом на:
+
+### Ключевые направления
+- **Документация:** bill of lading, export/import documentation, shipping documentation
+- **Агентства:** port agent, ship agent, vessel agent, shipping agency (особенно Naples)
+- **Операции:** cargo operations, container shipping, vessel operations, husbandry services
+- **Удалённые роли:** remote freight coordinators, remote logistics documentation
+
+### Языковая специализация
+- Русский и украинский языки — критические сигналы (18 баллов + комбо-бонусы)
+- Комбинации `freight forwarding + russian/ukrainian` получают +30 баллов
+- `Russian/Ukrainian + shipping agency/port agent + Naples` — максимальные бонусы
+
+### Местные агентства (Naples)
+Список целевых компаний в `NAPLES_MARITIME_COMPANY_QUERIES` для ручного поиска:
+- Agenzia Genovese
+- F. Andolfi
+- Rigel Shipping Agency
+- Wilhelmsen
+- Inchcape
+
+### Формула успеха
+```
+ocean freight + documentation + Russian/Ukrainian + Italy/Naples = 50-80+ баллов
+ship agency / port agent + Naples = 40-60+ баллов
+```
+
+Используйте `MARITIME_QUERIES` для кастомных поисковых запросов в collector-скриптах или для ручного поиска на LinkedIn, Indeed и местных итальянских платформах.
+
+Если хочешь, могу также сделать краткую схему запуска в виде Bash-сценария или помочь оформить `requirements.txt` для проекта.

@@ -1,0 +1,303 @@
+# Query config generated from job_queries.py, duckduckgo_collector.py, remotefirstjobs_collector.py, jobicy_collector.py, reddit_collector.py, workanywhere_collector.py.
+# Values are copied without behavioral changes.
+job_queries:
+  maritime:
+  - ocean freight coordinator
+  - ocean operations coordinator
+  - ocean export coordinator
+  - ocean import coordinator
+  - sea freight coordinator
+  - sea freight specialist
+  - freight forwarding specialist
+  - freight operations coordinator
+  - international freight coordinator
+  - multimodal logistics coordinator
+  - ocean freight documentation specialist
+  - shipping documentation specialist
+  - export documentation specialist
+  - import documentation specialist
+  - bill of lading specialist
+  - documentation coordinator freight forwarding
+  - logistics documentation specialist
+  - trade documentation specialist
+  - customs documentation coordinator
+  - container shipping coordinator
+  - container logistics specialist
+  - container booking coordinator
+  - carrier coordinator
+  - shipping line coordinator
+  - vessel schedule coordinator
+  - container operations coordinator
+  - port agent
+  - ship agent
+  - vessel agent
+  - shipping agent
+  - husbandry agent
+  - boarding agent
+  - marine operations agent
+  - port operations agent
+  - vessel operations coordinator
+  - ship agency operator
+  - shipping agency operator
+  - cargo operations coordinator
+  - cargo documentation specialist
+  - terminal operations coordinator
+  - stevedoring coordinator
+  - loading discharge coordinator
+  - vessel loading operations
+  - port call coordinator
+  - remote ocean freight coordinator
+  - remote freight forwarding
+  - remote shipping coordinator
+  - remote logistics documentation
+  - remote import export coordinator
+  - work from home ocean freight
+  - hybrid ocean freight coordinator
+  - hybrid logistics coordinator
+  - ocean freight forwarder russian
+  - logistics coordinator russian speaking
+  - shipping coordinator russian speaking
+  - freight forwarding russian
+  - export documentation russian speaking
+  - ukrainian logistics coordinator
+  - russian speaking freight forwarder
+  - shipping agency Naples jobs
+  - port agent Naples
+  - ship agent Naples
+  - vessel agent Naples
+  - maritime agency Naples
+  - husbandry services Naples
+  - port operations Naples
+  - shipping agency Napoli
+  - agente marittimo Napoli
+  - agenzia marittima Napoli lavoro
+  - operativo mare Napoli
+  - spedizioni mare Napoli
+  - documentazione export Napoli
+  naples_maritime_company:
+  - Agenzia Genovese Napoli careers
+  - F Andolfi Napoli lavoro
+  - Rigel Shipping Agency Napoli careers
+  - Wilhelmsen Napoli port services jobs
+  - Inchcape Napoli port agency jobs
+  - shipping agency Napoli lavora con noi
+  - agenzia marittima Napoli lavora con noi
+  - spedizioniere mare Napoli lavoro
+duckduckgo:
+  max_results_per_query: 25
+  base_italy:
+  - '"impiegato import export" Napoli lavoro'
+  - '"back office commerciale" Napoli lavoro'
+  - '"impiegato amministrativo" Napoli lavoro'
+  - '"data entry" remoto Italia'
+  - '"virtual assistant" remote Italy'
+  - '"google sheets" remote job Italy'
+  - '"freight forwarding" Italy job'
+  - '"sea freight" Italy job'
+  - '"ocean freight" Italy job'
+  - '"shipping documentation" Italy job'
+  - '"shipping agency" Napoli lavoro'
+  - '"port agent" Napoli lavoro'
+  - '"vessel agent" Napoli lavoro'
+  - '"russian speaking" logistics Italy job'
+  - '"ukrainian speaking" logistics Italy job'
+  - '"import export specialist" Italy job'
+  - '"logistics coordinator" Italy remote'
+  - site:it.indeed.com "import export" Napoli
+  - site:infojobs.it "import export" Napoli
+  - site:linkedin.com/jobs "freight forwarding" Italy
+  - site:linkedin.com/jobs "russian speaking" Italy job
+  remote_data:
+  - '"data annotation" remote job'
+  - '"data annotator" remote job'
+  - '"ai data annotator" remote job'
+  - '"ai annotation" remote job'
+  - '"ai annotator" remote job'
+  - '"ai training" remote job'
+  - '"ai trainer" remote job'
+  - '"data annotation" remote Italy'
+  - '"data annotator" remote Italy'
+  - '"ai data annotator" remote Italy'
+  - '"russian" "data annotation" remote'
+  - '"ukrainian" "data annotation" remote'
+  - '"russian language" "data annotator" remote'
+  - '"ukrainian language" "data annotator" remote'
+  - '"data analyst" remote Italy'
+  - '"data operations" remote job'
+  - '"reporting analyst" remote job'
+  - '"operations analyst" remote job'
+  - '"workflow analyst" remote job'
+  - '"business operations" remote job'
+  - '"data quality analyst" remote job'
+  - '"crm data quality" remote job'
+  - '"research assistant" remote job'
+  - '"customer support" remote Italy'
+  - '"virtual assistant" remote job'
+  - '"administrative support" remote Italy'
+  - '"automation support" remote job'
+  - '"workflow automation" remote job'
+  - '"google sheets" remote job'
+  - '"google sheets" "data entry" remote'
+  - '"google sheets" "virtual assistant" remote'
+  - '"google workspace" remote job'
+  - '"excel" "data entry" remote'
+  - '"excel reporting" remote job'
+  - '"spreadsheet" remote job'
+  - '"spreadsheet" "operations" remote'
+  - '"python" "automation" remote job'
+  - '"pandas" "data" remote job'
+  job_board:
+  - site:himalayas.app/jobs "data analyst" remote
+  - site:himalayas.app/jobs "data annotation" remote
+  - site:himalayas.app/jobs "operations analyst" remote
+  - site:remotive.com/remote-jobs "data analyst"
+  - site:remotive.com/remote-jobs "data entry"
+  - site:remotejobs.org "data analyst"
+  - site:remotejobs.org "data entry"
+  - site:jobicy.com/jobs "data analyst"
+  - site:jobicy.com/jobs "data entry"
+  - site:workanywhere.pro/jobs "data analyst"
+  - site:workanywhere.pro/jobs "data entry"
+  - site:workanywhere.pro/jobs "google sheets"
+  - site:linkedin.com/jobs "data annotator" remote
+  - site:linkedin.com/jobs "data analyst" remote Italy
+  - site:linkedin.com/jobs "google sheets" remote
+  - site:it.indeed.com "data entry" remoto
+  - site:it.indeed.com "data analyst" remoto
+  - site:infojobs.it "data entry" remoto
+  - site:infojobs.it "impiegato amministrativo" Napoli
+  remote_first_terms:
+  - data annotation
+  - data annotator
+  - ai data annotator
+  - ai annotation
+  - ai training
+  - ai trainer
+  - russian remote
+  - ukrainian remote
+  - customer support
+  - virtual assistant
+  - research assistant
+  - data analyst
+  - data operations
+  - reporting analyst
+  - operations analyst
+  - workflow analyst
+  - business operations
+  - automation support
+  - workflow automation
+  - shipping coordinator
+  - freight coordinator
+  - booking coordinator
+  - ocean freight coordinator
+  - logistics operations
+  - freight operations
+  - container booking
+  - shipment coordinator
+  - operations coordinator
+  - shipping line
+  - carrier coordination
+  - local agent coordination
+  - port operations
+  - container shipping
+  - ocean export
+  - ocean import
+  - freight forwarding
+  - maritime logistics
+  - international logistics
+  - cargo operations
+  bad_domains:
+  - facebook.com
+  - instagram.com
+  - pinterest.
+  - youtube.com
+  - tiktok.com
+  - reddit.com
+  - amazon.
+  - wikipedia.org
+  good_domains:
+  - indeed.
+  - infojobs.
+  - linkedin.com/jobs
+  - jooble.
+  - talent.com
+  - glassdoor.
+  - monster.
+  - azienda
+  - careers
+  - lavora-con-noi
+remotefirstjobs:
+  max_pages: 2
+  base:
+  - data annotation
+  - data annotator
+  - ai data annotator
+  - ai annotation
+  - ai training
+  - ai trainer
+  - russian
+  - ukrainian
+  - russian remote
+  - ukrainian remote
+  - customer support
+  - virtual assistant
+  - research assistant
+  - data analyst
+  - data operations
+  - reporting analyst
+  - operations analyst
+  - workflow analyst
+  - business operations
+  - automation support
+  - workflow automation
+  - shipping coordinator
+  - freight coordinator
+  - booking coordinator
+  - ocean freight coordinator
+  - logistics operations
+  - freight operations
+  - container booking
+  - shipment coordinator
+  - operations coordinator
+  - shipping line
+  - carrier coordination
+  - local agent coordination
+  - port operations
+  - container shipping
+  - ocean export
+  - ocean import
+  - freight forwarding
+  - maritime logistics
+  - international logistics
+  - china logistics
+  - asia logistics
+  - cargo operations
+jobicy:
+  params:
+  - count: 50
+    industry: data-science
+  - count: 50
+    industry: supporting
+  - count: 50
+    tag: python
+  - count: 50
+    tag: data
+  - count: 50
+    tag: assistant
+reddit:
+  subreddits:
+  - remotejobs
+  - remotework
+  - forhire
+  - DataAnnotationTech
+  - WorkOnline
+  - beermoney
+  - freelance
+workanywhere:
+  feeds:
+  - category: all
+    url: https://workanywhere.pro/rss.xml
+  - category: support
+    url: https://workanywhere.pro/rss/support.xml
+  - category: data_ai
+    url: https://workanywhere.pro/rss/data-ai.xml

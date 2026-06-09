@@ -1,0 +1,51 @@
+# Python environments and caches
+venv/
+.venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local secrets and environment files
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Runtime output and generated reports
+output/
+*_jobs.csv
+filtered_jobs.csv
+filtered_himalayas_jobs.csv
+scored_jobs.csv
+scored_jobs.xlsx
+top_50_jobs.csv
+top_50_jobs.xlsx
+top_jobs.xlsx
+search_queries.csv
+remotive_collector
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+tmp/
+temp/
+
+# Local editor/system files
+.DS_Store
+.idea/
+.vscode/
+
+# Local Codex/session metadata
+.codex/
+.agents/

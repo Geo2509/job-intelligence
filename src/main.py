@@ -169,7 +169,7 @@ def write_summary(run_started, collector_counts, scoring_result, output_paths):
 
 
 def email_enabled():
-    return os.environ.get("EMAIL_ENABLED", "").lower() == "true"
+    return os.environ.get("EMAIL_ENABLED", "").strip().lower() == "true"
 
 
 def require_email_settings():
@@ -268,6 +268,15 @@ def send_email_report(run_started, collector_counts, scoring_result):
     return True
 
 
+def validate_output_files(paths):
+    missing = [str(path) for path in paths if not Path(path).exists()]
+    if missing:
+        raise RuntimeError("Missing output files: " + ", ".join(missing))
+    print("Output file check passed:")
+    for path in paths:
+        print(f"- {path}")
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--queries", required=True, help="Path to queries YAML config")
@@ -276,43 +285,49 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
-    run_started = datetime.now(ZoneInfo("Europe/Rome"))
+    try:
+        args = parse_args()
+        run_started = datetime.now(ZoneInfo("Europe/Rome"))
 
-    print(f"Using queries config: {args.queries}")
-    print(f"Using scoring config: {args.scoring}")
-    load_queries_config(args.queries)
-    load_scoring_config(args.scoring)
+        print(f"Using queries config: {args.queries}")
+        print(f"Using scoring config: {args.scoring}")
+        print(f"EMAIL_ENABLED: {os.environ.get('EMAIL_ENABLED', '')}")
+        load_queries_config(args.queries)
+        load_scoring_config(args.scoring)
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    collector_counts = run_collectors(args.queries)
-    run_filters(args.scoring)
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        collector_counts = run_collectors(args.queries)
+        run_filters(args.scoring)
 
-    csv_path = OUTPUT_DIR / "jobs_scored.csv"
-    xlsx_path = OUTPUT_DIR / "jobs_scored.xlsx"
-    top_csv_path = OUTPUT_DIR / "top_50_jobs.csv"
-    top_xlsx_path = OUTPUT_DIR / "top_50_jobs.xlsx"
-    top_jobs_xlsx_path = OUTPUT_DIR / "top_jobs.xlsx"
-    scoring_result = score_jobs(
-        scoring_file=args.scoring,
-        csv_path=csv_path,
-        xlsx_path=xlsx_path,
-        top_csv_path=top_csv_path,
-        top_xlsx_path=top_jobs_xlsx_path,
-    )
+        csv_path = OUTPUT_DIR / "jobs_scored.csv"
+        xlsx_path = OUTPUT_DIR / "jobs_scored.xlsx"
+        top_csv_path = OUTPUT_DIR / "top_50_jobs.csv"
+        top_jobs_xlsx_path = OUTPUT_DIR / "top_jobs.xlsx"
+        scoring_result = score_jobs(
+            scoring_file=args.scoring,
+            csv_path=csv_path,
+            xlsx_path=xlsx_path,
+            top_csv_path=top_csv_path,
+            top_xlsx_path=top_jobs_xlsx_path,
+        )
 
-    print(f"Jobs after filtering: {scoring_result['after_filtering']}")
-    print(f"Jobs in final result: {scoring_result['after_scoring']}")
-    summary_path = write_summary(
-        run_started,
-        collector_counts,
-        scoring_result,
-        [csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, OUTPUT_DIR / "run_summary.md"],
-    )
-    email_was_sent = send_email_report(run_started, collector_counts, scoring_result)
-    print(f"Email sent: {email_was_sent}")
-    print(f"Output files saved in: {OUTPUT_DIR}")
-    print(f"Summary: {summary_path}")
+        print(f"Jobs after filtering: {scoring_result['after_filtering']}")
+        print(f"Jobs in final result: {scoring_result['after_scoring']}")
+        summary_path = write_summary(
+            run_started,
+            collector_counts,
+            scoring_result,
+            [csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, OUTPUT_DIR / "run_summary.md"],
+        )
+        validate_output_files([csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, summary_path])
+        email_was_sent = send_email_report(run_started, collector_counts, scoring_result)
+        print(f"Email sent: {email_was_sent}")
+        print(f"Output files saved in: {OUTPUT_DIR}")
+        print(f"Summary: {summary_path}")
+        print("FINAL STATUS: SUCCESS")
+    except Exception as exc:
+        print(f"FINAL STATUS: FAILED - {exc}")
+        raise
 
 
 if __name__ == "__main__":

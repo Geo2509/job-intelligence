@@ -14,7 +14,7 @@ on:
       email_enabled:
         description: Send HTML email report
         required: true
-        default: "true"
+        default: "false"
 
 jobs:
   run-collectors:

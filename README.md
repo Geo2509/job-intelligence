@@ -96,6 +96,20 @@ Aggregator экспортирует:
 - `output/v2_jobs.csv`
 - `output/v2_jobs.xlsx`
 
+### V2 Result Cleaner
+
+`src/job_result_cleaner.py` запускается после Job Aggregator V2 и удаляет из результата страницы поиска, каталоги и агрегаторные страницы, которые могли попасть в discovery-выдачу. Cleaner добавляет поле `result_type` со значениями `job`, `search_page`, `category_page`, `aggregator_page` или `unknown`, а в финальный export сохраняет только `result_type == job`.
+
+Пример запуска:
+
+```bash
+python -m src.job_result_cleaner \
+  --input output/v2_jobs.json \
+  --output output/v2_jobs_clean.json
+```
+
+Cleaner не собирает вакансии и не меняет collectors. Это отдельный post-processing слой для очистки результатов агрегатора.
+
 ### V2 Collector Plugin Registry
 
 V2 aggregator подключает collectors через `src/job_collector_registry.py`. Registry описывает имя collector-а, включён ли он, Python module, callable для запуска и поддерживаемые параметры (`limit`, `top`, `campania_part_time_first`). Чтобы добавить новый collector, нужно добавить его metadata в registry, не меняя `src/job_aggregator.py`.

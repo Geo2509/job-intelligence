@@ -19,7 +19,8 @@ __pycache__/
 *.pfx
 
 # Runtime output and generated reports
-output/
+output/*
+!output/sent_jobs_history.json
 *_jobs.csv
 filtered_jobs.csv
 filtered_himalayas_jobs.csv

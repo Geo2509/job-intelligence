@@ -16,6 +16,9 @@ on:
         required: true
         default: "false"
 
+permissions:
+  contents: write
+
 jobs:
   run-collectors:
     runs-on: ubuntu-latest
@@ -42,6 +45,19 @@ jobs:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python -m src.main --queries "${{ inputs.queries_file }}" --scoring "${{ inputs.scoring_file }}"
+
+      - name: Commit sent jobs history
+        if: ${{ success() && inputs.email_enabled == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/sent_jobs_history.json
+          if git diff --cached --quiet; then
+            echo "No sent jobs history changes to commit."
+          else
+            git commit -m "Update sent jobs history"
+            git push
+          fi
 
       - name: Upload job results
         uses: actions/upload-artifact@v4

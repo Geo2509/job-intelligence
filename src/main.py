@@ -1,13 +1,15 @@
 import argparse
 import csv
 import html
+import json
 import os
 import smtplib
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
 from config_loader import QUERIES_ENV, SCORING_ENV, load_queries_config, load_scoring_config
@@ -15,6 +17,17 @@ from scoring_jobs import score_jobs
 
 
 OUTPUT_DIR = Path("output/latest")
+SENT_JOBS_HISTORY_PATH = Path("output/sent_jobs_history.json")
+SENT_JOBS_HISTORY_TTL_DAYS = 90
+TRACKING_QUERY_PARAMS = {
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "fbclid",
+    "gclid",
+}
 COLLECTORS = [
     ("arbeitnow", "arbeitnow_collector.py"),
     ("remotive", "remotive_collector.py"),
@@ -99,7 +112,121 @@ def short_description(value, limit=500):
 def top_jobs_rows(top_jobs, limit=20):
     if top_jobs.empty:
         return []
+    if limit is None:
+        return list(top_jobs.to_dict("records"))
     return list(top_jobs.head(limit).to_dict("records"))
+
+
+def has_value(value):
+    text = str(value or "").strip()
+    return bool(text) and text.lower() != "nan"
+
+
+def normalize_job_url(url):
+    if not has_value(url):
+        return ""
+
+    parts = urlsplit(str(url).strip())
+    query = urlencode(
+        [
+            (key, value)
+            for key, value in parse_qsl(parts.query, keep_blank_values=True)
+            if key.lower() not in TRACKING_QUERY_PARAMS
+        ],
+        doseq=True,
+    )
+    path = parts.path.rstrip("/") or parts.path
+    return urlunsplit((
+        parts.scheme.lower(),
+        parts.netloc.lower(),
+        path,
+        query,
+        "",
+    ))
+
+
+def job_history_key(job):
+    for field in ["url", "link", "apply_url", "job_url"]:
+        value = job.get(field, "")
+        if has_value(value):
+            normalized_url = normalize_job_url(value)
+            if normalized_url:
+                return normalized_url
+
+    parts = [
+        str(job.get("title", "") or "").strip().lower(),
+        str(job.get("company", "") or "").strip().lower(),
+        str(job.get("location", "") or "").strip().lower(),
+    ]
+    return "|".join(parts)
+
+
+def load_sent_jobs_history(path=SENT_JOBS_HISTORY_PATH, now=None, ttl_days=SENT_JOBS_HISTORY_TTL_DAYS):
+    history_path = Path(path)
+    if not history_path.exists():
+        print(f"Sent jobs history path: {history_path}")
+        return {}
+
+    try:
+        raw_history = json.loads(history_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print(f"Invalid sent jobs history, starting fresh: {history_path}")
+        return {}
+
+    if not isinstance(raw_history, dict):
+        print(f"Unexpected sent jobs history format, starting fresh: {history_path}")
+        return {}
+
+    cutoff_date = ((now or datetime.now(ZoneInfo("Europe/Rome"))) - timedelta(days=ttl_days)).date()
+    history = {}
+    for key, entry in raw_history.items():
+        if isinstance(entry, dict):
+            sent_at = entry.get("sent_at")
+        else:
+            sent_at = entry
+        try:
+            sent_at_date = datetime.fromisoformat(str(sent_at)).date()
+        except (TypeError, ValueError):
+            continue
+        if sent_at_date >= cutoff_date:
+            history[key] = {"sent_at": sent_at_date.isoformat()}
+    print(f"Sent jobs history path: {history_path}")
+    return history
+
+
+def save_sent_jobs_history(history, path=SENT_JOBS_HISTORY_PATH):
+    history_path = Path(path)
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    history_path.write_text(
+        json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def unsent_email_rows(top_jobs, history, send_limit=20):
+    rows = top_jobs_rows(top_jobs, None)
+    unsent_rows = []
+    skipped = 0
+    seen_keys = set()
+    for row in rows:
+        key = job_history_key(row)
+        if key in history or key in seen_keys:
+            skipped += 1
+            continue
+        seen_keys.add(key)
+        if len(unsent_rows) >= send_limit:
+            continue
+        row = dict(row)
+        row["_history_key"] = key
+        unsent_rows.append(row)
+    return rows, unsent_rows, skipped
+
+
+def record_sent_jobs(history, rows, sent_at):
+    sent_at_text = sent_at.date().isoformat()
+    for row in rows:
+        history[row["_history_key"]] = {"sent_at": sent_at_text}
+    return history
 
 
 def priority_counts_text(scoring_result):
@@ -188,12 +315,17 @@ def require_email_settings():
         )
 
 
-def build_email_html(run_started, collector_counts, scoring_result):
-    rows = top_jobs_rows(scoring_result["top_jobs"], 20)
+def build_email_html(run_started, collector_counts, scoring_result, email_rows=None, email_stats=None):
+    rows = email_rows if email_rows is not None else top_jobs_rows(scoring_result["top_jobs"], 20)
     source_items = "".join(
         f"<li>{html.escape(str(source))}: {count}</li>"
         for source, count in collector_counts.items()
     )
+    email_stats = email_stats or {
+        "found_total": len(rows),
+        "skipped_already_sent": 0,
+        "sent_total": len(rows),
+    }
     priority_counts = scoring_result.get("priority_counts", {})
     score_stats = scoring_result.get("top_jobs_score_stats", {"min": 0, "max": 0, "average": 0})
     priority_items = "".join(
@@ -234,6 +366,9 @@ def build_email_html(run_started, collector_counts, scoring_result):
           <li>After filtering: {scoring_result['after_filtering']}</li>
           <li>After scoring threshold: {scoring_result['after_scoring_threshold']}</li>
           <li>Top jobs emailed: {scoring_result['top_jobs_emailed']}</li>
+          <li>Email candidates found: {email_stats['found_total']}</li>
+          <li>Email candidates skipped as already sent: {email_stats['skipped_already_sent']}</li>
+          <li>Email candidates sent now: {email_stats['sent_total']}</li>
           <li>Top jobs min score: {score_stats['min']}</li>
           <li>Top jobs max score: {score_stats['max']}</li>
           <li>Top jobs average score: {score_stats['average']}</li>
@@ -253,7 +388,35 @@ def send_email_report(run_started, collector_counts, scoring_result):
         return False
 
     require_email_settings()
-    message = MIMEText(build_email_html(run_started, collector_counts, scoring_result), "html", "utf-8")
+    history = load_sent_jobs_history(SENT_JOBS_HISTORY_PATH, now=run_started)
+    found_rows, rows_to_send, skipped = unsent_email_rows(scoring_result["top_jobs"], history, 20)
+    email_stats = {
+        "found_total": len(found_rows),
+        "skipped_already_sent": skipped,
+        "sent_total": len(rows_to_send),
+    }
+    print(f"Email jobs found total: {email_stats['found_total']}")
+    print(f"Email jobs skipped as already sent: {email_stats['skipped_already_sent']}")
+    print(f"Email jobs sent now: {email_stats['sent_total']}")
+
+    if not rows_to_send:
+        save_sent_jobs_history(history, SENT_JOBS_HISTORY_PATH)
+        print("No new jobs to email.")
+        return False
+
+    email_scoring_result = dict(scoring_result)
+    email_scoring_result["top_jobs_emailed"] = len(rows_to_send)
+    message = MIMEText(
+        build_email_html(
+            run_started,
+            collector_counts,
+            email_scoring_result,
+            email_rows=rows_to_send,
+            email_stats=email_stats,
+        ),
+        "html",
+        "utf-8",
+    )
     message["Subject"] = f"Job Intelligence Report — {run_started.date().isoformat()}"
     message["From"] = os.environ["EMAIL_FROM"]
     message["To"] = os.environ["EMAIL_TO"]
@@ -264,6 +427,8 @@ def send_email_report(run_started, collector_counts, scoring_result):
         smtp.login(os.environ["EMAIL_SMTP_USER"], os.environ["EMAIL_SMTP_PASSWORD"])
         smtp.sendmail(os.environ["EMAIL_FROM"], recipients, message.as_string())
 
+    record_sent_jobs(history, rows_to_send, run_started)
+    save_sent_jobs_history(history, SENT_JOBS_HISTORY_PATH)
     print("Email report sent")
     return True
 

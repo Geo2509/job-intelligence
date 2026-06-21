@@ -91,3 +91,58 @@ def test_ddgs_missing_fallback_does_not_crash(monkeypatch, capsys):
 
     assert jobs == []
     assert "ddgs package not installed" in capsys.readouterr().out
+
+
+def test_get_priority_bucket_returns_campania_part_time():
+    text = "Back office Napoli tempo parziale"
+    bucket = duckduckgo_jobs.get_priority_bucket(text, part_time=True, remote=False)
+    assert bucket == "campania_part_time"
+
+
+def test_campania_part_time_sorting_prioritizes_local_part_time_above_remote():
+    jobs = [
+        {"score": 10, "remote": True, "priority_bucket": "other"},
+        {"score": 5, "remote": False, "priority_bucket": "campania_part_time"},
+        {"score": 20, "remote": False, "priority_bucket": "other"},
+    ]
+
+    sorted_jobs = sorted(jobs, key=duckduckgo_jobs.campania_part_time_sort_key)
+    assert sorted_jobs[0]["priority_bucket"] == "campania_part_time"
+    assert sorted_jobs[1]["remote"] is True
+
+
+def test_collect_jobs_defaults_to_top_50(monkeypatch):
+    class FakeResult:
+        def __init__(self, url, title):
+            self._url = url
+            self._title = title
+        def get(self, key):
+            return {
+                "href": self._url,
+                "title": self._title,
+                "body": "",
+                "snippet": "",
+            }.get(key)
+
+    class FakeDDGS:
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc, tb):
+            return False
+        def text(self, query, region, safesearch, max_results):
+            return [FakeResult(f"https://example.com/{i}", f"Title {i}") for i in range(100)]
+
+    monkeypatch.setattr(duckduckgo_jobs, "get_ddgs_class", lambda: lambda: FakeDDGS())
+    monkeypatch.setattr(duckduckgo_jobs, "load_discovery_queries", lambda config_path: ["query"])
+
+    jobs = duckduckgo_jobs.collect_jobs("configs/job_sources.yaml", limit=1, pause_seconds=0)
+    assert len(jobs) == 50
+
+
+def test_scoring_local_part_time_is_high():
+    score = duckduckgo_jobs.score_result(
+        "Back office part-time Napoli",
+        "Tempo parziale 4 ore",
+        "",
+    )
+    assert score >= 75

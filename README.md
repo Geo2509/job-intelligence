@@ -58,6 +58,24 @@ python -m src.collectors.duckduckgo_jobs --config configs/job_sources.yaml --out
 
 Это discovery слой, а не финальный парсер вакансий. Он помогает находить потенциальные страницы и объявления для дальнейшей проверки, нормализации и скоринга.
 
+### Indeed Jobs Collector
+
+`src/collectors/indeed_jobs.py` — V2 collector для Indeed Italia по Campania part-time/data/remote направлениям. Direct mode формирует публичные Indeed search URL и делает обычные HTTP-запросы с таймаутом, без Selenium, без обхода CAPTCHA и без агрессивного scraping.
+
+Direct mode может быть ограничен сайтом: если Indeed возвращает блокировку, CAPTCHA, ошибку или пустой результат, collector не падает и переходит на fallback через DuckDuckGo по `site:it.indeed.com` запросам.
+
+Пример запуска:
+
+```bash
+python -m src.collectors.indeed_jobs \
+  --output output/indeed_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
+Collector экспортирует `output/indeed_jobs.json`, `output/indeed_jobs.csv` и `output/indeed_jobs.xlsx`.
+
 ## Структура
 
 Главные файлы:
@@ -430,6 +448,21 @@ EMAIL_TO
 `top_50_jobs.csv` и `top_jobs.xlsx` берут первые 50 строк из финального отсортированного DataFrame, оставляя только вакансии с `job_score >= 70`.
 
 В Excel создается столбец `clickable`, который хранит текст `Open`, а ссылка в URL добавляется в XLSX как гиперссылка.
+
+### DuckDuckGo Campania part-time first
+
+Для DuckDuckGo export добавлен режим V2: `--campania-part-time-first`. Он сортирует вакансии так:
+1) сначала `part_time=true` и местные упоминания Napoli, Pozzuoli, Bacoli, Monte di Procida, Quarto, Fuorigrotta, Campi Flegrei, Campania;
+2) затем `remote=true`;
+3) затем по `score` по убыванию.
+
+Новый CSV/XLSX/JSON экспорт теперь сохраняет до 50 результатов по умолчанию и больше не обрезает вывод до 20.
+
+Пример запуска:
+
+```bash
+python -m src.collectors.duckduckgo_jobs --config configs/job_sources.yaml --output output/duckduckgo_jobs.json --limit 5 --top 50 --campania-part-time-first
+```
 
 ## Дополнительные детали
 

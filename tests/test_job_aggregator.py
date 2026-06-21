@@ -157,3 +157,60 @@ def test_export_json_csv_xlsx(tmp_path):
     assert output_path.with_suffix(".csv").exists()
     assert output_path.with_suffix(".xlsx").exists()
     assert json.loads(output_path.read_text(encoding="utf-8"))[0]["title"] == "Data Entry Napoli"
+
+
+def test_aggregate_with_clean_results_excludes_search_page(monkeypatch, capsys):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job("Data Entry Napoli", "https://example.com/job/1"),
+                job("Search results", "https://example.com/search/data-entry"),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(["duckduckgo"], clean_results=True)
+
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "Data Entry Napoli"
+    assert jobs[0]["result_type"] == "job"
+    output = capsys.readouterr().out
+    assert "Total before cleaning: 2" in output
+    assert "Removed search_page: 1" in output
+    assert "Total after cleaning: 1" in output
+
+
+def test_export_includes_result_type_when_cleaned(tmp_path):
+    output_path = tmp_path / "v2_jobs.json"
+    jobs = [
+        {
+            **job_aggregator.normalize_job(job("Data Entry Napoli", "https://example.com/job/1")),
+            "result_type": "job",
+        }
+    ]
+
+    job_aggregator.export_jobs(jobs, output_path)
+
+    exported_json = json.loads(output_path.read_text(encoding="utf-8"))
+    csv_header = output_path.with_suffix(".csv").read_text(encoding="utf-8").splitlines()[0]
+
+    assert exported_json[0]["result_type"] == "job"
+    assert "result_type" in csv_header
+
+
+def test_without_clean_results_keeps_old_behavior(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [job("Search results", "https://example.com/search/data-entry")],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(["duckduckgo"], clean_results=False)
+
+    assert len(jobs) == 1
+    assert jobs[0]["url"] == "https://example.com/search/data-entry"
+    assert "result_type" not in jobs[0]

@@ -16,6 +16,7 @@ from src.job_matching import (
     normalize_url,
     score_job,
 )
+from src.job_result_cleaner import clean_results_with_summary, print_cleaning_summary
 
 
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
@@ -41,6 +42,7 @@ OUTPUT_FIELDS = [
     "score",
     "found_at",
 ]
+RESULT_TYPE_OUTPUT_FIELDS = OUTPUT_FIELDS + ["result_type"]
 
 
 def parse_collectors(value):
@@ -133,7 +135,13 @@ def sort_jobs(jobs):
     )
 
 
-def aggregate_jobs(collector_names=None, limit=DEFAULT_LIMIT, top=DEFAULT_TOP, campania_part_time_first=False):
+def aggregate_jobs(
+    collector_names=None,
+    limit=DEFAULT_LIMIT,
+    top=DEFAULT_TOP,
+    campania_part_time_first=False,
+    clean_results=False,
+):
     jobs = []
     collector_names = collector_names or enabled_collectors()
     for name in collector_names:
@@ -143,6 +151,9 @@ def aggregate_jobs(collector_names=None, limit=DEFAULT_LIMIT, top=DEFAULT_TOP, c
 
     jobs = deduplicate_jobs(jobs)
     jobs = sort_jobs(jobs)
+    if clean_results:
+        jobs, summary = clean_results_with_summary(jobs)
+        print_cleaning_summary(summary)
     return jobs[:top]
 
 
@@ -157,22 +168,30 @@ def sibling_output_path(output_path, suffix):
     return Path(output_path).with_suffix(suffix)
 
 
+def output_fields_for_jobs(jobs):
+    if any("result_type" in job for job in jobs):
+        return RESULT_TYPE_OUTPUT_FIELDS
+    return OUTPUT_FIELDS
+
+
 def write_csv(jobs, output_path):
     path = sibling_output_path(output_path, ".csv")
+    output_fields = output_fields_for_jobs(jobs)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=OUTPUT_FIELDS)
+        writer = csv.DictWriter(handle, fieldnames=output_fields)
         writer.writeheader()
         for job in jobs:
-            writer.writerow({field: job.get(field, "") for field in OUTPUT_FIELDS})
+            writer.writerow({field: job.get(field, "") for field in output_fields})
     print(f"Saved {path}: {len(jobs)} rows")
 
 
 def write_xlsx(jobs, output_path):
     path = sibling_output_path(output_path, ".xlsx")
+    output_fields = output_fields_for_jobs(jobs)
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows = [OUTPUT_FIELDS] + [
-        [str(job.get(field, "")) for field in OUTPUT_FIELDS]
+    rows = [output_fields] + [
+        [str(job.get(field, "")) for field in output_fields]
         for job in jobs
     ]
     sheet_rows = []
@@ -243,6 +262,7 @@ def parse_args(argv=None):
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
     parser.add_argument("--campania-part-time-first", action="store_true")
+    parser.add_argument("--clean-results", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -253,6 +273,7 @@ def main():
         limit=args.limit,
         top=args.top,
         campania_part_time_first=args.campania_part_time_first,
+        clean_results=args.clean_results,
     )
     export_jobs(jobs, args.output)
 

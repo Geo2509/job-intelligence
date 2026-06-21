@@ -3,6 +3,7 @@ import json
 from src.job_result_cleaner import (
     clean_job,
     clean_results,
+    clean_results_with_summary,
     detect_result_type,
     load_jobs,
     write_jobs,
@@ -92,3 +93,25 @@ def test_load_and_write_jobs(tmp_path):
 
     assert json.loads(output_path.read_text(encoding="utf-8")) == jobs
     assert load_jobs(output_path) == jobs
+
+
+def test_cleaner_summary_counts_removed_result_types():
+    jobs = [
+        {"title": "Data Entry", "url": "https://example.com/job/1"},
+        {"title": "Data Entry", "url": "https://example.com/search/data-entry"},
+        {"title": "Data Entry", "url": "https://example.com/cerca/data-entry"},
+        {"title": "Annunci data entry", "url": "https://example.com/list"},
+        {"company": "Example"},
+    ]
+
+    cleaned, summary = clean_results_with_summary(jobs)
+
+    assert len(cleaned) == 1
+    assert summary == {
+        "total_before": 5,
+        "total_after": 1,
+        "removed_search_page": 1,
+        "removed_category_page": 1,
+        "removed_aggregator_page": 1,
+        "removed_unknown": 1,
+    }

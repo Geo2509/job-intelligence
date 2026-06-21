@@ -91,6 +91,19 @@ python -m src.job_aggregator \
   --campania-part-time-first
 ```
 
+Рекомендуемый режим — запускать aggregator сразу с очисткой результатов:
+
+```bash
+python -m src.job_aggregator \
+  --output output/v2_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first \
+  --clean-results
+```
+
+С флагом `--clean-results` aggregator применяет V2 Result Cleaner перед экспортом: удаляет search/category/aggregator страницы, добавляет поле `result_type` и сохраняет в `output/v2_jobs.json`, `output/v2_jobs.csv`, `output/v2_jobs.xlsx` только реальные вакансии с `result_type == job`.
+
 Aggregator экспортирует:
 - `output/v2_jobs.json`
 - `output/v2_jobs.csv`

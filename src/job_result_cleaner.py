@@ -34,6 +34,13 @@ SNIPPET_TERMS = [
     "jobs found",
     "more than",
 ]
+RESULT_TYPES = [
+    "job",
+    "search_page",
+    "category_page",
+    "aggregator_page",
+    "unknown",
+]
 
 
 def lower_text(value):
@@ -106,6 +113,28 @@ def clean_results(jobs):
     return [job for job in cleaned if job["result_type"] == "job"]
 
 
+def clean_results_with_summary(jobs):
+    cleaned = [clean_job(job) for job in jobs]
+    summary = {
+        "total_before": len(cleaned),
+        "total_after": 0,
+    }
+    for result_type in RESULT_TYPES:
+        if result_type != "job":
+            summary[f"removed_{result_type}"] = 0
+
+    job_results = []
+    for job in cleaned:
+        result_type = job["result_type"]
+        if result_type == "job":
+            job_results.append(job)
+        else:
+            summary[f"removed_{result_type}"] = summary.get(f"removed_{result_type}", 0) + 1
+
+    summary["total_after"] = len(job_results)
+    return job_results, summary
+
+
 def load_jobs(input_path):
     path = Path(input_path)
     if not path.exists():
@@ -123,6 +152,15 @@ def write_jobs(jobs, output_path):
     print(f"Saved {path}: {len(jobs)} rows")
 
 
+def print_cleaning_summary(summary):
+    print(f"Total before cleaning: {summary['total_before']}")
+    print(f"Removed search_page: {summary['removed_search_page']}")
+    print(f"Removed category_page: {summary['removed_category_page']}")
+    print(f"Removed aggregator_page: {summary['removed_aggregator_page']}")
+    print(f"Removed unknown: {summary['removed_unknown']}")
+    print(f"Total after cleaning: {summary['total_after']}")
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default=DEFAULT_INPUT_PATH)
@@ -133,7 +171,8 @@ def parse_args(argv=None):
 def main():
     args = parse_args()
     jobs = load_jobs(args.input)
-    cleaned = clean_results(jobs)
+    cleaned, summary = clean_results_with_summary(jobs)
+    print_cleaning_summary(summary)
     write_jobs(cleaned, args.output)
 
 

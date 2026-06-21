@@ -76,6 +76,26 @@ python -m src.collectors.indeed_jobs \
 
 Collector экспортирует `output/indeed_jobs.json`, `output/indeed_jobs.csv` и `output/indeed_jobs.xlsx`.
 
+### Job Aggregator V2
+
+`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo` и `indeed`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket` и сортирует вакансии по приоритету: `campania_part_time`, `remote_data`, `local_general`, `other`, затем по `score` по убыванию.
+
+Пример запуска:
+
+```bash
+python -m src.job_aggregator \
+  --collectors duckduckgo,indeed \
+  --output output/v2_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
+Aggregator экспортирует:
+- `output/v2_jobs.json`
+- `output/v2_jobs.csv`
+- `output/v2_jobs.xlsx`
+
 ## Структура
 
 Главные файлы:

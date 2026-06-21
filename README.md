@@ -96,6 +96,31 @@ Aggregator экспортирует:
 - `output/v2_jobs.csv`
 - `output/v2_jobs.xlsx`
 
+### V2 Collector Plugin Registry
+
+V2 aggregator подключает collectors через `src/job_collector_registry.py`. Registry описывает имя collector-а, включён ли он, Python module, callable для запуска и поддерживаемые параметры (`limit`, `top`, `campania_part_time_first`). Чтобы добавить новый collector, нужно добавить его metadata в registry, не меняя `src/job_aggregator.py`.
+
+Запуск всех enabled collectors из registry:
+
+```bash
+python -m src.job_aggregator \
+  --output output/v2_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
+Запуск только выбранных collectors:
+
+```bash
+python -m src.job_aggregator \
+  --collectors duckduckgo,indeed \
+  --output output/v2_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
 ## Структура
 
 Главные файлы:

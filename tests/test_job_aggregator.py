@@ -1,6 +1,8 @@
 import json
+from dataclasses import replace
 
 from src import job_aggregator
+from src.job_collector_registry import get_collector
 
 
 def job(title, url="", source="duckduckgo", query="data entry Napoli", score=10, **extra):
@@ -23,16 +25,17 @@ def job(title, url="", source="duckduckgo", query="data entry Napoli", score=10,
 
 
 def test_aggregate_combines_results(monkeypatch):
-    monkeypatch.setitem(
-        job_aggregator.COLLECTORS,
-        "duckduckgo",
-        lambda **kwargs: [job("Duck result", source="duckduckgo")],
-    )
-    monkeypatch.setitem(
-        job_aggregator.COLLECTORS,
-        "indeed",
-        lambda **kwargs: [job("Indeed result", source="indeed")],
-    )
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [job("Duck result", source="duckduckgo")],
+        ),
+        "indeed": replace(
+            get_collector("indeed"),
+            callable=lambda **kwargs: [job("Indeed result", source="indeed")],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
 
     jobs = job_aggregator.aggregate_jobs(["duckduckgo", "indeed"])
 
@@ -91,18 +94,46 @@ def test_one_collector_failure_does_not_break_aggregator(monkeypatch, capsys):
     def broken_collector(**kwargs):
         raise RuntimeError("boom")
 
-    monkeypatch.setitem(job_aggregator.COLLECTORS, "duckduckgo", broken_collector)
-    monkeypatch.setitem(
-        job_aggregator.COLLECTORS,
-        "indeed",
-        lambda **kwargs: [job("Indeed result", source="indeed")],
-    )
+    plugins = {
+        "duckduckgo": replace(get_collector("duckduckgo"), callable=broken_collector),
+        "indeed": replace(
+            get_collector("indeed"),
+            callable=lambda **kwargs: [job("Indeed result", source="indeed")],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
 
     jobs = job_aggregator.aggregate_jobs(["duckduckgo", "indeed"])
 
     assert len(jobs) == 1
     assert jobs[0]["source"] == "indeed"
     assert "Collector failed: duckduckgo" in capsys.readouterr().out
+
+
+def test_unknown_collector_does_not_break_aggregator(capsys):
+    jobs = job_aggregator.aggregate_jobs(["unknown"])
+
+    assert jobs == []
+    assert "Unknown collector skipped: unknown" in capsys.readouterr().out
+
+
+def test_without_collectors_uses_enabled_registry_collectors(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [job("Duck result", source="duckduckgo")],
+        ),
+        "indeed": replace(
+            get_collector("indeed"),
+            callable=lambda **kwargs: [job("Indeed result", source="indeed")],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "enabled_collectors", lambda: ["duckduckgo", "indeed"])
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(None)
+
+    assert {item["source"] for item in jobs} == {"duckduckgo", "indeed"}
 
 
 def test_export_json_csv_xlsx(tmp_path):

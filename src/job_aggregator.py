@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from src.collectors import duckduckgo_jobs, indeed_jobs
+from src.job_collector_registry import enabled_collectors, get_collector
 from src.job_matching import (
     combined_text,
     detect_category,
@@ -21,10 +21,6 @@ from src.job_matching import (
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
 DEFAULT_LIMIT = 5
 DEFAULT_TOP = 50
-COLLECTORS = {
-    "duckduckgo": duckduckgo_jobs.collect_jobs,
-    "indeed": indeed_jobs.collect_jobs,
-}
 PRIORITY_ORDER = {
     "campania_part_time": 0,
     "remote_data": 1,
@@ -48,6 +44,8 @@ OUTPUT_FIELDS = [
 
 
 def parse_collectors(value):
+    if value is None:
+        return enabled_collectors()
     return [
         item.strip()
         for item in str(value or "").split(",")
@@ -56,27 +54,23 @@ def parse_collectors(value):
 
 
 def run_collector(name, limit, top, campania_part_time_first):
-    collector = COLLECTORS.get(name)
-    if collector is None:
+    plugin = get_collector(name)
+    if plugin is None:
         print(f"Unknown collector skipped: {name}")
+        return []
+    if not plugin.enabled:
+        print(f"Disabled collector skipped: {name}")
         return []
 
     try:
-        if name == "duckduckgo":
-            return collector(
-                limit=limit,
-                pause_seconds=0,
-                top=top,
-                campania_part_time_first=campania_part_time_first,
-            )
-        if name == "indeed":
-            return collector(
-                limit=limit,
-                top=top,
-                campania_part_time_first=campania_part_time_first,
-                direct_pause_seconds=0,
-            )
-        return collector(limit=limit, top=top)
+        kwargs = dict(plugin.default_kwargs)
+        if plugin.supports_limit:
+            kwargs["limit"] = limit
+        if plugin.supports_top:
+            kwargs["top"] = top
+        if plugin.supports_campania_part_time_first:
+            kwargs["campania_part_time_first"] = campania_part_time_first
+        return plugin.callable(**kwargs)
     except Exception as exc:
         print(f"Collector failed: {name} | {exc}")
         return []
@@ -139,8 +133,9 @@ def sort_jobs(jobs):
     )
 
 
-def aggregate_jobs(collector_names, limit=DEFAULT_LIMIT, top=DEFAULT_TOP, campania_part_time_first=False):
+def aggregate_jobs(collector_names=None, limit=DEFAULT_LIMIT, top=DEFAULT_TOP, campania_part_time_first=False):
     jobs = []
+    collector_names = collector_names or enabled_collectors()
     for name in collector_names:
         collector_jobs = run_collector(name, limit, top, campania_part_time_first)
         print(f"Collector {name} returned: {len(collector_jobs)} jobs")
@@ -243,7 +238,7 @@ def export_jobs(jobs, output_path=DEFAULT_OUTPUT_PATH):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--collectors", default="duckduckgo,indeed")
+    parser.add_argument("--collectors", default=None)
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)

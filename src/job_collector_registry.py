@@ -1,0 +1,55 @@
+from dataclasses import dataclass, field
+from typing import Callable
+
+from src.collectors import duckduckgo_jobs, indeed_jobs
+
+
+@dataclass(frozen=True)
+class CollectorPlugin:
+    name: str
+    enabled: bool
+    module: str
+    function: str
+    callable: Callable
+    supports_campania_part_time_first: bool
+    supports_top: bool
+    supports_limit: bool
+    default_kwargs: dict = field(default_factory=dict)
+
+
+COLLECTOR_REGISTRY = {
+    "duckduckgo": CollectorPlugin(
+        name="duckduckgo",
+        enabled=True,
+        module="src.collectors.duckduckgo_jobs",
+        function="collect_jobs",
+        callable=duckduckgo_jobs.collect_jobs,
+        supports_campania_part_time_first=True,
+        supports_top=True,
+        supports_limit=True,
+        default_kwargs={"pause_seconds": 0},
+    ),
+    "indeed": CollectorPlugin(
+        name="indeed",
+        enabled=True,
+        module="src.collectors.indeed_jobs",
+        function="collect_jobs",
+        callable=indeed_jobs.collect_jobs,
+        supports_campania_part_time_first=True,
+        supports_top=True,
+        supports_limit=True,
+        default_kwargs={"direct_pause_seconds": 0},
+    ),
+}
+
+
+def get_collector(name):
+    return COLLECTOR_REGISTRY.get(name)
+
+
+def enabled_collectors():
+    return [
+        plugin.name
+        for plugin in COLLECTOR_REGISTRY.values()
+        if plugin.enabled
+    ]

@@ -14,6 +14,22 @@ REQUIRED_GROUPS = {
 }
 REQUIRED_SOURCE_FIELDS = {"name", "enabled", "type", "priority"}
 SOURCE_GROUPS = REQUIRED_GROUPS - {"duckduckgo_discovery_queries"}
+REQUIRED_DISCOVERY_CATEGORIES = {
+    "# DATA / OFFICE",
+    "# HOTEL",
+    "# RISTORANTE / BAR",
+    "# PULIZIE",
+    "# MANUTENZIONE",
+    "# MAGAZZINO",
+    "# GDO",
+    "# TURISMO",
+    "# WEEKEND / TURNI",
+    "# REMOTE",
+}
+
+
+def load_config():
+    return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
 def test_job_sources_config_exists():
@@ -21,19 +37,19 @@ def test_job_sources_config_exists():
 
 
 def test_job_sources_config_yaml_is_readable():
-    data = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+    data = load_config()
 
     assert isinstance(data, dict)
 
 
 def test_job_sources_config_has_required_groups():
-    data = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+    data = load_config()
 
     assert REQUIRED_GROUPS.issubset(data)
 
 
 def test_each_source_has_required_fields():
-    data = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+    data = load_config()
 
     for group_name in SOURCE_GROUPS:
         for source in data[group_name]:
@@ -41,6 +57,26 @@ def test_each_source_has_required_fields():
 
 
 def test_duckduckgo_discovery_has_at_least_10_queries():
-    data = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+    data = load_config()
 
     assert len(data["duckduckgo_discovery_queries"]) >= 10
+
+
+def test_duckduckgo_discovery_has_expanded_search_coverage():
+    data = load_config()
+
+    assert len(data["duckduckgo_discovery_queries"]) >= 100
+
+
+def test_duckduckgo_discovery_queries_have_no_duplicates():
+    data = load_config()
+    queries = data["duckduckgo_discovery_queries"]
+
+    assert len(queries) == len(set(queries))
+
+
+def test_duckduckgo_discovery_categories_are_documented():
+    config_text = CONFIG_PATH.read_text(encoding="utf-8")
+
+    for category in REQUIRED_DISCOVERY_CATEGORIES:
+        assert category in config_text

@@ -26,6 +26,22 @@ Job Intelligence V2 начинается с каталога источнико�
 
 Это первый этап V2: только source catalog, без реализации парсеров и без подключения новых источников к pipeline.
 
+### Search Coverage Expansion
+
+`duckduckgo_discovery_queries` в `configs/job_sources.yaml` расширен примерно до 100+ запросов и сгруппирован комментариями по категориям. Фокус поиска: Campania, Napoli, Pozzuoli, Bacoli, Monte di Procida, Quarto, Fuorigrotta и Campi Flegrei, с приоритетом на `part time`, `tempo parziale`, weekend, turni, mattina и sera.
+
+Категории поиска:
+- Data / Office — data entry, inserimento dati, back office, segreteria, front office, Excel и Google Sheets;
+- Hotel — reception, receptionist, housekeeping, camere и portiere notturno;
+- Ristorante / Bar — cameriere, barista, aiuto cucina, lavapiatti, pizzeria, banconista и gastronomia;
+- Pulizie — pulizie domestiche/uffici/hotel, imprese di pulizie и sanificazione;
+- Manutenzione — manutentore, tuttofare, tecnico e operaio manutenzione;
+- Magazzino — magazziniere, scaffalista, picking, carico/scarico e logistica;
+- GDO — Lidl, Eurospin, Conad, MD, Deco, Esselunga, Carrefour, cassiere e addetto vendita;
+- Turismo — villaggi turistici, resort, stabilimenti balneari, porto turistico e marina;
+- Weekend / Turni — weekend, sabato/domenica, mattina, sera e turni;
+- Remote — customer service, virtual assistant, AI trainer/annotator, transcription, data labeling, moderation e content reviewer.
+
 ### Job Site Profiler
 
 `src/job_site_profiler.py` строит технические профили источников из `configs/job_sources.yaml` и сохраняет результат в `configs/job_site_profiles.yaml`. Profiler проверяет доступность `base_url`, HTTP status, наличие `robots.txt`, `sitemap.xml`, RSS/feed, а также job-related keywords на главной странице.

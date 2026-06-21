@@ -219,14 +219,174 @@ remote_data_ai:
 public_employment: []
 
 duckduckgo_discovery_queries:
+  # DATA / OFFICE
+  - data entry Campania part time
+  - data entry Napoli
   - data entry Napoli part time
+  - data entry Napoli tempo parziale
+  - data entry Napoli mattina
+  - data entry Napoli sera
+  - data entry Pozzuoli
+  - data entry Pozzuoli part time
   - inserimento dati Napoli part time
-  - back office Pozzuoli part time
   - data entry Bacoli
+  - data entry Bacoli part time
   - data entry Monte di Procida
+  - data entry Monte di Procida part time
+  - data entry Quarto part time
+  - data entry Fuorigrotta part time
+  - data entry Campi Flegrei part time
+  - inserimento dati Napoli
+  - inserimento dati tempo parziale Napoli
+  - inserimento dati Pozzuoli part time
+  - inserimento dati Bacoli part time
+  - back office Napoli
+  - back office Napoli part time
+  - back office Pozzuoli part time
+  - back office Pozzuoli
+  - back office Bacoli part time
+  - segreteria Napoli
+  - segreteria Napoli part time
+  - assistente amministrativo Napoli
+  - assistente amministrativo Napoli part time
+  - impiegato amministrativo Napoli
+  - front office Napoli
+  - front office Napoli part time
+  - centralinista Napoli
+  - reception Napoli
+  - Google Sheets Napoli
+  - Excel Napoli
+
+  # HOTEL
+  - receptionist hotel Napoli
+  - reception hotel part time Napoli
+  - hotel part time Napoli
+  - front office hotel Napoli
+  - hotel receptionist Campania
+  - receptionist hotel Pozzuoli
+  - receptionist hotel Bacoli
+  - cameriere ai piani Napoli
+  - housekeeping hotel Napoli
+  - addetto camere Napoli
+  - addetto camere hotel Napoli part time
+  - portiere hotel Napoli
+  - portiere notturno Napoli
+  - portiere hotel part time Napoli
+
+  # RISTORANTE / BAR
+  - cameriere Napoli
+  - cameriere part time Napoli
+  - cameriere Pozzuoli part time
+  - cameriere Bacoli part time
+  - barista Napoli
+  - barista part time Napoli
+  - barista Pozzuoli
+  - aiuto cucina Napoli
+  - aiuto cucina part time Napoli
+  - aiuto cuoco Napoli
+  - lavapiatti Napoli
+  - lavapiatti part time Napoli
+  - ristorante Pozzuoli
+  - ristorante Bacoli
+  - pizzeria Napoli
+  - pizzeria part time Napoli
+  - banconista Napoli
+  - banconista part time Napoli
+  - gastronomia Napoli
+
+  # PULIZIE
+  - pulizie Napoli
+  - pulizie part time Napoli
+  - pulizie Napoli mattina
+  - pulizie Napoli sera
+  - addetto pulizie Napoli
+  - addetta pulizie Napoli
+  - pulizie hotel Napoli
+  - pulizie uffici Napoli
+  - impresa pulizie Napoli
+  - pulizie Pozzuoli
+  - pulizie Pozzuoli part time
+  - pulizie Bacoli
+  - pulizie Bacoli part time
+  - pulizie Monte di Procida
+  - sanificazione Napoli
+
+  # MANUTENZIONE
+  - manutentore Napoli
+  - manutentore Napoli part time
+  - manutenzione hotel Napoli
+  - operaio manutenzione Napoli
+  - tuttofare Napoli
+  - addetto manutenzione Napoli
+  - tecnico manutenzione Napoli
+  - manutentore Pozzuoli
+  - manutentore Campania hotel
+
+  # MAGAZZINO
+  - magazziniere Napoli
+  - magazziniere part time Napoli
+  - magazziniere Pozzuoli
+  - scaffalista Napoli
+  - scaffalista part time Napoli
+  - carico scarico Napoli
+  - picking Napoli
+  - logistica Napoli
+  - addetto magazzino Napoli
+  - addetto magazzino part time Napoli
+
+  # GDO
+  - Lidl Napoli
+  - Lidl Napoli part time
+  - Eurospin Napoli
+  - Eurospin Napoli part time
+  - Conad Napoli
+  - MD Napoli
+  - Decò Napoli
+  - Esselunga Napoli
+  - Carrefour Napoli
+  - addetto vendita Napoli
+  - addetto vendita part time Napoli
+  - cassiere Napoli
+  - cassiere part time Napoli
+  - scaffalista supermercato Napoli
+  - supermercato Napoli part time
+
+  # TURISMO
+  - villaggi turistici Campania
+  - resort Napoli
+  - resort Campania part time
+  - stabilimento balneare Napoli
+  - spiaggia Napoli lavoro
+  - porto turistico Napoli
+  - marina Pozzuoli
+  - turismo Napoli part time
+
+  # WEEKEND / TURNI
+  - lavoro weekend Napoli
+  - lavoro weekend Pozzuoli
+  - sabato domenica Napoli
+  - weekend part time Napoli
+  - turni Napoli
+  - turni part time Napoli
+  - sera Napoli
+  - mattina Napoli
+  - lavoro mattina Napoli
+  - lavoro sera Napoli
+
+  # REMOTE
   - smart working data entry Italia
   - lavoro da casa inserimento dati Italia
   - assistente virtuale remoto Italia
   - AI trainer remoto italiano
   - AI annotator remoto italiano
   - trascrizione audio remoto italiano
+  - remote customer service Italia
+  - remote virtual assistant Italia
+  - remote AI trainer Italia
+  - remote AI annotator Italia
+  - remote transcription Italia
+  - remote data labeling Italia
+  - remote moderation Italia
+  - remote content reviewer Italia
+  - lavoro da casa data entry Italia
+  - smart working back office Italia

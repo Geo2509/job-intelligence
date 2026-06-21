@@ -26,6 +26,24 @@ Job Intelligence V2 начинается с каталога источнико�
 
 Это первый этап V2: только source catalog, без реализации парсеров и без подключения новых источников к pipeline.
 
+### Job Site Profiler
+
+`src/job_site_profiler.py` строит технические профили источников из `configs/job_sources.yaml` и сохраняет результат в `configs/job_site_profiles.yaml`. Profiler проверяет доступность `base_url`, HTTP status, наличие `robots.txt`, `sitemap.xml`, RSS/feed, а также job-related keywords на главной странице.
+
+Команда запуска:
+
+```bash
+python -m src.job_site_profiler --config configs/job_sources.yaml --output configs/job_site_profiles.yaml --limit 10
+```
+
+Dry-run режим не пишет output-файл и выводит только summary:
+
+```bash
+python -m src.job_site_profiler --config configs/job_sources.yaml --output configs/job_site_profiles.yaml --limit 10 --dry-run
+```
+
+Profiler не собирает вакансии и не парсит объявления. Он только оценивает источники и предлагает `recommended_strategy`: `direct`, `sitemap`, `rss`, `duckduckgo` или `manual`.
+
 ## Структура
 
 Главные файлы:

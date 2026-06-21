@@ -12,6 +12,20 @@
 - назначить каждой вакансии баллы на основе позитивных и негативных сигнатур;
 - экспортировать итоговую таблицу в CSV и XLSX.
 
+## Job Intelligence V2
+
+Job Intelligence V2 начинается с каталога источников в `configs/job_sources.yaml`. Цель V2 — расширить поиск на part-time вакансии рядом с Napoli, Pozzuoli, Bacoli и Monte di Procida, а также на remote data/AI роли по Италии.
+
+Группы источников:
+- `aggregators` — крупные job boards и агрегаторы вроде Indeed, LinkedIn Jobs, InfoJobs, Jooble, Jobrapido, Trovit и Bakeca Lavoro;
+- `classifieds` — classified-площадки для локальных объявлений, начиная с Subito Lavoro;
+- `agencies` — кадровые агентства Италии, включая Randstad, Adecco, Manpower, Gi Group, Openjobmetis, Synergie, Humangest, During, Lavorint, Tempi Moderni и Generazione Vincente;
+- `remote_data_ai` — remote/data/AI источники вроде Remotive, Arbeitnow, RemoteOK, We Work Remotely, Appen, TELUS Digital, OneForma, DataAnnotation, Outlier, TransPerfect DataForce и RWS TrainAI;
+- `public_employment` — зарезервированная группа для публичных employment-сервисов;
+- `duckduckgo_discovery_queries` — стартовые discovery-запросы для поиска локальных part-time и remote data/AI возможностей.
+
+Это первый этап V2: только source catalog, без реализации парсеров и без подключения новых источников к pipeline.
+
 ## Структура
 
 Главные файлы:

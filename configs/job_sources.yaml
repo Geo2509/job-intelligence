@@ -1,0 +1,232 @@
+aggregators:
+  - name: Indeed
+    enabled: true
+    type: aggregator
+    priority: high
+    country: Italy
+    base_url: https://it.indeed.com
+    notes: Major job aggregator for Italian local and remote searches.
+  - name: LinkedIn Jobs
+    enabled: true
+    type: aggregator
+    priority: high
+    country: Italy
+    base_url: https://www.linkedin.com/jobs
+    notes: Broad professional job search, useful for Naples area and remote roles.
+  - name: InfoJobs
+    enabled: true
+    type: aggregator
+    priority: high
+    country: Italy
+    base_url: https://www.infojobs.it
+    notes: Italian job board with office, admin, data entry, and part-time roles.
+  - name: Jooble
+    enabled: true
+    type: aggregator
+    priority: medium
+    country: Italy
+    base_url: https://it.jooble.org
+    notes: Aggregator for broad discovery across Italian job boards.
+  - name: Jobrapido
+    enabled: true
+    type: aggregator
+    priority: medium
+    country: Italy
+    base_url: https://it.jobrapido.com
+    notes: Aggregator for local job discovery and long-tail listings.
+  - name: Trovit
+    enabled: true
+    type: aggregator
+    priority: medium
+    country: Italy
+    base_url: https://lavoro.trovit.it
+    notes: Aggregates classified-style and job-board listings.
+  - name: Bakeca Lavoro
+    enabled: true
+    type: aggregator
+    priority: medium
+    country: Italy
+    base_url: https://www.bakeca.it/annunci/offerte-di-lavoro
+    notes: Classifieds-like Italian job listings, useful for local part-time work.
+
+classifieds:
+  - name: Subito Lavoro
+    enabled: true
+    type: classified
+    priority: high
+    country: Italy
+    base_url: https://www.subito.it/annunci-italia/vendita/offerte-lavoro
+    notes: Classifieds source for local part-time jobs near Napoli and nearby towns.
+
+agencies:
+  - name: Randstad
+    enabled: true
+    type: agency
+    priority: high
+    country: Italy
+    base_url: https://www.randstad.it/offerte-lavoro
+    notes: Large staffing agency with office, logistics, admin, and part-time roles.
+  - name: Adecco
+    enabled: true
+    type: agency
+    priority: high
+    country: Italy
+    base_url: https://www.adecco.it/offerte-lavoro
+    notes: Large staffing agency with local listings around Napoli and Campania.
+  - name: Manpower
+    enabled: true
+    type: agency
+    priority: high
+    country: Italy
+    base_url: https://www.manpower.it/it/annunci-lavoro
+    notes: Staffing agency for administrative, logistics, and operational roles.
+  - name: Gi Group
+    enabled: true
+    type: agency
+    priority: high
+    country: Italy
+    base_url: https://www.gigroup.it/offerte-lavoro
+    notes: Staffing agency with broad Italian coverage and local office roles.
+  - name: Openjobmetis
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.openjobmetis.it/it/cerca-lavoro
+    notes: Agency source for local and office support positions.
+  - name: Synergie
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.synergie-italia.it/candidato/offerte-di-lavoro
+    notes: Agency source for local Italian vacancies.
+  - name: Humangest
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.humangest.it/offerte-lavoro
+    notes: Agency source for office, logistics, and support roles.
+  - name: During
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.during.it/offerte-lavoro
+    notes: Staffing agency with Italian local job listings.
+  - name: Lavorint
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.lavorint.it/offerte-di-lavoro
+    notes: Agency source for local and operational vacancies.
+  - name: Tempi Moderni
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.tempimodernilavoro.it/offerte-di-lavoro
+    notes: Agency source with Campania and local Italian opportunities.
+  - name: Generazione Vincente
+    enabled: true
+    type: agency
+    priority: medium
+    country: Italy
+    base_url: https://www.generazionevincente.it/offerte-lavoro
+    notes: Agency source for local administrative, logistics, and support roles.
+
+remote_data_ai:
+  - name: Remotive
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://remotive.com
+    notes: Remote jobs source already used by the project.
+  - name: Arbeitnow
+    enabled: true
+    type: remote_data_ai
+    priority: medium
+    country: Europe
+    base_url: https://www.arbeitnow.com
+    notes: Remote-friendly European job API already used by the project.
+  - name: RemoteOK
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://remoteok.com
+    notes: Remote job board for data, operations, support, and AI-adjacent roles.
+  - name: We Work Remotely
+    enabled: true
+    type: remote_data_ai
+    priority: medium
+    country: Global
+    base_url: https://weworkremotely.com
+    notes: Remote-first job board for global opportunities.
+  - name: Appen
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://appen.com/jobs
+    notes: AI data, annotation, search evaluation, and language tasks.
+  - name: TELUS Digital
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://www.telusdigital.com/careers/ai-community
+    notes: AI community roles, evaluator work, and language data projects.
+  - name: OneForma
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://www.oneforma.com/jobs
+    notes: AI data collection, annotation, transcription, and language projects.
+  - name: DataAnnotation
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://www.dataannotation.tech
+    notes: AI trainer and data annotation work.
+  - name: Outlier
+    enabled: true
+    type: remote_data_ai
+    priority: high
+    country: Global
+    base_url: https://outlier.ai
+    notes: AI training, evaluation, and domain expert tasks.
+  - name: TransPerfect DataForce
+    enabled: true
+    type: remote_data_ai
+    priority: medium
+    country: Global
+    base_url: https://www.transperfect.com/dataforce
+    notes: Data collection, annotation, translation, and AI training projects.
+  - name: RWS TrainAI
+    enabled: true
+    type: remote_data_ai
+    priority: medium
+    country: Global
+    base_url: https://www.rws.com/artificial-intelligence/train-ai-data-services/trainai-community
+    notes: AI data and language community projects.
+
+public_employment: []
+
+duckduckgo_discovery_queries:
+  - data entry Napoli part time
+  - inserimento dati Napoli part time
+  - back office Pozzuoli part time
+  - data entry Bacoli
+  - data entry Monte di Procida
+  - smart working data entry Italia
+  - lavoro da casa inserimento dati Italia
+  - assistente virtuale remoto Italia
+  - AI trainer remoto italiano
+  - AI annotator remoto italiano
+  - trascrizione audio remoto italiano

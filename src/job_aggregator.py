@@ -42,7 +42,7 @@ OUTPUT_FIELDS = [
     "score",
     "found_at",
 ]
-RESULT_TYPE_OUTPUT_FIELDS = OUTPUT_FIELDS + ["result_type"]
+RESULT_TYPE_OUTPUT_FIELDS = OUTPUT_FIELDS + ["result_type", "url_result_type"]
 
 
 def parse_collectors(value):

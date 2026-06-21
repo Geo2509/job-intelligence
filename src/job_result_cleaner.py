@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
+from src.job_url_patterns import classify_url, load_url_patterns
+
 
 DEFAULT_INPUT_PATH = "output/v2_jobs.json"
 DEFAULT_OUTPUT_PATH = "output/v2_jobs_clean.json"
@@ -39,8 +41,19 @@ RESULT_TYPES = [
     "search_page",
     "category_page",
     "aggregator_page",
+    "article",
+    "profile",
+    "excluded_domain",
     "unknown",
 ]
+URL_REMOVED_RESULT_TYPES = {
+    "search_page",
+    "category_page",
+    "aggregator_page",
+    "article",
+    "profile",
+    "excluded_domain",
+}
 
 
 def lower_text(value):
@@ -84,7 +97,7 @@ def snippet_has_aggregator_terms(snippet):
     return any(term in snippet for term in SNIPPET_TERMS)
 
 
-def detect_result_type(job):
+def fallback_result_type(job):
     url = job.get("url", "")
     title = job.get("title", "")
     snippet = snippet_text(job)
@@ -102,19 +115,33 @@ def detect_result_type(job):
     return "job"
 
 
-def clean_job(job):
+def detect_result_type(job, patterns=None):
+    patterns = patterns if patterns is not None else load_url_patterns()
+    url_result_type = classify_url(job.get("url", ""), patterns)
+    if url_result_type == "real_job":
+        return "job"
+    if url_result_type in URL_REMOVED_RESULT_TYPES:
+        return url_result_type
+    return fallback_result_type(job)
+
+
+def clean_job(job, patterns=None):
     job = dict(job)
-    job["result_type"] = detect_result_type(job)
+    patterns = patterns if patterns is not None else load_url_patterns()
+    job["url_result_type"] = classify_url(job.get("url", ""), patterns)
+    job["result_type"] = detect_result_type(job, patterns)
     return job
 
 
 def clean_results(jobs):
-    cleaned = [clean_job(job) for job in jobs]
+    patterns = load_url_patterns()
+    cleaned = [clean_job(job, patterns) for job in jobs]
     return [job for job in cleaned if job["result_type"] == "job"]
 
 
 def clean_results_with_summary(jobs):
-    cleaned = [clean_job(job) for job in jobs]
+    patterns = load_url_patterns()
+    cleaned = [clean_job(job, patterns) for job in jobs]
     summary = {
         "total_before": len(cleaned),
         "total_after": 0,
@@ -157,6 +184,9 @@ def print_cleaning_summary(summary):
     print(f"Removed search_page: {summary['removed_search_page']}")
     print(f"Removed category_page: {summary['removed_category_page']}")
     print(f"Removed aggregator_page: {summary['removed_aggregator_page']}")
+    print(f"Removed article: {summary['removed_article']}")
+    print(f"Removed profile: {summary['removed_profile']}")
+    print(f"Removed excluded_domain: {summary['removed_excluded_domain']}")
     print(f"Removed unknown: {summary['removed_unknown']}")
     print(f"Total after cleaning: {summary['total_after']}")
 

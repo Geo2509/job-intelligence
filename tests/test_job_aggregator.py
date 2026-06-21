@@ -188,6 +188,7 @@ def test_export_includes_result_type_when_cleaned(tmp_path):
         {
             **job_aggregator.normalize_job(job("Data Entry Napoli", "https://example.com/job/1")),
             "result_type": "job",
+            "url_result_type": "unknown",
         }
     ]
 
@@ -197,7 +198,9 @@ def test_export_includes_result_type_when_cleaned(tmp_path):
     csv_header = output_path.with_suffix(".csv").read_text(encoding="utf-8").splitlines()[0]
 
     assert exported_json[0]["result_type"] == "job"
+    assert exported_json[0]["url_result_type"] == "unknown"
     assert "result_type" in csv_header
+    assert "url_result_type" in csv_header
 
 
 def test_without_clean_results_keeps_old_behavior(monkeypatch):

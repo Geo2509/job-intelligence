@@ -111,7 +111,7 @@ Aggregator экспортирует:
 
 ### V2 Result Cleaner
 
-`src/job_result_cleaner.py` запускается после Job Aggregator V2 и удаляет из результата страницы поиска, каталоги и агрегаторные страницы, которые могли попасть в discovery-выдачу. Cleaner добавляет поле `result_type` со значениями `job`, `search_page`, `category_page`, `aggregator_page` или `unknown`, а в финальный export сохраняет только `result_type == job`.
+`src/job_result_cleaner.py` запускается после Job Aggregator V2 и удаляет из результата страницы поиска, каталоги, статьи, профили и агрегаторные страницы, которые могли попасть в discovery-выдачу. Cleaner добавляет поля `result_type` и `url_result_type`; `result_type` может быть `job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `excluded_domain` или `unknown`, а в финальный export сохраняет только `result_type == job`.
 
 Пример запуска:
 
@@ -122,6 +122,18 @@ python -m src.job_result_cleaner \
 ```
 
 Cleaner не собирает вакансии и не меняет collectors. Это отдельный post-processing слой для очистки результатов агрегатора.
+
+### URL Pattern Engine
+
+`src/job_url_patterns.py` использует правила из `configs/job_url_patterns.yaml`, чтобы отличать реальные страницы вакансий от search/category/blog/profile страниц по URL. Result Cleaner сначала классифицирует URL и добавляет `url_result_type`, а только затем применяет fallback-правила по title/snippet для неизвестных URL.
+
+Поддерживаемые URL-типы: `real_job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `excluded_domain`, `unknown`. В clean export попадают только записи с `result_type == job`.
+
+Рекомендуемый запуск V2 aggregator с очисткой:
+
+```bash
+python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 50 --campania-part-time-first --clean-results
+```
 
 ### V2 Collector Plugin Registry
 

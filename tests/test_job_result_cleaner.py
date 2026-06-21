@@ -69,6 +69,7 @@ def test_clean_results_exports_only_jobs_with_result_type():
         {
             "title": "Data Entry Part Time",
             "url": "https://example.com/job/1",
+            "url_result_type": "unknown",
             "result_type": "job",
         }
     ]
@@ -81,13 +82,21 @@ def test_clean_job_preserves_original_fields():
         "title": "Data Entry",
         "company": "Acme",
         "url": "https://example.com/job/1",
+        "url_result_type": "unknown",
         "result_type": "job",
     }
 
 
 def test_load_and_write_jobs(tmp_path):
     output_path = tmp_path / "clean_jobs.json"
-    jobs = [{"title": "Data Entry", "url": "https://example.com/job/1", "result_type": "job"}]
+    jobs = [
+        {
+            "title": "Data Entry",
+            "url": "https://example.com/job/1",
+            "url_result_type": "unknown",
+            "result_type": "job",
+        }
+    ]
 
     write_jobs(jobs, output_path)
 
@@ -113,5 +122,55 @@ def test_cleaner_summary_counts_removed_result_types():
         "removed_search_page": 1,
         "removed_category_page": 1,
         "removed_aggregator_page": 1,
+        "removed_article": 0,
+        "removed_profile": 0,
+        "removed_excluded_domain": 0,
         "removed_unknown": 1,
     }
+
+
+def test_url_search_page_is_filtered_even_when_title_looks_like_job():
+    job = {
+        "title": "Data Entry Part Time Napoli",
+        "url": "https://it.indeed.com/offerte-lavoro-data-entry-napoli",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "search_page"
+    assert cleaned["result_type"] == "search_page"
+
+
+def test_real_job_url_is_kept_even_when_title_has_search_prefix():
+    job = {
+        "title": "Offerte di lavoro Data Entry",
+        "url": "https://it.indeed.com/viewjob?jk=abc123",
+    }
+
+    cleaned = clean_results([job])
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["url_result_type"] == "real_job"
+    assert cleaned[0]["result_type"] == "job"
+
+
+def test_excluded_domain_is_filtered():
+    job = {
+        "title": "AI Trainer",
+        "url": "https://simonebarbone.net/ai-trainer",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "excluded_domain"
+
+
+def test_url_result_type_is_added_to_clean_job():
+    cleaned = clean_job({
+        "title": "Data Entry",
+        "url": "https://it.jooble.org/jdp/123456",
+    })
+
+    assert cleaned["url_result_type"] == "real_job"
+    assert cleaned["result_type"] == "job"

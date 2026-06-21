@@ -1,0 +1,90 @@
+indeed:
+  domains:
+    - it.indeed.com
+    - indeed.com
+  job:
+    - "/viewjob"
+    - "jk="
+  search:
+    - "/jobs?"
+    - "/q-"
+    - "offerte-lavoro"
+    - "/career/"
+    - "/companies"
+    - "/cmp/"
+    - "/"
+
+jooble:
+  domains:
+    - it.jooble.org
+    - jooble.org
+  job:
+    - "/jdp/"
+  search:
+    - "/lavoro-"
+    - "/SearchResult"
+
+linkedin:
+  domains:
+    - it.linkedin.com
+    - linkedin.com
+  job:
+    - "/jobs/view/"
+  search:
+    - "/jobs/"
+    - "/jobs/search"
+
+glassdoor:
+  domains:
+    - www.glassdoor.it
+    - glassdoor.it
+    - www.glassdoor.com
+    - glassdoor.com
+  job:
+    - "/job-listing/"
+  search:
+    - "/Lavoro/"
+    - "/Job/"
+    - "SRCH_"
+
+randstad:
+  domains:
+    - www.randstad.it
+    - randstad.it
+  job:
+    - "/offerte-lavoro/"
+  search:
+    - "/offerte-lavoro/q-"
+    - "/offerte-lavoro/re-"
+    - "/offerte-lavoro/ci-"
+
+jobsora:
+  domains:
+    - it.jobsora.com
+    - jobsora.com
+  job:
+    - "/lavoro/"
+  search:
+    - "/lavoro-"
+    - "/query-"
+
+jobsavior:
+  domains:
+    - it.jobsavior.com
+    - jobsavior.com
+  search:
+    - "/offerte-di-lavoro/query-"
+
+freelancer:
+  domains:
+    - www.freelancer.co.it
+    - freelancer.co.it
+  search:
+    - "/job-search/"
+
+general_exclude_domains:
+  - partitaiva.it
+  - duckinformatica.it
+  - ispazio.net
+  - tooliamo.com
+  - simonebarbone.net

@@ -44,6 +44,20 @@ python -m src.job_site_profiler --config configs/job_sources.yaml --output confi
 
 Profiler не собирает вакансии и не парсит объявления. Он только оценивает источники и предлагает `recommended_strategy`: `direct`, `sitemap`, `rss`, `duckduckgo` или `manual`.
 
+### DuckDuckGo Job Discovery Collector
+
+`src/collectors/duckduckgo_jobs.py` использует `duckduckgo_discovery_queries` из `configs/job_sources.yaml`, выполняет поиск через пакет `ddgs` и сохраняет найденные результаты в единый JSON-формат. Collector нормализует URL, удаляет tracking-параметры, исключает нежелательные объявления, выставляет discovery score и сортирует результаты по `score` по убыванию.
+
+Команда запуска:
+
+```bash
+python -m src.collectors.duckduckgo_jobs --config configs/job_sources.yaml --output output/duckduckgo_jobs.json --limit 3
+```
+
+`--limit` задаёт максимум поисковых результатов на один query. Если пакет `ddgs` не установлен, collector не падает: он выводит `ddgs package not installed` и возвращает пустой список.
+
+Это discovery слой, а не финальный парсер вакансий. Он помогает находить потенциальные страницы и объявления для дальнейшей проверки, нормализации и скоринга.
+
 ## Структура
 
 Главные файлы:

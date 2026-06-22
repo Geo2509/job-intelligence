@@ -217,3 +217,108 @@ def test_without_clean_results_keeps_old_behavior(monkeypatch):
     assert len(jobs) == 1
     assert jobs[0]["url"] == "https://example.com/search/data-entry"
     assert "result_type" not in jobs[0]
+
+
+def test_balanced_top_keeps_remote_data_when_local_scores_are_higher():
+    jobs = [
+        job("Local part time high", "https://example.com/local-1", score=900),
+        job("Local part time higher", "https://example.com/local-2", score=800),
+        job(
+            "Remote data analyst",
+            "https://example.com/remote-1",
+            remote=True,
+            priority_bucket="remote_data",
+            score=10,
+        ),
+    ]
+
+    balanced = job_aggregator.balanced_top(jobs, top=2, min_remote=1)
+
+    assert balanced[0]["title"] == "Remote data analyst"
+    assert {item["title"] for item in balanced} == {"Remote data analyst", "Local part time high"}
+
+
+def test_balanced_top_does_not_exceed_top():
+    jobs = [
+        job(
+            f"Remote data {index}",
+            f"https://example.com/remote-{index}",
+            remote=True,
+            priority_bucket="remote_data",
+            score=index,
+        )
+        for index in range(5)
+    ]
+
+    balanced = job_aggregator.balanced_top(jobs, top=3, min_remote=20)
+
+    assert len(balanced) == 3
+
+
+def test_balanced_top_does_not_add_duplicates():
+    jobs = [
+        job(
+            "Remote data duplicate",
+            "https://example.com/same?utm_source=x",
+            remote=True,
+            priority_bucket="remote_data",
+            score=100,
+        ),
+        job(
+            "Remote data duplicate copy",
+            "https://example.com/same",
+            remote=True,
+            priority_bucket="remote_data",
+            score=90,
+        ),
+        job("Fallback", "https://example.com/fallback", score=80),
+    ]
+
+    balanced = job_aggregator.balanced_top(jobs, top=3, min_remote=20)
+
+    assert len(balanced) == 2
+    assert [item["url"] for item in balanced] == [
+        "https://example.com/same?utm_source=x",
+        "https://example.com/fallback",
+    ]
+
+
+def test_balanced_top_takes_available_remote_when_less_than_min_remote():
+    jobs = [
+        job(
+            "Only remote",
+            "https://example.com/remote",
+            remote=True,
+            priority_bucket="remote_data",
+            score=30,
+        ),
+        job("Local one", "https://example.com/local-1", score=90),
+        job("Local two", "https://example.com/local-2", score=80),
+    ]
+
+    balanced = job_aggregator.balanced_top(jobs, top=3, min_remote=20)
+
+    assert [item["title"] for item in balanced] == ["Only remote", "Local one", "Local two"]
+
+
+def test_balanced_top_fallback_fills_remaining_by_score():
+    jobs = [
+        job(
+            "Remote low",
+            "https://example.com/remote",
+            remote=True,
+            priority_bucket="remote_data",
+            score=10,
+        ),
+        job("Fallback high", "https://example.com/high", score=100),
+        job("Fallback medium", "https://example.com/medium", score=70),
+        job("Fallback low", "https://example.com/low", score=20),
+    ]
+
+    balanced = job_aggregator.balanced_top(jobs, top=3, min_remote=1)
+
+    assert [item["title"] for item in balanced] == [
+        "Remote low",
+        "Fallback high",
+        "Fallback medium",
+    ]

@@ -22,6 +22,11 @@ from src.job_result_cleaner import clean_results_with_summary, print_cleaning_su
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
 DEFAULT_LIMIT = 5
 DEFAULT_TOP = 50
+DEFAULT_MIN_REMOTE = 20
+DEFAULT_MIN_HOSPITALITY = 20
+DEFAULT_MIN_CLEANING = 15
+DEFAULT_MIN_MAINTENANCE = 10
+DEFAULT_MIN_DATA_OFFICE = 20
 PRIORITY_ORDER = {
     "campania_part_time": 0,
     "remote_data": 1,
@@ -43,6 +48,38 @@ OUTPUT_FIELDS = [
     "found_at",
 ]
 RESULT_TYPE_OUTPUT_FIELDS = OUTPUT_FIELDS + ["result_type", "url_result_type"]
+DATA_OFFICE_TERMS = [
+    "data entry",
+    "inserimento dati",
+    "back office",
+    "office",
+    "ufficio",
+    "excel",
+    "google sheets",
+]
+HOSPITALITY_TERMS = [
+    "hospitality",
+    "hotel",
+    "albergo",
+    "restaurant",
+    "ristorante",
+    "barista",
+    "cameriere",
+    "cameriera",
+    "cuoco",
+    "receptionist",
+    "sala",
+    "turismo",
+]
+CLEANING_TERMS = ["cleaning", "cleaner", "pulizie", "addetto pulizie", "addetta pulizie"]
+MAINTENANCE_TERMS = [
+    "maintenance",
+    "manutenzione",
+    "manutentore",
+    "tecnico manutenzione",
+    "elettricista",
+    "idraulico",
+]
 
 
 def parse_collectors(value):
@@ -135,12 +172,106 @@ def sort_jobs(jobs):
     )
 
 
+def sort_by_score(jobs):
+    return sorted(jobs, key=lambda job: -int(job.get("score") or 0))
+
+
+def category_text(job):
+    return combined_text(
+        job.get("title", ""),
+        " ".join([
+            str(job.get("company", "") or ""),
+            str(job.get("location", "") or ""),
+            str(job.get("category", "") or ""),
+        ]),
+        job.get("query", ""),
+    )
+
+
+def has_any(text, terms):
+    return any(term in text for term in terms)
+
+
+def is_remote_job(job):
+    return job.get("priority_bucket") == "remote_data" or bool(job.get("remote"))
+
+
+def is_data_office_job(job):
+    category = str(job.get("category", "") or "").lower()
+    if category in {"data_office", "campania_part_time_data", "data_entry"}:
+        return True
+    return has_any(category_text(job), DATA_OFFICE_TERMS)
+
+
+def is_hospitality_job(job):
+    category = str(job.get("category", "") or "").lower()
+    if category in {"hospitality", "hotel", "restaurant"}:
+        return True
+    return has_any(category_text(job), HOSPITALITY_TERMS)
+
+
+def is_cleaning_job(job):
+    category = str(job.get("category", "") or "").lower()
+    if category in {"cleaning", "pulizie"}:
+        return True
+    return has_any(category_text(job), CLEANING_TERMS)
+
+
+def is_maintenance_job(job):
+    category = str(job.get("category", "") or "").lower()
+    if category in {"maintenance", "manutenzione"}:
+        return True
+    return has_any(category_text(job), MAINTENANCE_TERMS)
+
+
+def balanced_top(
+    jobs,
+    top=DEFAULT_TOP,
+    min_remote=DEFAULT_MIN_REMOTE,
+    min_hospitality=DEFAULT_MIN_HOSPITALITY,
+    min_cleaning=DEFAULT_MIN_CLEANING,
+    min_maintenance=DEFAULT_MIN_MAINTENANCE,
+    min_data_office=DEFAULT_MIN_DATA_OFFICE,
+):
+    selected = []
+    selected_keys = set()
+
+    def add_jobs(candidates, quota):
+        for job in sort_by_score(candidates):
+            if len(selected) >= top or quota <= 0:
+                return
+            key = aggregator_dedup_key(job)
+            if key in selected_keys:
+                continue
+            selected.append(job)
+            selected_keys.add(key)
+            quota -= 1
+
+    quota_groups = [
+        (is_remote_job, min_remote),
+        (is_data_office_job, min_data_office),
+        (is_hospitality_job, min_hospitality),
+        (is_cleaning_job, min_cleaning),
+        (is_maintenance_job, min_maintenance),
+    ]
+    for predicate, quota in quota_groups:
+        add_jobs([job for job in jobs if predicate(job)], quota)
+
+    add_jobs(jobs, top - len(selected))
+    return selected[:top]
+
+
 def aggregate_jobs(
     collector_names=None,
     limit=DEFAULT_LIMIT,
     top=DEFAULT_TOP,
     campania_part_time_first=False,
     clean_results=False,
+    min_remote=DEFAULT_MIN_REMOTE,
+    min_hospitality=DEFAULT_MIN_HOSPITALITY,
+    min_cleaning=DEFAULT_MIN_CLEANING,
+    min_maintenance=DEFAULT_MIN_MAINTENANCE,
+    min_data_office=DEFAULT_MIN_DATA_OFFICE,
 ):
     jobs = []
     collector_names = collector_names or enabled_collectors()
@@ -154,7 +285,15 @@ def aggregate_jobs(
     if clean_results:
         jobs, summary = clean_results_with_summary(jobs)
         print_cleaning_summary(summary)
-    return jobs[:top]
+    return balanced_top(
+        jobs,
+        top=top,
+        min_remote=min_remote,
+        min_hospitality=min_hospitality,
+        min_cleaning=min_cleaning,
+        min_maintenance=min_maintenance,
+        min_data_office=min_data_office,
+    )
 
 
 def write_json(jobs, output_path):
@@ -263,6 +402,11 @@ def parse_args(argv=None):
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
     parser.add_argument("--campania-part-time-first", action="store_true")
     parser.add_argument("--clean-results", action="store_true")
+    parser.add_argument("--min-remote", type=int, default=DEFAULT_MIN_REMOTE)
+    parser.add_argument("--min-hospitality", type=int, default=DEFAULT_MIN_HOSPITALITY)
+    parser.add_argument("--min-cleaning", type=int, default=DEFAULT_MIN_CLEANING)
+    parser.add_argument("--min-maintenance", type=int, default=DEFAULT_MIN_MAINTENANCE)
+    parser.add_argument("--min-data-office", type=int, default=DEFAULT_MIN_DATA_OFFICE)
     return parser.parse_args(argv)
 
 
@@ -274,6 +418,11 @@ def main():
         top=args.top,
         campania_part_time_first=args.campania_part_time_first,
         clean_results=args.clean_results,
+        min_remote=args.min_remote,
+        min_hospitality=args.min_hospitality,
+        min_cleaning=args.min_cleaning,
+        min_maintenance=args.min_maintenance,
+        min_data_office=args.min_data_office,
     )
     export_jobs(jobs, args.output)
 

@@ -486,11 +486,28 @@ python -m src.job_aggregator \
   --limit "$v2_limit" \
   --top "$v2_top" \
   --campania-part-time-first \
-  --clean-results
+  --clean-results \
+  --min-remote 20
 
 python -m src.v2_email_report \
   --input output/v2_jobs.json \
   --top "$v2_top"
+```
+
+V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
+
+- до `--min-remote` из `remote_data`;
+- до `--min-data-office` из `data_office`, `campania_part_time_data` и data/back-office сигналов;
+- до `--min-hospitality` из hospitality/hotel/restaurant;
+- до `--min-cleaning` из cleaning/pulizie;
+- до `--min-maintenance` из maintenance/manutenzione.
+
+Если в категории меньше вакансий, чем квота, берётся сколько есть. Дубли не добавляются, а итоговый список всё равно ограничен `--top`; свободные места заполняются оставшимися вакансиями по score.
+
+Локальный пример:
+
+```bash
+python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --clean-results --min-remote 20
 ```
 
 Для email нужны GitHub Actions secrets:

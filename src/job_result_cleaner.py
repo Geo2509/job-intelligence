@@ -36,6 +36,20 @@ SNIPPET_TERMS = [
     "jobs found",
     "more than",
 ]
+ARTICLE_BLACKLIST_TERMS = [
+    "captcha entry",
+    "captcha job",
+    "open data",
+    "dataset",
+    "fatturazione elettronica",
+    "marcatempo",
+    "rilevazione presenze",
+    "treasure in the phlegrean",
+    "turismo",
+    "travel guide",
+    "comune di napoli",
+    "elenco dei dataset",
+]
 RESULT_TYPES = [
     "job",
     "search_page",
@@ -97,11 +111,18 @@ def snippet_has_aggregator_terms(snippet):
     return any(term in snippet for term in SNIPPET_TERMS)
 
 
+def title_or_snippet_has_article_blacklist(job):
+    text = lower_text(" ".join([str(job.get("title", "") or ""), snippet_text(job)]))
+    return any(term in text for term in ARTICLE_BLACKLIST_TERMS)
+
+
 def fallback_result_type(job):
     url = job.get("url", "")
     title = job.get("title", "")
     snippet = snippet_text(job)
 
+    if title_or_snippet_has_article_blacklist(job):
+        return "article"
     if url_has_search_pattern(url):
         return "search_page"
     if url_has_category_pattern(url):

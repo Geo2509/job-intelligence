@@ -129,6 +129,8 @@ Aggregator экспортирует:
 
 `src/job_result_cleaner.py` запускается после Job Aggregator V2 и удаляет из результата страницы поиска, каталоги, статьи, профили и агрегаторные страницы, которые могли попасть в discovery-выдачу. Cleaner добавляет поля `result_type` и `url_result_type`; `result_type` может быть `job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `excluded_domain` или `unknown`, а в финальный export сохраняет только `result_type == job`.
 
+Cleaner также удаляет scam/data-entry-captcha страницы, open-data/dataset страницы, tourism/travel-guide статьи и служебные business pages вроде `fatturazione elettronica`, `marcatempo` и `rilevazione presenze`.
+
 Пример запуска:
 
 ```bash

@@ -174,3 +174,55 @@ def test_url_result_type_is_added_to_clean_job():
 
     assert cleaned["url_result_type"] == "real_job"
     assert cleaned["result_type"] == "job"
+
+
+def test_captcha_job_is_filtered():
+    job = {
+        "title": "Online Data Entry Captcha Job",
+        "url": "https://onlinedataentryjob.com/captcha-entry",
+        "snippet": "Captcha entry work from home",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "excluded_domain"
+
+
+def test_comune_di_napoli_open_data_is_filtered():
+    job = {
+        "title": "Comune di Napoli Open Data",
+        "url": "https://www.comune.napoli.it/opendata/dataset",
+        "snippet": "Elenco dei dataset disponibili",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "excluded_domain"
+
+
+def test_terredamare_tourist_article_is_filtered():
+    job = {
+        "title": "Treasure in the Phlegrean Fields Monte di Procida",
+        "url": "https://www.terredamare.com/monte-di-procida-travel-guide",
+        "snippet": "Travel guide turismo article",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "excluded_domain"
+
+
+def test_fatturazione_elettronica_page_is_filtered():
+    job = {
+        "title": "Fatturazione elettronica e marcatempo",
+        "url": "https://example.com/fatturazione-elettronica",
+        "snippet": "Rilevazione presenze aziendali",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "unknown"
+    assert cleaned["result_type"] == "article"

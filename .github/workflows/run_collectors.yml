@@ -15,6 +15,22 @@ on:
         description: Send HTML email report
         required: true
         default: "false"
+      run_v2_jobs:
+        description: Run V2 jobs aggregator and email report
+        required: true
+        default: "false"
+      v2_limit:
+        description: V2 collector limit
+        required: true
+        default: "2"
+      v2_top:
+        description: V2 top jobs to export and email
+        required: true
+        default: "100"
+      v2_clean_results:
+        description: Clean V2 search-result pages before export
+        required: true
+        default: "true"
 
 permissions:
   contents: write
@@ -36,6 +52,7 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Run full pipeline
+        if: ${{ inputs.run_v2_jobs != 'true' }}
         env:
           EMAIL_ENABLED: ${{ inputs.email_enabled }}
           EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
@@ -46,8 +63,33 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python -m src.main --queries "${{ inputs.queries_file }}" --scoring "${{ inputs.scoring_file }}"
 
+      - name: Run V2 jobs pipeline
+        if: ${{ inputs.run_v2_jobs == 'true' }}
+        env:
+          EMAIL_ENABLED: ${{ inputs.email_enabled }}
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: |
+          CLEAN_ARGS=""
+          if [ "${{ inputs.v2_clean_results }}" = "true" ]; then
+            CLEAN_ARGS="--clean-results"
+          fi
+          python -m src.job_aggregator \
+            --output output/v2_jobs.json \
+            --limit "${{ inputs.v2_limit }}" \
+            --top "${{ inputs.v2_top }}" \
+            --campania-part-time-first \
+            $CLEAN_ARGS
+          python -m src.v2_email_report \
+            --input output/v2_jobs.json \
+            --top "${{ inputs.v2_top }}"
+
       - name: Commit sent jobs history
-        if: ${{ success() && inputs.email_enabled == 'true' }}
+        if: ${{ success() && inputs.email_enabled == 'true' && inputs.run_v2_jobs != 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -63,4 +105,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: job-results
-          path: output/latest/
+          path: |
+            output/latest/
+            output/v2_jobs.json
+            output/v2_jobs.csv
+            output/v2_jobs.xlsx
+          if-no-files-found: warn

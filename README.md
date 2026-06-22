@@ -462,6 +462,62 @@ configs/scoring.yaml
 - `top_jobs.xlsx`;
 - `run_summary.md`.
 
+### Run V2 jobs from GitHub Actions
+
+V2 запускается из того же workflow `Run Job Collectors`.
+
+1. Откройте репозиторий на GitHub.
+2. Перейдите в `Actions`.
+3. Выберите workflow `Run Job Collectors`.
+4. Нажмите `Run workflow`.
+5. Установите inputs:
+   - `run_v2_jobs`: `true`;
+   - `v2_limit`: сколько результатов брать у коллектора, по умолчанию `2`;
+   - `v2_top`: максимум вакансий в экспорте и email, по умолчанию `100`;
+   - `v2_clean_results`: `true`, чтобы убрать search/result pages перед экспортом;
+   - `email_enabled`: `true`, чтобы отправить V2 email.
+6. Нажмите зелёную кнопку запуска.
+
+Команды V2 внутри workflow:
+
+```bash
+python -m src.job_aggregator \
+  --output output/v2_jobs.json \
+  --limit "$v2_limit" \
+  --top "$v2_top" \
+  --campania-part-time-first \
+  --clean-results
+
+python -m src.v2_email_report \
+  --input output/v2_jobs.json \
+  --top "$v2_top"
+```
+
+Для email нужны GitHub Actions secrets:
+
+```text
+EMAIL_SMTP_HOST
+EMAIL_SMTP_PORT
+EMAIL_SMTP_USER
+EMAIL_SMTP_PASSWORD
+EMAIL_FROM
+EMAIL_TO
+```
+
+V2 письмо отправляется только если `email_enabled=true`, `EMAIL_ENABLED=true` в окружении workflow и все SMTP secrets заполнены. Если `output/v2_jobs.json` пустой, письмо не отправляется, а в лог выводится `No V2 jobs to email`.
+
+Тема V2 письма:
+
+```text
+Job Intelligence V2: Campania Part-Time + Remote Jobs
+```
+
+После завершения workflow скачайте artifact `job-results` внизу страницы run. Для V2 внутри будут:
+
+- `output/v2_jobs.json`;
+- `output/v2_jobs.csv`;
+- `output/v2_jobs.xlsx`.
+
 ### Email-отчёт
 
 Email отправляется только если:

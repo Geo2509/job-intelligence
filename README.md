@@ -176,6 +176,8 @@ python -m src.job_aggregator \
 
 Для письма и `v2_jobs.xlsx` используйте `--email-clean-results`: этот режим удаляет search/category/aggregator/company/unknown страницы и оставляет реальные вакансии либо trusted career pages с явной ценностью. Strict clean (`--strict-job-detail-only`) сохраняет только URL с `url_result_type == real_job`.
 
+Чтобы полностью убрать дальние не-remote вакансии из email/export, добавьте `--drop-far-locations`. По умолчанию email clean не удаляет `location_fit=excluded_far`, а только опускает такие вакансии вниз.
+
 Aggregator экспортирует:
 - `output/v2_jobs.json`
 - `output/v2_jobs.csv`
@@ -187,7 +189,9 @@ Aggregator экспортирует:
 
 Оценка работает только по правилам, без Google Maps, OpenStreetMap и внешних API. Базовое значение — `50`, затем применяются бонусы за remote, part-time, Napoli/Pozzuoli/Bacoli/Monte di Procida, подходящие категории и дневные/будничные ключевые слова; ночные и вечерние смены получают штраф.
 
-V2 aggregator добавляет `student_score` в JSON, CSV и XLSX exports и сортирует вакансии по `student_score`, затем по обычному `score`.
+Location Guard добавляет поле `location_fit`: `remote`, `allowed_local`, `excluded_far` или `unknown`. Remote и локальные вакансии Campania/Napoli идут выше, неизвестные локации ниже, а явно далёкие города вроде Milano, Roma, Bologna, Prato и Valsamoggia уходят в конец. Для `excluded_far` `student_score` ограничен максимумом `40`, для `unknown` максимумом `70`; remote-вакансии могут получать высокий score.
+
+V2 aggregator добавляет `location_fit` и `student_score` в JSON, CSV и XLSX exports и сортирует вакансии по `location_fit`, затем по `student_score`, затем по обычному `score`.
 
 ### V2 Result Cleaner
 

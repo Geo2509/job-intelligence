@@ -12,6 +12,45 @@ profile:
     - Pozzuoli
     - Bacoli
     - Monte di Procida
+  allowed_locations:
+    - Napoli
+    - Pozzuoli
+    - Bacoli
+    - Monte di Procida
+    - Quarto
+    - Fuorigrotta
+    - Campi Flegrei
+    - Casoria
+    - Casalnuovo di Napoli
+    - San Vitaliano
+    - Campania
+  excluded_locations:
+    - Milano
+    - Roma
+    - Bologna
+    - Prato
+    - Firenze
+    - Torino
+    - Genova
+    - Verona
+    - Padova
+    - Bergamo
+    - Brescia
+    - Varese
+    - Monza
+    - Modena
+    - Parma
+    - Valsamoggia
+    - Bentivoglio
+    - Lonate Pozzolo
+    - San Giuliano Milanese
+    - Adro
+    - Loria
+    - Follo
+    - Fontevivo
+    - Novi Ligure
+    - Albuzzano
+    - Castello d'Argile
   preferred_work_types:
     - remote
     - part_time

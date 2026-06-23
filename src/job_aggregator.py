@@ -17,7 +17,7 @@ from src.job_matching import (
     score_job,
 )
 from src.job_result_cleaner import clean_results_with_summary, print_cleaning_summary
-from src.student_profile import evaluate_student_score
+from src.student_profile import detect_location_fit, evaluate_student_score, load_student_profile
 
 
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
@@ -34,6 +34,12 @@ PRIORITY_ORDER = {
     "local_general": 2,
     "other": 3,
 }
+LOCATION_FIT_ORDER = {
+    "allowed_local": 0,
+    "remote": 0,
+    "unknown": 1,
+    "excluded_far": 2,
+}
 OUTPUT_FIELDS = [
     "title",
     "company",
@@ -45,6 +51,7 @@ OUTPUT_FIELDS = [
     "part_time",
     "category",
     "priority_bucket",
+    "location_fit",
     "student_score",
     "score",
     "found_at",
@@ -133,8 +140,9 @@ def normalize_job(job, include_student_score=True):
     job["part_time"] = bool(job.get("part_time")) or detect_part_time(title, snippet, query)
     job["category"] = job.get("category") or detect_category(title, snippet, query)
     job["score"] = int(job.get("score") or score_job(title, snippet, query))
+    job["location_fit"] = detect_location_fit(job, load_student_profile())
     if include_student_score:
-        job["student_score"] = int(job.get("student_score") or evaluate_student_score(job))
+        job["student_score"] = int(evaluate_student_score(job))
     job["priority_bucket"] = detect_priority_bucket(
         searchable,
         job["part_time"],
@@ -166,10 +174,18 @@ def deduplicate_jobs(jobs):
     return deduped
 
 
+def location_fit_order(job):
+    location_fit = job.get("location_fit")
+    if not location_fit and bool(job.get("remote")):
+        location_fit = "remote"
+    return LOCATION_FIT_ORDER.get(location_fit or "unknown", 1)
+
+
 def sort_jobs(jobs):
     return sorted(
         jobs,
         key=lambda job: (
+            location_fit_order(job),
             -int(job.get("student_score") or 0),
             -int(job.get("score") or 0),
         ),
@@ -180,6 +196,7 @@ def sort_by_score(jobs):
     return sorted(
         jobs,
         key=lambda job: (
+            location_fit_order(job),
             -int(job.get("student_score") or 0),
             -int(job.get("score") or 0),
         ),
@@ -190,9 +207,18 @@ def add_student_scores(jobs):
     scored = []
     for job in jobs:
         job = dict(job)
-        job["student_score"] = int(job.get("student_score") or evaluate_student_score(job))
+        job["location_fit"] = job.get("location_fit") or detect_location_fit(job, load_student_profile())
+        job["student_score"] = int(evaluate_student_score(job))
         scored.append(job)
     return scored
+
+
+def drop_far_location_jobs(jobs):
+    return [
+        job
+        for job in jobs
+        if job.get("location_fit") != "excluded_far"
+    ]
 
 
 def category_text(job):
@@ -243,6 +269,10 @@ def is_maintenance_job(job):
     return has_any(category_text(job), MAINTENANCE_TERMS)
 
 
+def is_not_far_location(job):
+    return job.get("location_fit") != "excluded_far"
+
+
 def balanced_top(
     jobs,
     top=DEFAULT_TOP,
@@ -274,10 +304,10 @@ def balanced_top(
         (is_maintenance_job, min_maintenance),
     ]
     for predicate, quota in quota_groups:
-        add_jobs([job for job in jobs if predicate(job)], quota)
+        add_jobs([job for job in jobs if predicate(job) and is_not_far_location(job)], quota)
 
     add_jobs(jobs, top - len(selected))
-    return selected[:top]
+    return sort_jobs(selected)[:top]
 
 
 def aggregate_jobs(
@@ -288,6 +318,7 @@ def aggregate_jobs(
     clean_results=False,
     email_clean_results=False,
     strict_job_detail_only=False,
+    drop_far_locations=False,
     min_remote=DEFAULT_MIN_REMOTE,
     min_hospitality=DEFAULT_MIN_HOSPITALITY,
     min_cleaning=DEFAULT_MIN_CLEANING,
@@ -313,7 +344,13 @@ def aggregate_jobs(
             email_clean_results=email_clean_results,
         )
         print_cleaning_summary(summary)
+        if drop_far_locations:
+            before_drop = len(jobs)
+            jobs = drop_far_location_jobs(jobs)
+            print(f"Removed excluded_far location: {before_drop - len(jobs)}")
         jobs = add_student_scores(jobs)
+    elif drop_far_locations:
+        jobs = drop_far_location_jobs(jobs)
     jobs = sort_jobs(jobs)
     return balanced_top(
         jobs,
@@ -434,6 +471,7 @@ def parse_args(argv=None):
     parser.add_argument("--clean-results", action="store_true")
     parser.add_argument("--email-clean-results", action="store_true")
     parser.add_argument("--strict-job-detail-only", action="store_true")
+    parser.add_argument("--drop-far-locations", action="store_true")
     parser.add_argument("--min-remote", type=int, default=DEFAULT_MIN_REMOTE)
     parser.add_argument("--min-hospitality", type=int, default=DEFAULT_MIN_HOSPITALITY)
     parser.add_argument("--min-cleaning", type=int, default=DEFAULT_MIN_CLEANING)
@@ -452,6 +490,7 @@ def main():
         clean_results=args.clean_results,
         email_clean_results=args.email_clean_results,
         strict_job_detail_only=args.strict_job_detail_only,
+        drop_far_locations=args.drop_far_locations,
         min_remote=args.min_remote,
         min_hospitality=args.min_hospitality,
         min_cleaning=args.min_cleaning,

@@ -1,4 +1,4 @@
-from src.student_profile import evaluate_student_score, load_student_profile
+from src.student_profile import detect_location_fit, evaluate_student_score, load_student_profile
 
 
 def test_load_student_profile():
@@ -74,3 +74,71 @@ def test_monte_di_procida_gets_bonus():
     })
 
     assert monte > caserta
+
+
+def test_napoli_is_allowed_local():
+    fit = detect_location_fit({"title": "Back office", "location": "Napoli"}, load_student_profile())
+
+    assert fit == "allowed_local"
+
+
+def test_pozzuoli_is_allowed_local():
+    fit = detect_location_fit({"title": "Reception", "location": "Pozzuoli"}, load_student_profile())
+
+    assert fit == "allowed_local"
+
+
+def test_bacoli_is_allowed_local():
+    fit = detect_location_fit({"title": "Pulizie", "location": "Bacoli"}, load_student_profile())
+
+    assert fit == "allowed_local"
+
+
+def test_remote_ai_trainer_is_remote_location_fit():
+    fit = detect_location_fit({
+        "title": "Remote AI Trainer",
+        "location": "Italia",
+        "remote": True,
+    }, load_student_profile())
+
+    assert fit == "remote"
+
+
+def test_milano_is_excluded_far():
+    fit = detect_location_fit({"title": "Data Entry Milano", "location": "Milano"}, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_bologna_is_excluded_far():
+    fit = detect_location_fit({"title": "Back office", "location": "Bologna"}, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_roma_non_remote_is_excluded_far():
+    fit = detect_location_fit({"title": "Receptionist Roma", "location": "Roma"}, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_excluded_far_student_score_is_capped():
+    score = evaluate_student_score({
+        "title": "Back office part time Milano",
+        "location": "Milano",
+        "part_time": True,
+        "category": "data_office",
+    })
+
+    assert score <= 40
+
+
+def test_unknown_location_student_score_is_capped():
+    score = evaluate_student_score({
+        "title": "Back office part time",
+        "location": "Caserta",
+        "part_time": True,
+        "category": "data_office",
+    })
+
+    assert score <= 70

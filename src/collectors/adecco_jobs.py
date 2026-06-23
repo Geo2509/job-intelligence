@@ -21,7 +21,7 @@ from src.job_matching import (
     normalize_url,
     score_job,
 )
-from src.student_profile import evaluate_student_score
+from src.student_profile import detect_location_fit, evaluate_student_score, load_student_profile
 
 
 SOURCE_NAME = "adecco"
@@ -62,6 +62,7 @@ OUTPUT_FIELDS = [
     "part_time",
     "category",
     "priority_bucket",
+    "location_fit",
     "student_score",
     "score",
     "found_at",
@@ -177,6 +178,7 @@ def normalize_adecco_result(result, query, found_at=None):
         "score": score_job(title, snippet, query),
         "found_at": found_at or datetime.now(timezone.utc).isoformat(),
     }
+    job["location_fit"] = detect_location_fit(job, load_student_profile())
     job["student_score"] = evaluate_student_score(job)
     return job
 

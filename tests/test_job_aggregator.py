@@ -73,6 +73,7 @@ def test_sorting_prioritizes_student_score_then_score():
         score=100,
         query="remote data entry",
         student_score=80,
+        location_fit="remote",
     )
     local_part_time = job(
         "Back office part-time Napoli",
@@ -81,15 +82,45 @@ def test_sorting_prioritizes_student_score_then_score():
         score=10,
         query="back office Napoli part time",
         student_score=95,
+        location_fit="allowed_local",
     )
 
-    sorted_jobs = job_aggregator.sort_jobs([
-        job_aggregator.normalize_job(remote),
-        job_aggregator.normalize_job(local_part_time),
-    ])
+    sorted_jobs = job_aggregator.sort_jobs([remote, local_part_time])
 
     assert sorted_jobs[0]["title"] == "Back office part-time Napoli"
     assert sorted_jobs[1]["title"] == "Remote data entry"
+
+
+def test_sorting_pushes_excluded_far_after_unknown():
+    far = job(
+        "Back office Milano",
+        location="Milano",
+        score=100,
+        student_score=40,
+        location_fit="excluded_far",
+    )
+    unknown = job(
+        "Back office Caserta",
+        location="Caserta",
+        score=10,
+        student_score=70,
+        location_fit="unknown",
+    )
+    local = job(
+        "Back office Napoli",
+        location="Napoli",
+        score=1,
+        student_score=80,
+        location_fit="allowed_local",
+    )
+
+    sorted_jobs = job_aggregator.sort_jobs([far, unknown, local])
+
+    assert [item["title"] for item in sorted_jobs] == [
+        "Back office Napoli",
+        "Back office Caserta",
+        "Back office Milano",
+    ]
 
 
 def test_one_collector_failure_does_not_break_aggregator(monkeypatch, capsys):
@@ -162,6 +193,7 @@ def test_export_json_csv_xlsx(tmp_path):
     assert output_path.with_suffix(".xlsx").exists()
     assert json.loads(output_path.read_text(encoding="utf-8"))[0]["title"] == "Data Entry Napoli"
     assert "student_score" in csv_header
+    assert "location_fit" in csv_header
 
 
 def test_aggregate_with_clean_results_excludes_search_page(monkeypatch, capsys):
@@ -298,6 +330,36 @@ def test_aggregate_email_clean_keeps_adecco_real_jobs(monkeypatch):
     assert jobs[0]["source"] == "adecco"
     assert jobs[0]["url_result_type"] == "real_job"
     assert "student_score" in jobs[0]
+
+
+def test_aggregate_drop_far_locations_removes_excluded_far(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job(
+                    "Back office Napoli",
+                    "https://it.indeed.com/viewjob?jk=napoli",
+                    location="Napoli",
+                ),
+                job(
+                    "Back office Milano",
+                    "https://it.indeed.com/viewjob?jk=milano",
+                    location="Milano",
+                ),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(
+        ["duckduckgo"],
+        email_clean_results=True,
+        drop_far_locations=True,
+    )
+
+    assert [item["title"] for item in jobs] == ["Back office Napoli"]
+    assert jobs[0]["location_fit"] == "allowed_local"
 
 
 def test_aggregate_strict_clean_keeps_only_real_jobs(monkeypatch):

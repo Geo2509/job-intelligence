@@ -67,6 +67,13 @@ CATEGORY_ALIASES = {
     "manutenzione": "maintenance",
     "logistics": "warehouse",
 }
+REMOTE_TERMS = [
+    "remote",
+    "remoto",
+    "smart working",
+    "full remote",
+    "lavoro da casa",
+]
 
 
 def load_student_profile(path=DEFAULT_PROFILE_PATH):
@@ -81,6 +88,7 @@ def job_text(job):
             "title",
             "company",
             "location",
+            "url",
             "category",
             "query",
             "description",
@@ -88,6 +96,34 @@ def job_text(job):
             "summary",
         )
     ).lower()
+
+
+def profile_config(profile):
+    return profile.get("profile", profile or {})
+
+
+def text_has_any(text, terms):
+    return any(str(term or "").strip().lower() in text for term in terms or [])
+
+
+def detect_location_fit(job, profile):
+    profile = profile_config(profile)
+    remote_text = " ".join(
+        str(job.get(field, "") or "")
+        for field in ("title", "url", "query")
+    ).lower()
+    local_text = " ".join(
+        str(job.get(field, "") or "")
+        for field in ("location", "title", "url")
+    ).lower()
+
+    if bool(job.get("remote")) or text_has_any(remote_text, REMOTE_TERMS):
+        return "remote"
+    if text_has_any(local_text, profile.get("allowed_locations", [])):
+        return "allowed_local"
+    if text_has_any(local_text, profile.get("excluded_locations", [])):
+        return "excluded_far"
+    return "unknown"
 
 
 def normalized_category(job):
@@ -102,6 +138,8 @@ def has_category_signal(job, category, text):
 
 
 def evaluate_student_score(job):
+    profile = load_student_profile()
+    location_fit = job.get("location_fit") or detect_location_fit(job, profile)
     text = job_text(job)
     score = 50
 
@@ -127,5 +165,10 @@ def evaluate_student_score(job):
     for keyword, penalty in PENALTIES.items():
         if keyword in text:
             score += penalty
+
+    if location_fit == "excluded_far":
+        score = min(score, 40)
+    elif location_fit == "unknown":
+        score = min(score, 70)
 
     return max(0, min(100, int(score)))

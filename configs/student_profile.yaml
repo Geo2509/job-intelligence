@@ -1,0 +1,42 @@
+profile:
+  home_city: Monte di Procida
+  school:
+    city: Napoli
+    area:
+      - Arenella
+      - Rione Alto
+      - Policlinico
+      - Zona Ospedaliera
+  preferred_locations:
+    - Napoli
+    - Pozzuoli
+    - Bacoli
+    - Monte di Procida
+  preferred_work_types:
+    - remote
+    - part_time
+    - full_time
+  preferred_categories:
+    - data_office
+    - administration
+    - reception
+    - hotel
+    - hospitality
+    - cleaning
+    - maintenance
+    - warehouse
+    - gdo
+  avoid_shift_keywords:
+    - notte
+    - notturno
+    - turno notte
+    - night shift
+  preferred_shift_keywords:
+    - mattina
+    - turno mattina
+    - lunedì
+    - lunedi
+    - lun-ven
+    - lunedì-venerdì
+    - tempo parziale
+    - part time

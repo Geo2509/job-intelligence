@@ -17,6 +17,7 @@ from src.job_matching import (
     score_job,
 )
 from src.job_result_cleaner import clean_results_with_summary, print_cleaning_summary
+from src.student_profile import evaluate_student_score
 
 
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
@@ -44,6 +45,7 @@ OUTPUT_FIELDS = [
     "part_time",
     "category",
     "priority_bucket",
+    "student_score",
     "score",
     "found_at",
 ]
@@ -131,6 +133,7 @@ def normalize_job(job):
     job["part_time"] = bool(job.get("part_time")) or detect_part_time(title, snippet, query)
     job["category"] = job.get("category") or detect_category(title, snippet, query)
     job["score"] = int(job.get("score") or score_job(title, snippet, query))
+    job["student_score"] = int(job.get("student_score") or evaluate_student_score(job))
     job["priority_bucket"] = detect_priority_bucket(
         searchable,
         job["part_time"],
@@ -166,14 +169,20 @@ def sort_jobs(jobs):
     return sorted(
         jobs,
         key=lambda job: (
-            PRIORITY_ORDER.get(job.get("priority_bucket"), PRIORITY_ORDER["other"]),
+            -int(job.get("student_score") or 0),
             -int(job.get("score") or 0),
         ),
     )
 
 
 def sort_by_score(jobs):
-    return sorted(jobs, key=lambda job: -int(job.get("score") or 0))
+    return sorted(
+        jobs,
+        key=lambda job: (
+            -int(job.get("student_score") or 0),
+            -int(job.get("score") or 0),
+        ),
+    )
 
 
 def category_text(job):

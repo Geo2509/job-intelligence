@@ -94,7 +94,7 @@ Collector экспортирует `output/indeed_jobs.json`, `output/indeed_job
 
 ### Job Aggregator V2
 
-`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo` и `indeed`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket` и сортирует вакансии по приоритету: `campania_part_time`, `remote_data`, `local_general`, `other`, затем по `score` по убыванию.
+`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo` и `indeed`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score` и сортирует вакансии по `student_score`, затем по `score` по убыванию.
 
 Пример запуска:
 
@@ -124,6 +124,14 @@ Aggregator экспортирует:
 - `output/v2_jobs.json`
 - `output/v2_jobs.csv`
 - `output/v2_jobs.xlsx`
+
+### Student Profile Engine
+
+`src/student_profile.py` добавляет персонализированную оценку `student_score` для пользователя из Monte di Procida, который планирует вечернее обучение в Napoli и ищет работу, совместимую с учёбой. Профиль хранится в `configs/student_profile.yaml`.
+
+Оценка работает только по правилам, без Google Maps, OpenStreetMap и внешних API. Базовое значение — `50`, затем применяются бонусы за remote, part-time, Napoli/Pozzuoli/Bacoli/Monte di Procida, подходящие категории и дневные/будничные ключевые слова; ночные и вечерние смены получают штраф.
+
+V2 aggregator добавляет `student_score` в JSON, CSV и XLSX exports и сортирует вакансии по `student_score`, затем по обычному `score`.
 
 ### V2 Result Cleaner
 

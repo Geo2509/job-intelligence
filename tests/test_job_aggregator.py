@@ -65,13 +65,14 @@ def test_fallback_dedup_by_title_company_location():
     assert len(deduped) == 1
 
 
-def test_sorting_prioritizes_campania_part_time_above_remote_data():
+def test_sorting_prioritizes_student_score_then_score():
     remote = job(
         "Remote data entry",
         remote=True,
         priority_bucket="remote_data",
         score=100,
         query="remote data entry",
+        student_score=80,
     )
     local_part_time = job(
         "Back office part-time Napoli",
@@ -79,6 +80,7 @@ def test_sorting_prioritizes_campania_part_time_above_remote_data():
         priority_bucket="campania_part_time",
         score=10,
         query="back office Napoli part time",
+        student_score=95,
     )
 
     sorted_jobs = job_aggregator.sort_jobs([
@@ -86,8 +88,8 @@ def test_sorting_prioritizes_campania_part_time_above_remote_data():
         job_aggregator.normalize_job(local_part_time),
     ])
 
-    assert sorted_jobs[0]["priority_bucket"] == "campania_part_time"
-    assert sorted_jobs[1]["priority_bucket"] == "remote_data"
+    assert sorted_jobs[0]["title"] == "Back office part-time Napoli"
+    assert sorted_jobs[1]["title"] == "Remote data entry"
 
 
 def test_one_collector_failure_does_not_break_aggregator(monkeypatch, capsys):
@@ -153,10 +155,13 @@ def test_export_json_csv_xlsx(tmp_path):
 
     job_aggregator.export_jobs(jobs, output_path)
 
+    csv_header = output_path.with_suffix(".csv").read_text(encoding="utf-8").splitlines()[0]
+
     assert output_path.exists()
     assert output_path.with_suffix(".csv").exists()
     assert output_path.with_suffix(".xlsx").exists()
     assert json.loads(output_path.read_text(encoding="utf-8"))[0]["title"] == "Data Entry Napoli"
+    assert "student_score" in csv_header
 
 
 def test_aggregate_with_clean_results_excludes_search_page(monkeypatch, capsys):

@@ -138,7 +138,7 @@ python -m src.job_aggregator \
 
 С флагом `--clean-results` aggregator применяет V2 Result Cleaner в soft mode перед экспортом: удаляет явный мусор, статьи, новости, школы, спорт, scam/excluded domains и search/category pages на известных нежелательных доменах. Soft clean предназначен для ежедневного job discovery и может сохранять trusted career/search pages, если они полезны для поиска: Subito offerte lavoro, Lidl job pages, Eurospin lavora con noi, Randstad offerte lavoro и Manpower trova lavoro.
 
-Для строгой выдачи только подтверждённых страниц вакансий добавьте `--strict-job-detail-only` вместе с `--clean-results`. Strict clean сохраняет только URL с `url_result_type == real_job`.
+Для письма и `v2_jobs.xlsx` используйте `--email-clean-results`: этот режим удаляет search/category/aggregator/company/unknown страницы и оставляет реальные вакансии либо trusted career pages с явной ценностью. Strict clean (`--strict-job-detail-only`) сохраняет только URL с `url_result_type == real_job`.
 
 Aggregator экспортирует:
 - `output/v2_jobs.json`
@@ -160,8 +160,9 @@ V2 aggregator добавляет `student_score` в JSON, CSV и XLSX exports и
 Cleaner также удаляет scam/data-entry-captcha страницы, open-data/dataset страницы, tourism/travel-guide статьи и служебные business pages вроде `fatturazione elettronica`, `marcatempo` и `rilevazione presenze`.
 
 Режимы очистки:
-- soft clean (`--clean-results`) — ежедневный discovery: оставляет реальные вакансии и trusted career/search pages, которые могут привести к полезным вакансиям;
-- strict clean (`--clean-results --strict-job-detail-only`) — только подтверждённые job detail pages с `url_result_type == real_job`.
+- discovery clean (`--clean-results`) — для анализа и ежедневного discovery: оставляет реальные вакансии и trusted career/search pages, которые могут привести к полезным вакансиям;
+- email clean (`--email-clean-results`) — для письма и финального XLSX/CSV/JSON: удаляет search/category/aggregator/company/unknown страницы, но может оставить trusted career pages с конкретной ролью или явной ценностью;
+- strict clean (`--strict-job-detail-only`) — только подтверждённые job detail pages с `url_result_type == real_job`.
 
 Пример запуска:
 
@@ -180,18 +181,33 @@ python -m src.job_result_cleaner \
   --strict-job-detail-only
 ```
 
+Email clean для отдельного cleaner:
+
+```bash
+python -m src.job_result_cleaner \
+  --input output/v2_jobs.json \
+  --output output/v2_jobs_clean.json \
+  --email-clean-results
+```
+
 Cleaner не собирает вакансии и не меняет collectors. Это отдельный post-processing слой для очистки результатов агрегатора.
 
 ### URL Pattern Engine
 
 `src/job_url_patterns.py` использует правила из `configs/job_url_patterns.yaml`, чтобы отличать реальные страницы вакансий от search/category/blog/profile страниц по URL. Result Cleaner сначала классифицирует URL и добавляет `url_result_type`, а только затем применяет fallback-правила по title/snippet для неизвестных URL.
 
-Поддерживаемые URL-типы: `real_job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `company_page`, `career_page`, `excluded_domain`, `unknown`. В soft clean export попадают реальные вакансии и trusted discovery pages; в strict clean export попадают только `real_job`.
+Поддерживаемые URL-типы: `real_job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `company_page`, `career_page`, `excluded_domain`, `unknown`. В discovery clean export попадают реальные вакансии и trusted discovery pages; в email clean export попадают реальные вакансии и только ограниченные trusted career pages; в strict clean export попадают только `real_job`.
 
-Рекомендуемый запуск V2 aggregator с очисткой:
+Рекомендуемый запуск V2 aggregator для daily discovery:
 
 ```bash
 python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 50 --campania-part-time-first --clean-results
+```
+
+Рекомендуемый запуск V2 aggregator для email/export:
+
+```bash
+python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 50 --campania-part-time-first --email-clean-results
 ```
 
 ### V2 Collector Plugin Registry
@@ -517,7 +533,7 @@ V2 запускается из того же workflow `Run Job Collectors`.
    - `run_v2_jobs`: `true`;
    - `v2_limit`: сколько результатов брать у коллектора, по умолчанию `2`;
    - `v2_top`: максимум вакансий в экспорте и email, по умолчанию `100`;
-   - `v2_clean_results`: `true`, чтобы включить soft clean для daily discovery перед экспортом;
+   - `v2_clean_results`: `true`, чтобы включить email clean перед V2 email/export;
    - `email_enabled`: `true`, чтобы отправить V2 email.
 6. Нажмите зелёную кнопку запуска.
 
@@ -529,7 +545,7 @@ python -m src.job_aggregator \
   --limit "$v2_limit" \
   --top "$v2_top" \
   --campania-part-time-first \
-  --clean-results \
+  --email-clean-results \
   --min-remote 20
 
 python -m src.v2_email_report \
@@ -537,7 +553,7 @@ python -m src.v2_email_report \
   --top "$v2_top"
 ```
 
-GitHub V2 workflow по умолчанию использует soft clean через `--clean-results` и не добавляет `--strict-job-detail-only`.
+GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и не добавляет `--strict-job-detail-only`. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
 
 V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
 
@@ -553,6 +569,12 @@ V2 export использует balanced TOP, чтобы расширенные C
 
 ```bash
 python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --clean-results --min-remote 20
+```
+
+Локальный пример для email/export:
+
+```bash
+python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --min-remote 20
 ```
 
 Для email нужны GitHub Actions secrets:

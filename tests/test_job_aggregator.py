@@ -253,6 +253,25 @@ def test_aggregate_soft_clean_keeps_trusted_pages(monkeypatch):
     assert "student_score" in jobs[0]
 
 
+def test_aggregate_email_clean_removes_soft_search_pages(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job("Subito offerte lavoro", "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/"),
+                job("Jooble job", "https://it.jooble.org/jdp/123456"),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(["duckduckgo"], email_clean_results=True)
+
+    assert [item["title"] for item in jobs] == ["Jooble job"]
+    assert jobs[0]["url_result_type"] == "real_job"
+    assert "student_score" in jobs[0]
+
+
 def test_aggregate_strict_clean_keeps_only_real_jobs(monkeypatch):
     plugins = {
         "duckduckgo": replace(

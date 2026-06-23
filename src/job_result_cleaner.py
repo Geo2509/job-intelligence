@@ -69,6 +69,32 @@ TRUSTED_SOFT_SOURCES = [
     ("randstad.it", "/offerte-lavoro/"),
     ("manpower.it", "/trova-lavoro"),
 ]
+EUROSPIN_ROLE_TERMS = [
+    "addetto",
+    "addetta",
+    "vendita",
+    "vendite",
+    "cassiere",
+    "cassiera",
+    "scaffalista",
+    "magazziniere",
+    "responsabile",
+    "store manager",
+    "vice store",
+    "operatore",
+    "operatrice",
+]
+RANDSTAD_SEARCH_PATH_PARTS = [
+    "/q-",
+    "/re-",
+    "/ci-",
+]
+MANPOWER_VACANCY_PATH_PARTS = [
+    "/annuncio-lavoro/",
+    "/offerte-lavoro/",
+    "/job/",
+    "/jobs/",
+]
 RESULT_TYPES = [
     "job",
     "search_page",
@@ -156,6 +182,69 @@ def is_trusted_soft_result(job):
     )
 
 
+def is_generic_lavora_con_noi_title(title):
+    title = lower_text(title)
+    generic_titles = {
+        "lavora con noi",
+        "eurospin lavora con noi",
+        "lavora con noi eurospin",
+    }
+    return title in generic_titles
+
+
+def has_concrete_eurospin_role(job):
+    title = lower_text(job.get("title", ""))
+    if is_generic_lavora_con_noi_title(title):
+        return False
+    return any(term in title for term in EUROSPIN_ROLE_TERMS)
+
+
+def is_randstad_vacancy_url(path):
+    if not path.startswith("/offerte-lavoro/"):
+        return False
+    if path.rstrip("/") == "/offerte-lavoro":
+        return False
+    if any(part in path for part in RANDSTAD_SEARCH_PATH_PARTS):
+        return False
+    return len([part for part in path.strip("/").split("/") if part]) >= 2
+
+
+def is_manpower_vacancy_url(path):
+    if path.rstrip("/").endswith("/trova-lavoro"):
+        return False
+    return any(part in path for part in MANPOWER_VACANCY_PATH_PARTS)
+
+
+def is_cerco_lavoro_page(job):
+    parsed = urlsplit(str(job.get("url", "") or ""))
+    text = lower_text(" ".join([
+        normalized_hostname(parsed.hostname or ""),
+        parsed.path,
+        job.get("title", ""),
+        snippet_text(job),
+    ]))
+    return "cerco-lavoro" in text or "cerco lavoro" in text
+
+
+def is_email_trusted_result(job):
+    if job.get("url_result_type") == "real_job" and job.get("result_type") == "job":
+        return True
+
+    parsed = urlsplit(str(job.get("url", "") or ""))
+    hostname = normalized_hostname(parsed.hostname or "")
+    path = lower_text(parsed.path)
+
+    if hostname == "lavoro.lidl.it" and "/punti-vendita/" in path:
+        return True
+    if hostname == "eurospin.it" and "/lavora-con-noi" in path:
+        return has_concrete_eurospin_role(job)
+    if hostname == "randstad.it":
+        return is_randstad_vacancy_url(path)
+    if hostname == "manpower.it":
+        return is_manpower_vacancy_url(path)
+    return False
+
+
 def fallback_result_type(job):
     url = job.get("url", "")
     title = job.get("title", "")
@@ -194,9 +283,13 @@ def clean_job(job, patterns=None):
     return job
 
 
-def keep_cleaned_job(job, strict_job_detail_only=False):
+def keep_cleaned_job(job, strict_job_detail_only=False, email_clean_results=False):
     if strict_job_detail_only:
         return job.get("url_result_type") == "real_job" and job.get("result_type") == "job"
+    if email_clean_results:
+        if is_cerco_lavoro_page(job):
+            return False
+        return is_email_trusted_result(job)
     if job.get("result_type") == "job":
         return True
     if job.get("result_type") in {"article", "profile", "excluded_domain", "unknown"}:
@@ -204,17 +297,21 @@ def keep_cleaned_job(job, strict_job_detail_only=False):
     return is_trusted_soft_result(job)
 
 
-def clean_results(jobs, strict_job_detail_only=False):
+def clean_results(jobs, strict_job_detail_only=False, email_clean_results=False):
     patterns = load_url_patterns()
     cleaned = [clean_job(job, patterns) for job in jobs]
     return [
         job
         for job in cleaned
-        if keep_cleaned_job(job, strict_job_detail_only=strict_job_detail_only)
+        if keep_cleaned_job(
+            job,
+            strict_job_detail_only=strict_job_detail_only,
+            email_clean_results=email_clean_results,
+        )
     ]
 
 
-def clean_results_with_summary(jobs, strict_job_detail_only=False):
+def clean_results_with_summary(jobs, strict_job_detail_only=False, email_clean_results=False):
     patterns = load_url_patterns()
     cleaned = [clean_job(job, patterns) for job in jobs]
     summary = {
@@ -228,7 +325,11 @@ def clean_results_with_summary(jobs, strict_job_detail_only=False):
     job_results = []
     for job in cleaned:
         result_type = job["result_type"]
-        if keep_cleaned_job(job, strict_job_detail_only=strict_job_detail_only):
+        if keep_cleaned_job(
+            job,
+            strict_job_detail_only=strict_job_detail_only,
+            email_clean_results=email_clean_results,
+        ):
             job_results.append(job)
         else:
             summary[f"removed_{result_type}"] = summary.get(f"removed_{result_type}", 0) + 1
@@ -272,6 +373,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default=DEFAULT_INPUT_PATH)
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument("--email-clean-results", action="store_true")
     parser.add_argument("--strict-job-detail-only", action="store_true")
     return parser.parse_args(argv)
 
@@ -282,6 +384,7 @@ def main():
     cleaned, summary = clean_results_with_summary(
         jobs,
         strict_job_detail_only=args.strict_job_detail_only,
+        email_clean_results=args.email_clean_results,
     )
     print_cleaning_summary(summary)
     write_jobs(cleaned, args.output)

@@ -76,7 +76,7 @@ jobs:
         run: |
           CLEAN_ARGS=""
           if [ "${{ inputs.v2_clean_results }}" = "true" ]; then
-            CLEAN_ARGS="--clean-results"
+            CLEAN_ARGS="--email-clean-results"
           fi
           python -m src.job_aggregator \
             --output output/v2_jobs.json \

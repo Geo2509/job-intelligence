@@ -286,6 +286,7 @@ def aggregate_jobs(
     top=DEFAULT_TOP,
     campania_part_time_first=False,
     clean_results=False,
+    email_clean_results=False,
     strict_job_detail_only=False,
     min_remote=DEFAULT_MIN_REMOTE,
     min_hospitality=DEFAULT_MIN_HOSPITALITY,
@@ -295,19 +296,21 @@ def aggregate_jobs(
 ):
     jobs = []
     collector_names = collector_names or enabled_collectors()
+    should_clean_results = clean_results or email_clean_results or strict_job_detail_only
     for name in collector_names:
         collector_jobs = run_collector(name, limit, top, campania_part_time_first)
         print(f"Collector {name} returned: {len(collector_jobs)} jobs")
         jobs.extend(
-            normalize_job(job, include_student_score=not clean_results)
+            normalize_job(job, include_student_score=not should_clean_results)
             for job in collector_jobs
         )
 
     jobs = deduplicate_jobs(jobs)
-    if clean_results:
+    if should_clean_results:
         jobs, summary = clean_results_with_summary(
             jobs,
             strict_job_detail_only=strict_job_detail_only,
+            email_clean_results=email_clean_results,
         )
         print_cleaning_summary(summary)
         jobs = add_student_scores(jobs)
@@ -429,6 +432,7 @@ def parse_args(argv=None):
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
     parser.add_argument("--campania-part-time-first", action="store_true")
     parser.add_argument("--clean-results", action="store_true")
+    parser.add_argument("--email-clean-results", action="store_true")
     parser.add_argument("--strict-job-detail-only", action="store_true")
     parser.add_argument("--min-remote", type=int, default=DEFAULT_MIN_REMOTE)
     parser.add_argument("--min-hospitality", type=int, default=DEFAULT_MIN_HOSPITALITY)
@@ -446,6 +450,7 @@ def main():
         top=args.top,
         campania_part_time_first=args.campania_part_time_first,
         clean_results=args.clean_results,
+        email_clean_results=args.email_clean_results,
         strict_job_detail_only=args.strict_job_detail_only,
         min_remote=args.min_remote,
         min_hospitality=args.min_hospitality,

@@ -385,6 +385,80 @@ def test_soft_clean_keeps_trusted_career_and_search_pages():
     ]
 
 
+def test_email_clean_removes_subito_search_pages():
+    job = {
+        "title": "Subito offerte lavoro Napoli",
+        "url": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/",
+    }
+
+    assert clean_results([job], email_clean_results=True) == []
+    assert clean_results([job]) != []
+
+
+def test_email_clean_removes_randstad_search_pages():
+    job = {
+        "title": "Randstad offerte lavoro Napoli",
+        "url": "https://www.randstad.it/offerte-lavoro/",
+    }
+
+    assert clean_results([job], email_clean_results=True) == []
+    assert clean_results([job]) != []
+
+
+def test_email_clean_removes_generic_lavora_con_noi():
+    job = {
+        "title": "Lavora con noi",
+        "url": "https://www.eurospin.it/lavora-con-noi/",
+    }
+
+    assert clean_results([job], email_clean_results=True) == []
+    assert clean_results([job]) != []
+
+
+def test_email_clean_keeps_specific_eurospin_role():
+    job = {
+        "title": "Addetto vendita Eurospin Napoli",
+        "url": "https://www.eurospin.it/lavora-con-noi/",
+    }
+
+    cleaned = clean_results([job], email_clean_results=True)
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["result_type"] == "career_page"
+
+
+def test_email_clean_keeps_jooble_jdp_and_rjdp():
+    jobs = [
+        {"title": "Back Office Napoli", "url": "https://it.jooble.org/jdp/123456"},
+        {"title": "Receptionist Napoli", "url": "https://it.jooble.org/rjdp/789012"},
+    ]
+
+    cleaned = clean_results(jobs, email_clean_results=True)
+
+    assert [job["url_result_type"] for job in cleaned] == ["real_job", "real_job"]
+
+
+def test_email_clean_keeps_linkedin_jobs_view():
+    job = {
+        "title": "Data Entry Napoli",
+        "url": "https://it.linkedin.com/jobs/view/data-entry-123456",
+    }
+
+    cleaned = clean_results([job], email_clean_results=True)
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["url_result_type"] == "real_job"
+
+
+def test_email_clean_removes_cerco_lavoro_pages():
+    job = {
+        "title": "Cerco lavoro Napoli",
+        "url": "https://www.cerco-lavoro.info/napoli",
+    }
+
+    assert clean_results([job], email_clean_results=True) == []
+
+
 def test_strict_clean_removes_trusted_pages_except_real_jobs():
     jobs = [
         {"title": "Indeed job", "url": "https://it.indeed.com/viewjob?jk=1"},

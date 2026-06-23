@@ -112,6 +112,13 @@ eurospin:
   career_page:
     - "/lavora-con-noi"
 
+manpower:
+  domains:
+    - www.manpower.it
+    - manpower.it
+  search:
+    - "/trova-lavoro"
+
 talent:
   domains:
     - www.talent.com

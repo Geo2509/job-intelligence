@@ -234,6 +234,47 @@ def test_clean_results_scores_only_surviving_jobs(monkeypatch):
     assert jobs[0]["student_score"] == 77
 
 
+def test_aggregate_soft_clean_keeps_trusted_pages(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job("Subito offerte lavoro", "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/"),
+                job("Removed search", "https://www.jobbydoo.it/lavoro-data-entry"),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(["duckduckgo"], clean_results=True)
+
+    assert [item["title"] for item in jobs] == ["Subito offerte lavoro"]
+    assert jobs[0]["result_type"] == "category_page"
+    assert "student_score" in jobs[0]
+
+
+def test_aggregate_strict_clean_keeps_only_real_jobs(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job("Indeed job", "https://it.indeed.com/viewjob?jk=1"),
+                job("Subito offerte lavoro", "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/"),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(
+        ["duckduckgo"],
+        clean_results=True,
+        strict_job_detail_only=True,
+    )
+
+    assert [item["title"] for item in jobs] == ["Indeed job"]
+    assert jobs[0]["url_result_type"] == "real_job"
+
+
 def test_without_clean_results_keeps_old_behavior(monkeypatch):
     plugins = {
         "duckduckgo": replace(

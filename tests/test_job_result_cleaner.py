@@ -34,7 +34,7 @@ def test_category_url_is_filtered():
 def test_title_prefix_is_aggregator_page():
     job = {"title": "Più di 100 offerte di lavoro data entry", "url": "https://example.com/jobs"}
 
-    assert detect_result_type(job) == "article"
+    assert detect_result_type(job) == "aggregator_page"
     assert clean_results([job]) == []
 
 
@@ -283,8 +283,11 @@ def test_subito_category_is_filtered():
         "url": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/",
     }
 
-    assert clean_results([job]) == []
-    assert clean_job(job)["result_type"] == "article"
+    cleaned = clean_results([job])
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["result_type"] == "category_page"
+    assert clean_results([job], strict_job_detail_only=True) == []
 
 
 def test_lidl_annunci_di_lavoro_is_filtered():
@@ -293,8 +296,11 @@ def test_lidl_annunci_di_lavoro_is_filtered():
         "url": "https://lavoro.lidl.it/annunci-di-lavoro",
     }
 
-    assert clean_results([job]) == []
-    assert clean_job(job)["result_type"] == "article"
+    cleaned = clean_results([job])
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["result_type"] == "career_page"
+    assert clean_results([job], strict_job_detail_only=True) == []
 
 
 def test_lidl_punti_vendita_is_kept():
@@ -337,8 +343,82 @@ def test_clean_output_contains_only_real_jobs():
         {"title": "Search", "url": "https://www.jobbydoo.it/lavoro-data-entry"},
     ]
 
-    cleaned = clean_results(jobs)
+    cleaned = clean_results(jobs, strict_job_detail_only=True)
 
     assert len(cleaned) == 2
     assert {job["url_result_type"] for job in cleaned} == {"real_job"}
     assert {job["result_type"] for job in cleaned} == {"job"}
+
+
+def test_soft_clean_keeps_trusted_career_and_search_pages():
+    jobs = [
+        {
+            "title": "Subito offerte lavoro Napoli",
+            "url": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/",
+        },
+        {
+            "title": "Lidl annunci",
+            "url": "https://lavoro.lidl.it/annunci-di-lavoro",
+        },
+        {
+            "title": "Eurospin lavora con noi",
+            "url": "https://www.eurospin.it/lavora-con-noi/",
+        },
+        {
+            "title": "Randstad offerte lavoro",
+            "url": "https://www.randstad.it/offerte-lavoro/",
+        },
+        {
+            "title": "Manpower trova lavoro",
+            "url": "https://www.manpower.it/it/trova-lavoro",
+        },
+    ]
+
+    cleaned = clean_results(jobs)
+
+    assert [job["title"] for job in cleaned] == [
+        "Subito offerte lavoro Napoli",
+        "Lidl annunci",
+        "Eurospin lavora con noi",
+        "Randstad offerte lavoro",
+        "Manpower trova lavoro",
+    ]
+
+
+def test_strict_clean_removes_trusted_pages_except_real_jobs():
+    jobs = [
+        {"title": "Indeed job", "url": "https://it.indeed.com/viewjob?jk=1"},
+        {
+            "title": "Subito offerte lavoro Napoli",
+            "url": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/",
+        },
+        {"title": "Lidl annunci", "url": "https://lavoro.lidl.it/annunci-di-lavoro"},
+        {"title": "Eurospin lavora con noi", "url": "https://www.eurospin.it/lavora-con-noi/"},
+        {"title": "Randstad offerte lavoro", "url": "https://www.randstad.it/offerte-lavoro/"},
+        {"title": "Manpower trova lavoro", "url": "https://www.manpower.it/it/trova-lavoro"},
+    ]
+
+    cleaned = clean_results(jobs, strict_job_detail_only=True)
+
+    assert [job["title"] for job in cleaned] == ["Indeed job"]
+
+
+def test_known_garbage_is_removed_in_soft_and_strict_modes():
+    jobs = [
+        {
+            "title": "Concorso scuola Napoli",
+            "url": "https://www.randstad.it/offerte-lavoro/",
+        },
+        {
+            "title": "Motocross campionato",
+            "url": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/",
+        },
+        {
+            "title": "Captcha job",
+            "url": "https://it.indeed.com/viewjob?jk=scam",
+            "snippet": "captcha entry",
+        },
+    ]
+
+    assert clean_results(jobs) == []
+    assert clean_results(jobs, strict_job_detail_only=True) == []

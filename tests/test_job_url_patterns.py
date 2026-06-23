@@ -106,3 +106,7 @@ def test_jobleads_it_job_is_real_job():
 
 def test_workwide_jobs_is_real_job():
     assert classify_url("https://workwide.it/jobs/customer-support", patterns()) == "real_job"
+
+
+def test_manpower_trova_lavoro_is_search_page():
+    assert classify_url("https://www.manpower.it/it/trova-lavoro", patterns()) == "search_page"

@@ -56,13 +56,18 @@ ARTICLE_BLACKLIST_TERMS = [
     "motocross",
     "partita",
     "campionato",
-    "lavora con noi",
-    "annunci di lavoro",
-    "offerte e annunci",
-    "offerte di lavoro",
     "posti agente",
     "comune di",
     "circolare",
+]
+TRUSTED_SOFT_SOURCES = [
+    ("subito.it", "/offerte-lavoro"),
+    ("subito.it", "/annunci-"),
+    ("lavoro.lidl.it", "/annunci-di-lavoro"),
+    ("lavoro.lidl.it", "/punti-vendita/"),
+    ("eurospin.it", "/lavora-con-noi"),
+    ("randstad.it", "/offerte-lavoro/"),
+    ("manpower.it", "/trova-lavoro"),
 ]
 RESULT_TYPES = [
     "job",
@@ -134,6 +139,23 @@ def title_or_snippet_has_article_blacklist(job):
     return any(term in text for term in ARTICLE_BLACKLIST_TERMS)
 
 
+def normalized_hostname(hostname):
+    hostname = lower_text(hostname)
+    if hostname.startswith("www."):
+        return hostname[4:]
+    return hostname
+
+
+def is_trusted_soft_result(job):
+    parsed = urlsplit(str(job.get("url", "") or ""))
+    hostname = normalized_hostname(parsed.hostname or "")
+    path = lower_text(parsed.path)
+    return any(
+        hostname == trusted_host and trusted_path in path
+        for trusted_host, trusted_path in TRUSTED_SOFT_SOURCES
+    )
+
+
 def fallback_result_type(job):
     url = job.get("url", "")
     title = job.get("title", "")
@@ -172,13 +194,27 @@ def clean_job(job, patterns=None):
     return job
 
 
-def clean_results(jobs):
+def keep_cleaned_job(job, strict_job_detail_only=False):
+    if strict_job_detail_only:
+        return job.get("url_result_type") == "real_job" and job.get("result_type") == "job"
+    if job.get("result_type") == "job":
+        return True
+    if job.get("result_type") in {"article", "profile", "excluded_domain", "unknown"}:
+        return False
+    return is_trusted_soft_result(job)
+
+
+def clean_results(jobs, strict_job_detail_only=False):
     patterns = load_url_patterns()
     cleaned = [clean_job(job, patterns) for job in jobs]
-    return [job for job in cleaned if job["result_type"] == "job"]
+    return [
+        job
+        for job in cleaned
+        if keep_cleaned_job(job, strict_job_detail_only=strict_job_detail_only)
+    ]
 
 
-def clean_results_with_summary(jobs):
+def clean_results_with_summary(jobs, strict_job_detail_only=False):
     patterns = load_url_patterns()
     cleaned = [clean_job(job, patterns) for job in jobs]
     summary = {
@@ -192,7 +228,7 @@ def clean_results_with_summary(jobs):
     job_results = []
     for job in cleaned:
         result_type = job["result_type"]
-        if result_type == "job":
+        if keep_cleaned_job(job, strict_job_detail_only=strict_job_detail_only):
             job_results.append(job)
         else:
             summary[f"removed_{result_type}"] = summary.get(f"removed_{result_type}", 0) + 1
@@ -236,13 +272,17 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default=DEFAULT_INPUT_PATH)
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument("--strict-job-detail-only", action="store_true")
     return parser.parse_args(argv)
 
 
 def main():
     args = parse_args()
     jobs = load_jobs(args.input)
-    cleaned, summary = clean_results_with_summary(jobs)
+    cleaned, summary = clean_results_with_summary(
+        jobs,
+        strict_job_detail_only=args.strict_job_detail_only,
+    )
     print_cleaning_summary(summary)
     write_jobs(cleaned, args.output)
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Callable
 
-from src.collectors import duckduckgo_jobs, indeed_jobs, subito_jobs
+from src.collectors import duckduckgo_jobs, indeed_jobs, randstad_jobs, subito_jobs
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,17 @@ COLLECTOR_REGISTRY = {
         module="src.collectors.subito_jobs",
         function="collect_jobs",
         callable=subito_jobs.collect_jobs,
+        supports_campania_part_time_first=True,
+        supports_top=True,
+        supports_limit=True,
+        default_kwargs={"direct_pause_seconds": 0},
+    ),
+    "randstad": CollectorPlugin(
+        name="randstad",
+        enabled=True,
+        module="src.collectors.randstad_jobs",
+        function="collect_jobs",
+        callable=randstad_jobs.collect_jobs,
         supports_campania_part_time_first=True,
         supports_top=True,
         supports_limit=True,

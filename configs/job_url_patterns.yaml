@@ -52,6 +52,9 @@ randstad:
   domains:
     - www.randstad.it
     - randstad.it
+  job_all:
+    - "/offerte-lavoro/"
+    - "_"
   search:
     - "/offerte-lavoro/"
     - "/offerte-lavoro/q-"

@@ -57,8 +57,12 @@ def test_randstad_query_is_search_page():
     assert classify_url("https://www.randstad.it/offerte-lavoro/q-data-entry/", patterns()) == "search_page"
 
 
-def test_randstad_job_like_url_is_not_allowed_real_job():
-    assert classify_url("https://www.randstad.it/offerte-lavoro/data-entry-napoli_123/", patterns()) == "search_page"
+def test_randstad_job_like_url_is_real_job():
+    assert classify_url("https://www.randstad.it/offerte-lavoro/data-entry-napoli_123/", patterns()) == "real_job"
+
+
+def test_randstad_offerte_lavoro_root_is_search_page():
+    assert classify_url("https://www.randstad.it/offerte-lavoro/", patterns()) == "search_page"
 
 
 def test_general_excluded_domains_are_excluded():

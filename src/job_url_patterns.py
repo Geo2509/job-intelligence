@@ -12,9 +12,21 @@ URL_RESULT_TYPES = {
     "aggregator_page",
     "article",
     "profile",
+    "company_page",
+    "career_page",
     "excluded_domain",
     "unknown",
 }
+PATTERN_RESULT_TYPES = [
+    "job",
+    "search",
+    "category_page",
+    "aggregator_page",
+    "article",
+    "profile",
+    "company_page",
+    "career_page",
+]
 
 
 def load_url_patterns(path=DEFAULT_URL_PATTERNS_PATH):
@@ -95,12 +107,13 @@ def classify_url(url, patterns):
         if more_specific_search_match(target, job_patterns, search_patterns):
             return "search_page"
 
-        for pattern in job_patterns:
-            if pattern_matches(target, pattern):
-                return "real_job"
-        for pattern in search_patterns:
-            if pattern_matches(target, pattern):
-                return "search_page"
+        for pattern_type in PATTERN_RESULT_TYPES:
+            result_type = "real_job" if pattern_type == "job" else pattern_type
+            if pattern_type == "search":
+                result_type = "search_page"
+            for pattern in source_patterns.get(pattern_type, []):
+                if pattern_matches(target, pattern):
+                    return result_type
         return "unknown"
 
     return "unknown"

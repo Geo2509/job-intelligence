@@ -49,6 +49,20 @@ ARTICLE_BLACKLIST_TERMS = [
     "travel guide",
     "comune di napoli",
     "elenco dei dataset",
+    "concorso",
+    "scuola",
+    "istituto",
+    "liceo",
+    "motocross",
+    "partita",
+    "campionato",
+    "lavora con noi",
+    "annunci di lavoro",
+    "offerte e annunci",
+    "offerte di lavoro",
+    "posti agente",
+    "comune di",
+    "circolare",
 ]
 RESULT_TYPES = [
     "job",
@@ -57,6 +71,8 @@ RESULT_TYPES = [
     "aggregator_page",
     "article",
     "profile",
+    "company_page",
+    "career_page",
     "excluded_domain",
     "unknown",
 ]
@@ -66,6 +82,8 @@ URL_REMOVED_RESULT_TYPES = {
     "aggregator_page",
     "article",
     "profile",
+    "company_page",
+    "career_page",
     "excluded_domain",
 }
 
@@ -131,14 +149,14 @@ def fallback_result_type(job):
         return "aggregator_page"
     if snippet_has_aggregator_terms(snippet):
         return "aggregator_page"
-    if not url and not title:
-        return "unknown"
-    return "job"
+    return "unknown"
 
 
 def detect_result_type(job, patterns=None):
     patterns = patterns if patterns is not None else load_url_patterns()
     url_result_type = classify_url(job.get("url", ""), patterns)
+    if title_or_snippet_has_article_blacklist(job):
+        return "article"
     if url_result_type == "real_job":
         return "job"
     if url_result_type in URL_REMOVED_RESULT_TYPES:
@@ -207,6 +225,8 @@ def print_cleaning_summary(summary):
     print(f"Removed aggregator_page: {summary['removed_aggregator_page']}")
     print(f"Removed article: {summary['removed_article']}")
     print(f"Removed profile: {summary['removed_profile']}")
+    print(f"Removed company_page: {summary['removed_company_page']}")
+    print(f"Removed career_page: {summary['removed_career_page']}")
     print(f"Removed excluded_domain: {summary['removed_excluded_domain']}")
     print(f"Removed unknown: {summary['removed_unknown']}")
     print(f"Total after cleaning: {summary['total_after']}")

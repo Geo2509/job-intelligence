@@ -169,7 +169,7 @@ def test_aggregate_with_clean_results_excludes_search_page(monkeypatch, capsys):
         "duckduckgo": replace(
             get_collector("duckduckgo"),
             callable=lambda **kwargs: [
-                job("Data Entry Napoli", "https://example.com/job/1"),
+                job("Data Entry Napoli", "https://it.indeed.com/viewjob?jk=1"),
                 job("Search results", "https://example.com/search/data-entry"),
             ],
         ),
@@ -191,9 +191,9 @@ def test_export_includes_result_type_when_cleaned(tmp_path):
     output_path = tmp_path / "v2_jobs.json"
     jobs = [
         {
-            **job_aggregator.normalize_job(job("Data Entry Napoli", "https://example.com/job/1")),
+            **job_aggregator.normalize_job(job("Data Entry Napoli", "https://it.indeed.com/viewjob?jk=1")),
             "result_type": "job",
-            "url_result_type": "unknown",
+            "url_result_type": "real_job",
         }
     ]
 
@@ -203,9 +203,35 @@ def test_export_includes_result_type_when_cleaned(tmp_path):
     csv_header = output_path.with_suffix(".csv").read_text(encoding="utf-8").splitlines()[0]
 
     assert exported_json[0]["result_type"] == "job"
-    assert exported_json[0]["url_result_type"] == "unknown"
+    assert exported_json[0]["url_result_type"] == "real_job"
     assert "result_type" in csv_header
     assert "url_result_type" in csv_header
+
+
+def test_clean_results_scores_only_surviving_jobs(monkeypatch):
+    calls = []
+
+    def fake_student_score(job):
+        calls.append(job["title"])
+        return 77
+
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job("Kept job", "https://it.indeed.com/viewjob?jk=1"),
+                job("Removed search", "https://www.jobbydoo.it/lavoro-data-entry"),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+    monkeypatch.setattr(job_aggregator, "evaluate_student_score", fake_student_score)
+
+    jobs = job_aggregator.aggregate_jobs(["duckduckgo"], clean_results=True)
+
+    assert [item["title"] for item in jobs] == ["Kept job"]
+    assert calls == ["Kept job"]
+    assert jobs[0]["student_score"] == 77
 
 
 def test_without_clean_results_keeps_old_behavior(monkeypatch):

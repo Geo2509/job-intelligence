@@ -4,11 +4,11 @@ indeed:
     - indeed.com
   job:
     - "/viewjob"
-    - "jk="
   search:
     - "/jobs?"
     - "/q-"
     - "offerte-lavoro"
+  career_page:
     - "/career/"
     - "/companies"
     - "/cmp/"
@@ -20,6 +20,7 @@ jooble:
     - jooble.org
   job:
     - "/jdp/"
+    - "/rjdp/"
   search:
     - "/lavoro-"
     - "/SearchResult"
@@ -51,9 +52,8 @@ randstad:
   domains:
     - www.randstad.it
     - randstad.it
-  job:
-    - "/offerte-lavoro/"
   search:
+    - "/offerte-lavoro/"
     - "/offerte-lavoro/q-"
     - "/offerte-lavoro/re-"
     - "/offerte-lavoro/ci-"
@@ -62,9 +62,8 @@ jobsora:
   domains:
     - it.jobsora.com
     - jobsora.com
-  job:
-    - "/lavoro/"
   search:
+    - "/lavoro/"
     - "/lavoro-"
     - "/query-"
 
@@ -81,6 +80,58 @@ freelancer:
     - freelancer.co.it
   search:
     - "/job-search/"
+
+jobbydoo:
+  domains:
+    - www.jobbydoo.it
+    - jobbydoo.it
+  search:
+    - "/lavoro-"
+
+subito:
+  domains:
+    - www.subito.it
+    - subito.it
+  category_page:
+    - "/annunci-"
+    - "/offerte-lavoro"
+
+lidl:
+  domains:
+    - lavoro.lidl.it
+  job:
+    - "/punti-vendita/"
+  career_page:
+    - "/annunci-di-lavoro"
+    - "/lavora-con-noi"
+
+eurospin:
+  domains:
+    - www.eurospin.it
+    - eurospin.it
+  career_page:
+    - "/lavora-con-noi"
+
+talent:
+  domains:
+    - www.talent.com
+    - talent.com
+  job:
+    - "/view?id="
+
+jobleads:
+  domains:
+    - www.jobleads.com
+    - jobleads.com
+  job:
+    - "/it/job/"
+
+workwide:
+  domains:
+    - www.workwide.it
+    - workwide.it
+  job:
+    - "/jobs/"
 
 general_exclude_domains:
   - partitaiva.it

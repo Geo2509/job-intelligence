@@ -34,7 +34,7 @@ def test_category_url_is_filtered():
 def test_title_prefix_is_aggregator_page():
     job = {"title": "Più di 100 offerte di lavoro data entry", "url": "https://example.com/jobs"}
 
-    assert detect_result_type(job) == "aggregator_page"
+    assert detect_result_type(job) == "article"
     assert clean_results([job]) == []
 
 
@@ -58,7 +58,7 @@ def test_unknown_without_title_and_url_is_filtered():
 
 def test_clean_results_exports_only_jobs_with_result_type():
     jobs = [
-        {"title": "Data Entry Part Time", "url": "https://example.com/job/1"},
+        {"title": "Data Entry Part Time", "url": "https://it.indeed.com/viewjob?jk=1"},
         {"title": "Offerte di lavoro data entry", "url": "https://example.com/list"},
         {"title": "Back Office", "url": "https://example.com/offerte?query=back-office"},
     ]
@@ -68,21 +68,21 @@ def test_clean_results_exports_only_jobs_with_result_type():
     assert cleaned == [
         {
             "title": "Data Entry Part Time",
-            "url": "https://example.com/job/1",
-            "url_result_type": "unknown",
+            "url": "https://it.indeed.com/viewjob?jk=1",
+            "url_result_type": "real_job",
             "result_type": "job",
         }
     ]
 
 
 def test_clean_job_preserves_original_fields():
-    job = {"title": "Data Entry", "company": "Acme", "url": "https://example.com/job/1"}
+    job = {"title": "Data Entry", "company": "Acme", "url": "https://it.indeed.com/viewjob?jk=1"}
 
     assert clean_job(job) == {
         "title": "Data Entry",
         "company": "Acme",
-        "url": "https://example.com/job/1",
-        "url_result_type": "unknown",
+        "url": "https://it.indeed.com/viewjob?jk=1",
+        "url_result_type": "real_job",
         "result_type": "job",
     }
 
@@ -106,7 +106,7 @@ def test_load_and_write_jobs(tmp_path):
 
 def test_cleaner_summary_counts_removed_result_types():
     jobs = [
-        {"title": "Data Entry", "url": "https://example.com/job/1"},
+        {"title": "Data Entry", "url": "https://it.indeed.com/viewjob?jk=1"},
         {"title": "Data Entry", "url": "https://example.com/search/data-entry"},
         {"title": "Data Entry", "url": "https://example.com/cerca/data-entry"},
         {"title": "Annunci data entry", "url": "https://example.com/list"},
@@ -124,6 +124,8 @@ def test_cleaner_summary_counts_removed_result_types():
         "removed_aggregator_page": 1,
         "removed_article": 0,
         "removed_profile": 0,
+        "removed_company_page": 0,
+        "removed_career_page": 0,
         "removed_excluded_domain": 0,
         "removed_unknown": 1,
     }
@@ -141,9 +143,9 @@ def test_url_search_page_is_filtered_even_when_title_looks_like_job():
     assert cleaned["result_type"] == "search_page"
 
 
-def test_real_job_url_is_kept_even_when_title_has_search_prefix():
+def test_real_job_url_is_kept_when_title_is_job_like():
     job = {
-        "title": "Offerte di lavoro Data Entry",
+        "title": "Data Entry Napoli",
         "url": "https://it.indeed.com/viewjob?jk=abc123",
     }
 
@@ -186,7 +188,7 @@ def test_captcha_job_is_filtered():
     assert clean_results([job]) == []
     cleaned = clean_job(job)
     assert cleaned["url_result_type"] == "excluded_domain"
-    assert cleaned["result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "article"
 
 
 def test_comune_di_napoli_open_data_is_filtered():
@@ -199,7 +201,7 @@ def test_comune_di_napoli_open_data_is_filtered():
     assert clean_results([job]) == []
     cleaned = clean_job(job)
     assert cleaned["url_result_type"] == "excluded_domain"
-    assert cleaned["result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "article"
 
 
 def test_terredamare_tourist_article_is_filtered():
@@ -212,7 +214,7 @@ def test_terredamare_tourist_article_is_filtered():
     assert clean_results([job]) == []
     cleaned = clean_job(job)
     assert cleaned["url_result_type"] == "excluded_domain"
-    assert cleaned["result_type"] == "excluded_domain"
+    assert cleaned["result_type"] == "article"
 
 
 def test_fatturazione_elettronica_page_is_filtered():
@@ -226,3 +228,117 @@ def test_fatturazione_elettronica_page_is_filtered():
     cleaned = clean_job(job)
     assert cleaned["url_result_type"] == "unknown"
     assert cleaned["result_type"] == "article"
+
+
+def test_indeed_q_offerte_lavoro_with_vjk_is_filtered():
+    job = {
+        "title": "Data Entry Napoli",
+        "url": "https://it.indeed.com/q-data-entry-offerte-lavoro.html?vjk=abc123",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "search_page"
+    assert cleaned["result_type"] == "search_page"
+
+
+def test_indeed_viewjob_is_kept():
+    job = {
+        "title": "Data Entry Napoli",
+        "url": "https://it.indeed.com/viewjob?jk=abc123",
+    }
+
+    cleaned = clean_results([job])
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["url_result_type"] == "real_job"
+    assert cleaned[0]["result_type"] == "job"
+
+
+def test_jobbydoo_lavoro_page_is_filtered():
+    job = {
+        "title": "Data Entry Napoli",
+        "url": "https://www.jobbydoo.it/lavoro-data-entry-napoli",
+    }
+
+    assert clean_results([job]) == []
+    assert clean_job(job)["result_type"] == "search_page"
+
+
+def test_jooble_rjdp_is_kept():
+    job = {
+        "title": "Back Office Napoli",
+        "url": "https://it.jooble.org/rjdp/123456789",
+    }
+
+    cleaned = clean_results([job])
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["url_result_type"] == "real_job"
+
+
+def test_subito_category_is_filtered():
+    job = {
+        "title": "Offerte e annunci lavoro",
+        "url": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/",
+    }
+
+    assert clean_results([job]) == []
+    assert clean_job(job)["result_type"] == "article"
+
+
+def test_lidl_annunci_di_lavoro_is_filtered():
+    job = {
+        "title": "Annunci di lavoro Lidl",
+        "url": "https://lavoro.lidl.it/annunci-di-lavoro",
+    }
+
+    assert clean_results([job]) == []
+    assert clean_job(job)["result_type"] == "article"
+
+
+def test_lidl_punti_vendita_is_kept():
+    job = {
+        "title": "Addetto Vendite",
+        "url": "https://lavoro.lidl.it/punti-vendita/addetto-vendite-napoli-123",
+    }
+
+    cleaned = clean_results([job])
+
+    assert len(cleaned) == 1
+    assert cleaned[0]["url_result_type"] == "real_job"
+
+
+def test_blacklisted_news_school_sport_terms_are_filtered():
+    jobs = [
+        {
+            "title": "Concorso scuola Napoli",
+            "url": "https://it.indeed.com/viewjob?jk=school",
+        },
+        {
+            "title": "Motocross campionato",
+            "url": "https://it.jooble.org/rjdp/sport",
+        },
+        {
+            "title": "Circolare istituto liceo",
+            "url": "https://lavoro.lidl.it/punti-vendita/test",
+        },
+    ]
+
+    assert clean_results(jobs) == []
+    assert [clean_job(job)["result_type"] for job in jobs] == ["article", "article", "article"]
+
+
+def test_clean_output_contains_only_real_jobs():
+    jobs = [
+        {"title": "Data Entry", "url": "https://it.indeed.com/viewjob?jk=1"},
+        {"title": "Back Office", "url": "https://it.jooble.org/rjdp/2"},
+        {"title": "Unknown", "url": "https://example.com/job/1"},
+        {"title": "Search", "url": "https://www.jobbydoo.it/lavoro-data-entry"},
+    ]
+
+    cleaned = clean_results(jobs)
+
+    assert len(cleaned) == 2
+    assert {job["url_result_type"] for job in cleaned} == {"real_job"}
+    assert {job["result_type"] for job in cleaned} == {"job"}

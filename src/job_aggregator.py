@@ -117,7 +117,7 @@ def run_collector(name, limit, top, campania_part_time_first):
         return []
 
 
-def normalize_job(job):
+def normalize_job(job, include_student_score=True):
     job = dict(job)
     title = job.get("title", "")
     company = job.get("company", "")
@@ -133,7 +133,8 @@ def normalize_job(job):
     job["part_time"] = bool(job.get("part_time")) or detect_part_time(title, snippet, query)
     job["category"] = job.get("category") or detect_category(title, snippet, query)
     job["score"] = int(job.get("score") or score_job(title, snippet, query))
-    job["student_score"] = int(job.get("student_score") or evaluate_student_score(job))
+    if include_student_score:
+        job["student_score"] = int(job.get("student_score") or evaluate_student_score(job))
     job["priority_bucket"] = detect_priority_bucket(
         searchable,
         job["part_time"],
@@ -183,6 +184,15 @@ def sort_by_score(jobs):
             -int(job.get("score") or 0),
         ),
     )
+
+
+def add_student_scores(jobs):
+    scored = []
+    for job in jobs:
+        job = dict(job)
+        job["student_score"] = int(job.get("student_score") or evaluate_student_score(job))
+        scored.append(job)
+    return scored
 
 
 def category_text(job):
@@ -287,13 +297,17 @@ def aggregate_jobs(
     for name in collector_names:
         collector_jobs = run_collector(name, limit, top, campania_part_time_first)
         print(f"Collector {name} returned: {len(collector_jobs)} jobs")
-        jobs.extend(normalize_job(job) for job in collector_jobs)
+        jobs.extend(
+            normalize_job(job, include_student_score=not clean_results)
+            for job in collector_jobs
+        )
 
     jobs = deduplicate_jobs(jobs)
-    jobs = sort_jobs(jobs)
     if clean_results:
         jobs, summary = clean_results_with_summary(jobs)
         print_cleaning_summary(summary)
+        jobs = add_student_scores(jobs)
+    jobs = sort_jobs(jobs)
     return balanced_top(
         jobs,
         top=top,

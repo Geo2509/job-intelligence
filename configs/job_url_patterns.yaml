@@ -92,7 +92,11 @@ subito:
   domains:
     - www.subito.it
     - subito.it
-  category_page:
+  search_before_job: true
+  job_all:
+    - "/offerte-lavoro/"
+    - ".htm"
+  search:
     - "/annunci-"
     - "/offerte-lavoro"
 

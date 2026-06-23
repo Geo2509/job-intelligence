@@ -106,6 +106,15 @@ def classify_url(url, patterns):
         search_patterns = source_patterns.get("search", [])
         if more_specific_search_match(target, job_patterns, search_patterns):
             return "search_page"
+        if source_patterns.get("job_all") and all(
+            pattern_matches(target, pattern)
+            for pattern in source_patterns.get("job_all", [])
+        ):
+            return "real_job"
+        if source_patterns.get("search_before_job"):
+            for pattern in search_patterns:
+                if pattern_matches(target, pattern):
+                    return "search_page"
 
         for pattern_type in PATTERN_RESULT_TYPES:
             result_type = "real_job" if pattern_type == "job" else pattern_type

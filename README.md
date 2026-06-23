@@ -92,15 +92,33 @@ python -m src.collectors.indeed_jobs \
 
 Collector экспортирует `output/indeed_jobs.json`, `output/indeed_jobs.csv` и `output/indeed_jobs.xlsx`.
 
+### Subito Jobs Collector
+
+`src/collectors/subito_jobs.py` — V2 collector для Subito Lavoro по локальным part-time направлениям Napoli, Pozzuoli, Bacoli и Monte di Procida. Direct mode использует публичные страницы Subito Lavoro через обычные HTTP-запросы, без Selenium и без обхода CAPTCHA.
+
+Если Subito блокирует запрос, возвращает ошибку или direct search не даёт вакансий, collector не падает и переходит на fallback через DuckDuckGo по `site:subito.it` запросам для lavoro/part-time, cameriere, pulizie, magazziniere и локальных городов.
+
+Пример debug-запуска:
+
+```bash
+python -m src.collectors.subito_jobs \
+  --output output/subito_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
+Финальный JSON/CSV/XLSX export для V2 всё равно делает aggregator.
+
 ### Job Aggregator V2
 
-`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo` и `indeed`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score` и сортирует вакансии по `student_score`, затем по `score` по убыванию.
+`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed` и `subito`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score` и сортирует вакансии по `student_score`, затем по `score` по убыванию.
 
 Пример запуска:
 
 ```bash
 python -m src.job_aggregator \
-  --collectors duckduckgo,indeed \
+  --collectors duckduckgo,indeed,subito \
   --output output/v2_jobs.json \
   --limit 5 \
   --top 50 \
@@ -178,7 +196,7 @@ python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 50 --c
 
 ### V2 Collector Plugin Registry
 
-V2 aggregator подключает collectors через `src/job_collector_registry.py`. Registry описывает имя collector-а, включён ли он, Python module, callable для запуска и поддерживаемые параметры (`limit`, `top`, `campania_part_time_first`). Чтобы добавить новый collector, нужно добавить его metadata в registry, не меняя `src/job_aggregator.py`.
+V2 aggregator подключает collectors через `src/job_collector_registry.py`. Registry описывает имя collector-а, включён ли он, Python module, callable для запуска и поддерживаемые параметры (`limit`, `top`, `campania_part_time_first`). Сейчас enabled collectors: `duckduckgo`, `indeed`, `subito`. Чтобы добавить новый collector, нужно добавить его metadata в registry, не меняя `src/job_aggregator.py`.
 
 Запуск всех enabled collectors из registry:
 
@@ -194,7 +212,7 @@ python -m src.job_aggregator \
 
 ```bash
 python -m src.job_aggregator \
-  --collectors duckduckgo,indeed \
+  --collectors duckduckgo,indeed,subito \
   --output output/v2_jobs.json \
   --limit 5 \
   --top 50 \

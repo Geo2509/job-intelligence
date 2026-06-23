@@ -80,10 +80,16 @@ def test_jobbydoo_lavoro_is_search_page():
     assert classify_url("https://www.jobbydoo.it/lavoro-data-entry", patterns()) == "search_page"
 
 
-def test_subito_annunci_is_category_page():
+def test_subito_annunci_is_search_page():
     url = "https://www.subito.it/annunci-campania/vendita/offerte-lavoro/napoli/"
 
-    assert classify_url(url, patterns()) == "category_page"
+    assert classify_url(url, patterns()) == "search_page"
+
+
+def test_subito_job_detail_is_real_job():
+    url = "https://www.subito.it/offerte-lavoro/cameriere-part-time-napoli-123456.htm"
+
+    assert classify_url(url, patterns()) == "real_job"
 
 
 def test_lidl_annunci_di_lavoro_is_career_page():

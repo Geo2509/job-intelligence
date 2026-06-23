@@ -286,7 +286,7 @@ def test_subito_category_is_filtered():
     cleaned = clean_results([job])
 
     assert len(cleaned) == 1
-    assert cleaned[0]["result_type"] == "category_page"
+    assert cleaned[0]["result_type"] == "search_page"
     assert clean_results([job], strict_job_detail_only=True) == []
 
 

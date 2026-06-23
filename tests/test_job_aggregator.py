@@ -249,7 +249,7 @@ def test_aggregate_soft_clean_keeps_trusted_pages(monkeypatch):
     jobs = job_aggregator.aggregate_jobs(["duckduckgo"], clean_results=True)
 
     assert [item["title"] for item in jobs] == ["Subito offerte lavoro"]
-    assert jobs[0]["result_type"] == "category_page"
+    assert jobs[0]["result_type"] == "search_page"
     assert "student_score" in jobs[0]
 
 

@@ -65,6 +65,22 @@ def test_randstad_offerte_lavoro_root_is_search_page():
     assert classify_url("https://www.randstad.it/offerte-lavoro/", patterns()) == "search_page"
 
 
+def test_adecco_lavoro_job_like_url_is_real_job():
+    assert classify_url("https://www.adecco.it/lavoro/back-office-napoli_123/", patterns()) == "real_job"
+
+
+def test_adecco_offerta_url_is_real_job():
+    assert classify_url("https://www.adecco.it/offerta/data-entry-napoli", patterns()) == "real_job"
+
+
+def test_adecco_lavoro_search_is_search_page():
+    assert classify_url("https://www.adecco.it/lavoro/?k=data-entry-napoli", patterns()) == "search_page"
+
+
+def test_adecco_lavora_con_noi_is_career_page():
+    assert classify_url("https://www.adecco.it/lavora-con-noi", patterns()) == "career_page"
+
+
 def test_general_excluded_domains_are_excluded():
     for domain in [
         "partitaiva.it",

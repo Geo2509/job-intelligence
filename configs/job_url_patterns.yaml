@@ -61,6 +61,25 @@ randstad:
     - "/offerte-lavoro/re-"
     - "/offerte-lavoro/ci-"
 
+adecco:
+  domains:
+    - www.adecco.it
+    - adecco.it
+  job:
+    - "/offerta/"
+    - "/job-offer/"
+  job_all:
+    - "/lavoro/"
+    - "_"
+  search:
+    - "/lavoro?"
+    - "/lavoro/"
+    - "/offerte-lavoro"
+    - "/jobs?"
+  career_page:
+    - "/lavora-con-noi"
+    - "/chi-siamo"
+
 jobsora:
   domains:
     - it.jobsora.com

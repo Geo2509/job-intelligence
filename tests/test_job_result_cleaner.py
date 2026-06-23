@@ -459,6 +459,28 @@ def test_email_clean_removes_cerco_lavoro_pages():
     assert clean_results([job], email_clean_results=True) == []
 
 
+def test_email_clean_keeps_adecco_real_job_and_removes_search_or_career_pages():
+    jobs = [
+        {
+            "title": "Back office part time Napoli",
+            "url": "https://www.adecco.it/lavoro/back-office-part-time_napoli_123456/",
+        },
+        {
+            "title": "Adecco lavoro Napoli",
+            "url": "https://www.adecco.it/lavoro/?k=napoli",
+        },
+        {
+            "title": "Lavora con noi Adecco",
+            "url": "https://www.adecco.it/lavora-con-noi",
+        },
+    ]
+
+    cleaned = clean_results(jobs, email_clean_results=True)
+
+    assert [job["title"] for job in cleaned] == ["Back office part time Napoli"]
+    assert cleaned[0]["url_result_type"] == "real_job"
+
+
 def test_strict_clean_removes_trusted_pages_except_real_jobs():
     jobs = [
         {"title": "Indeed job", "url": "https://it.indeed.com/viewjob?jk=1"},

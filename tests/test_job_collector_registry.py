@@ -1,15 +1,16 @@
 from src.job_collector_registry import COLLECTOR_REGISTRY, enabled_collectors, get_collector
 
 
-def test_registry_contains_duckduckgo_indeed_subito_and_randstad():
+def test_registry_contains_duckduckgo_indeed_subito_randstad_and_adecco():
     assert "duckduckgo" in COLLECTOR_REGISTRY
     assert "indeed" in COLLECTOR_REGISTRY
     assert "subito" in COLLECTOR_REGISTRY
     assert "randstad" in COLLECTOR_REGISTRY
+    assert "adecco" in COLLECTOR_REGISTRY
 
 
 def test_registry_plugins_have_required_metadata():
-    for name in ["duckduckgo", "indeed", "subito", "randstad"]:
+    for name in ["duckduckgo", "indeed", "subito", "randstad", "adecco"]:
         plugin = get_collector(name)
 
         assert plugin.name == name
@@ -29,3 +30,4 @@ def test_enabled_collectors_returns_enabled_registry_names():
     assert "indeed" in names
     assert "subito" in names
     assert "randstad" in names
+    assert "adecco" in names

@@ -272,6 +272,34 @@ def test_aggregate_email_clean_removes_soft_search_pages(monkeypatch):
     assert "student_score" in jobs[0]
 
 
+def test_aggregate_email_clean_keeps_adecco_real_jobs(monkeypatch):
+    plugins = {
+        "adecco": replace(
+            get_collector("adecco"),
+            callable=lambda **kwargs: [
+                job(
+                    "Adecco back office",
+                    "https://www.adecco.it/lavoro/back-office-part-time_napoli_123456/",
+                    source="adecco",
+                ),
+                job(
+                    "Adecco search",
+                    "https://www.adecco.it/lavoro/?k=napoli",
+                    source="adecco",
+                ),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(["adecco"], email_clean_results=True)
+
+    assert [item["title"] for item in jobs] == ["Adecco back office"]
+    assert jobs[0]["source"] == "adecco"
+    assert jobs[0]["url_result_type"] == "real_job"
+    assert "student_score" in jobs[0]
+
+
 def test_aggregate_strict_clean_keeps_only_real_jobs(monkeypatch):
     plugins = {
         "duckduckgo": replace(

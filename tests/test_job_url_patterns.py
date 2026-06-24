@@ -87,6 +87,22 @@ def test_adecco_lavora_con_noi_is_career_page():
     assert classify_url("https://www.adecco.it/lavora-con-noi", patterns()) == "career_page"
 
 
+def test_gigroup_job_detail_is_real_job():
+    url = "https://www.gigroup.it/offerte-lavoro/dettaglio-offerta/lavoro-napoli-back-office_123/"
+
+    assert classify_url(url, patterns()) == "real_job"
+
+
+def test_gigroup_search_is_search_page():
+    url = "https://www.gigroup.it/offerte-lavoro/?q=back-office&location=Napoli"
+
+    assert classify_url(url, patterns()) == "search_page"
+
+
+def test_gigroup_lavora_con_noi_is_career_page():
+    assert classify_url("https://www.gigroup.it/lavora-con-noi", patterns()) == "career_page"
+
+
 def test_general_excluded_domains_are_excluded():
     for domain in [
         "partitaiva.it",

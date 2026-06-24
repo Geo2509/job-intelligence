@@ -1,7 +1,14 @@
 from dataclasses import dataclass, field
 from typing import Callable
 
-from src.collectors import adecco_jobs, duckduckgo_jobs, indeed_jobs, randstad_jobs, subito_jobs
+from src.collectors import (
+    adecco_jobs,
+    duckduckgo_jobs,
+    gigroup_jobs,
+    indeed_jobs,
+    randstad_jobs,
+    subito_jobs,
+)
 
 
 @dataclass(frozen=True)
@@ -68,6 +75,17 @@ COLLECTOR_REGISTRY = {
         module="src.collectors.adecco_jobs",
         function="collect_jobs",
         callable=adecco_jobs.collect_jobs,
+        supports_campania_part_time_first=True,
+        supports_top=True,
+        supports_limit=True,
+        default_kwargs={"direct_pause_seconds": 0},
+    ),
+    "gigroup": CollectorPlugin(
+        name="gigroup",
+        enabled=True,
+        module="src.collectors.gigroup_jobs",
+        function="collect_jobs",
+        callable=gigroup_jobs.collect_jobs,
         supports_campania_part_time_first=True,
         supports_top=True,
         supports_limit=True,

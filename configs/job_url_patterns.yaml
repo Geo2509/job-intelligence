@@ -84,6 +84,28 @@ adecco:
     - "/lavora-con-noi"
     - "/chi-siamo"
 
+gigroup:
+  domains:
+    - www.gigroup.it
+    - gigroup.it
+  job:
+    - "/offerte-lavoro/dettaglio-offerta/"
+    - "/offerte-lavoro/job-detail/"
+    - "/annunci/"
+    - "/jobs/"
+    - "/job/"
+  search:
+    - "/offerte-lavoro?"
+    - "/offerte-lavoro/"
+    - "/cerca-lavoro"
+    - "/risultati-ricerca"
+    - "/search"
+  career_page:
+    - "/lavora-con-noi"
+    - "/candidati"
+    - "/career"
+    - "/chi-siamo"
+
 jobsora:
   domains:
     - it.jobsora.com

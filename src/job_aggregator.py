@@ -230,6 +230,14 @@ def drop_far_location_jobs(jobs):
     ]
 
 
+def drop_unknown_location_jobs(jobs):
+    return [
+        job
+        for job in jobs
+        if job.get("location_fit") != "unknown" or bool(job.get("remote"))
+    ]
+
+
 def category_text(job):
     return combined_text(
         job.get("title", ""),
@@ -328,6 +336,7 @@ def aggregate_jobs(
     email_clean_results=False,
     strict_job_detail_only=False,
     drop_far_locations=False,
+    drop_unknown_locations=False,
     min_remote=DEFAULT_MIN_REMOTE,
     min_hospitality=DEFAULT_MIN_HOSPITALITY,
     min_cleaning=DEFAULT_MIN_CLEANING,
@@ -357,9 +366,16 @@ def aggregate_jobs(
             before_drop = len(jobs)
             jobs = drop_far_location_jobs(jobs)
             print(f"Removed excluded_far location: {before_drop - len(jobs)}")
+        if drop_unknown_locations:
+            before_drop = len(jobs)
+            jobs = drop_unknown_location_jobs(jobs)
+            print(f"Removed unknown non-remote location: {before_drop - len(jobs)}")
         jobs = add_profile_scores(jobs)
-    elif drop_far_locations:
-        jobs = drop_far_location_jobs(jobs)
+    else:
+        if drop_far_locations:
+            jobs = drop_far_location_jobs(jobs)
+        if drop_unknown_locations:
+            jobs = drop_unknown_location_jobs(jobs)
     jobs = sort_jobs(jobs)
     return balanced_top(
         jobs,
@@ -481,6 +497,7 @@ def parse_args(argv=None):
     parser.add_argument("--email-clean-results", action="store_true")
     parser.add_argument("--strict-job-detail-only", action="store_true")
     parser.add_argument("--drop-far-locations", action="store_true")
+    parser.add_argument("--drop-unknown-locations", action="store_true")
     parser.add_argument("--min-remote", type=int, default=DEFAULT_MIN_REMOTE)
     parser.add_argument("--min-hospitality", type=int, default=DEFAULT_MIN_HOSPITALITY)
     parser.add_argument("--min-cleaning", type=int, default=DEFAULT_MIN_CLEANING)
@@ -500,6 +517,7 @@ def main():
         email_clean_results=args.email_clean_results,
         strict_job_detail_only=args.strict_job_detail_only,
         drop_far_locations=args.drop_far_locations,
+        drop_unknown_locations=args.drop_unknown_locations,
         min_remote=args.min_remote,
         min_hospitality=args.min_hospitality,
         min_cleaning=args.min_cleaning,

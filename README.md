@@ -194,7 +194,11 @@ python -m src.job_aggregator \
 
 Для письма и `v2_jobs.xlsx` используйте `--email-clean-results`: этот режим удаляет search/category/aggregator/company/unknown страницы и оставляет реальные вакансии либо trusted career pages с явной ценностью. Strict clean (`--strict-job-detail-only`) сохраняет только URL с `url_result_type == real_job`.
 
-Чтобы полностью убрать дальние не-remote вакансии из email/export, добавьте `--drop-far-locations`. По умолчанию email clean не удаляет `location_fit=excluded_far`, а только опускает такие вакансии вниз.
+Чтобы полностью убрать неподходящие локации из email/export, используйте Location Guard флаги:
+- `--drop-far-locations` удаляет вакансии с `location_fit=excluded_far`;
+- `--drop-unknown-locations` удаляет `location_fit=unknown`, но сохраняет remote-вакансии.
+
+Для Yurii/student mode рекомендуется включать оба флага вместе с `--email-clean-results`, чтобы в письме оставались только `allowed_local` и `remote`.
 
 Aggregator экспортирует:
 - `output/v2_jobs.json`
@@ -607,6 +611,7 @@ V2 запускается из того же workflow `Run Job Collectors`.
    - `v2_top`: максимум вакансий в экспорте и email, по умолчанию `100`;
    - `v2_clean_results`: `true`, чтобы включить email clean перед V2 email/export;
    - `v2_drop_far_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать дальние non-remote вакансии из V2 export/email;
+   - `v2_drop_unknown_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать unknown non-remote вакансии из V2 export/email;
    - `email_enabled`: `true`, чтобы отправить V2 email.
 6. Нажмите зелёную кнопку запуска.
 
@@ -620,6 +625,7 @@ python -m src.job_aggregator \
   --campania-part-time-first \
   --email-clean-results \
   --drop-far-locations \
+  --drop-unknown-locations \
   --min-remote 20
 
 python -m src.v2_email_report \
@@ -627,7 +633,7 @@ python -m src.v2_email_report \
   --top "$v2_top"
 ```
 
-GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`. Это рекомендовано для Yurii/student mode, чтобы вакансии с `location_fit=excluded_far` не попадали в `output/v2_jobs.json`, XLSX/CSV и V2 email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
+GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
 
 V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
 
@@ -648,7 +654,7 @@ python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --
 Локальный пример для email/export:
 
 ```bash
-python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --drop-far-locations --min-remote 20
+python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --drop-far-locations --drop-unknown-locations --min-remote 20
 ```
 
 Для email нужны GitHub Actions secrets:

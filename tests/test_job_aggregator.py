@@ -125,6 +125,50 @@ def test_sorting_uses_candidate_score_as_student_tiebreaker():
     assert [item["title"] for item in sorted_jobs] == ["Higher candidate", "Lower candidate"]
 
 
+def test_drop_unknown_locations_removes_unknown_non_remote():
+    jobs = [
+        job("Unknown local-ish", location_fit="unknown", remote=False),
+        job("Allowed Napoli", location_fit="allowed_local", remote=False),
+    ]
+
+    filtered = job_aggregator.drop_unknown_location_jobs(jobs)
+
+    assert [item["title"] for item in filtered] == ["Allowed Napoli"]
+
+
+def test_drop_unknown_locations_keeps_unknown_remote():
+    jobs = [
+        job("Unknown remote", location_fit="unknown", remote=True),
+        job("Unknown non-remote", location_fit="unknown", remote=False),
+    ]
+
+    filtered = job_aggregator.drop_unknown_location_jobs(jobs)
+
+    assert [item["title"] for item in filtered] == ["Unknown remote"]
+
+
+def test_drop_unknown_locations_keeps_allowed_local():
+    jobs = [
+        job("Allowed Napoli", location_fit="allowed_local", remote=False),
+        job("Remote fit", location_fit="remote", remote=True),
+    ]
+
+    filtered = job_aggregator.drop_unknown_location_jobs(jobs)
+
+    assert [item["title"] for item in filtered] == ["Allowed Napoli", "Remote fit"]
+
+
+def test_drop_far_locations_removes_excluded_far():
+    jobs = [
+        job("Excluded far", location_fit="excluded_far", remote=False),
+        job("Allowed Napoli", location_fit="allowed_local", remote=False),
+    ]
+
+    filtered = job_aggregator.drop_far_location_jobs(jobs)
+
+    assert [item["title"] for item in filtered] == ["Allowed Napoli"]
+
+
 def test_one_collector_failure_does_not_break_aggregator(monkeypatch, capsys):
     def broken_collector(**kwargs):
         raise RuntimeError("boom")
@@ -372,6 +416,48 @@ def test_aggregate_drop_far_locations_removes_excluded_far(monkeypatch):
 
     assert [item["title"] for item in jobs] == ["Back office Napoli"]
     assert jobs[0]["location_fit"] == "allowed_local"
+
+
+def test_aggregate_drop_far_and_unknown_locations_keeps_only_allowed_local_and_remote(monkeypatch):
+    plugins = {
+        "duckduckgo": replace(
+            get_collector("duckduckgo"),
+            callable=lambda **kwargs: [
+                job(
+                    "Back office Napoli",
+                    "https://it.indeed.com/viewjob?jk=napoli",
+                    location="Napoli",
+                ),
+                job(
+                    "Remote data",
+                    "https://it.indeed.com/viewjob?jk=remote",
+                    location="Italia",
+                    remote=True,
+                ),
+                job(
+                    "Back office Zola Predosa",
+                    "https://it.indeed.com/viewjob?jk=zola",
+                    location="Zola Predosa",
+                ),
+                job(
+                    "Back office Milano",
+                    "https://it.indeed.com/viewjob?jk=milano",
+                    location="Milano",
+                ),
+            ],
+        ),
+    }
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugins.get(name))
+
+    jobs = job_aggregator.aggregate_jobs(
+        ["duckduckgo"],
+        email_clean_results=True,
+        drop_far_locations=True,
+        drop_unknown_locations=True,
+    )
+
+    assert {item["title"] for item in jobs} == {"Back office Napoli", "Remote data"}
+    assert {item["location_fit"] for item in jobs} == {"allowed_local", "remote"}
 
 
 def test_aggregate_strict_clean_keeps_only_real_jobs(monkeypatch):

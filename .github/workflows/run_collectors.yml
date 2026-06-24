@@ -39,6 +39,14 @@ on:
         options:
           - "true"
           - "false"
+      v2_drop_unknown_locations:
+        description: Drop unknown non-remote locations from V2 results
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 permissions:
   contents: write
@@ -90,13 +98,18 @@ jobs:
           if [ "${{ inputs.v2_drop_far_locations }}" = "true" ]; then
             DROP_FAR_ARGS="--drop-far-locations"
           fi
+          DROP_UNKNOWN_ARGS=""
+          if [ "${{ inputs.v2_drop_unknown_locations }}" = "true" ]; then
+            DROP_UNKNOWN_ARGS="--drop-unknown-locations"
+          fi
           python -m src.job_aggregator \
             --output output/v2_jobs.json \
             --limit "${{ inputs.v2_limit }}" \
             --top "${{ inputs.v2_top }}" \
             --campania-part-time-first \
             $CLEAN_ARGS \
-            $DROP_FAR_ARGS
+            $DROP_FAR_ARGS \
+            $DROP_UNKNOWN_ARGS
           python -m src.v2_email_report \
             --input output/v2_jobs.json \
             --top "${{ inputs.v2_top }}"

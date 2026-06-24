@@ -192,6 +192,7 @@ def sort_jobs(jobs):
         key=lambda job: (
             -int(job.get("match_score") or 0),
             -int(job.get("student_score") or 0),
+            -int(job.get("candidate_score") or 0),
             -int(job.get("score") or 0),
         ),
     )
@@ -203,6 +204,7 @@ def sort_by_score(jobs):
         key=lambda job: (
             -int(job.get("match_score") or 0),
             -int(job.get("student_score") or 0),
+            -int(job.get("candidate_score") or 0),
             -int(job.get("score") or 0),
         ),
     )

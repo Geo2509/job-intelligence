@@ -139,36 +139,79 @@ def grouped_jobs(jobs):
     return groups
 
 
+def score_value(job, field):
+    try:
+        return int(job.get(field) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def sorted_jobs(jobs):
+    return sorted(
+        jobs,
+        key=lambda job: (
+            -score_value(job, "match_score"),
+            -score_value(job, "student_score"),
+            -score_value(job, "candidate_score"),
+            -score_value(job, "score"),
+        ),
+    )
+
+
+def match_label(match_score):
+    if match_score >= 90:
+        return "⭐⭐⭐⭐⭐ Strong match"
+    if match_score >= 80:
+        return "⭐⭐⭐⭐ Good match"
+    return "⭐⭐⭐ Consider"
+
+
+def email_summary(jobs):
+    top_match_score = max((score_value(job, "match_score") for job in jobs), default=0)
+    recommended_count = sum(
+        1
+        for job in jobs
+        if score_value(job, "match_score") >= 80
+    )
+    return top_match_score, recommended_count
+
+
 def render_job(job):
     title = html.escape(str(job.get("title", "") or ""))
     company = html.escape(str(job.get("company", "") or ""))
     location = html.escape(str(job.get("location", "") or ""))
     score = html.escape(str(job.get("score", "") or ""))
+    raw_match_score = score_value(job, "match_score")
     match_score = html.escape(str(job.get("match_score", "") or ""))
     student_score = html.escape(str(job.get("student_score", "") or ""))
     candidate_score = html.escape(str(job.get("candidate_score", "") or ""))
+    location_fit = html.escape(str(job.get("location_fit", "") or ""))
     category = html.escape(str(job.get("category", "") or ""))
     source = html.escape(str(job.get("source", "") or ""))
     url = html.escape(str(job.get("url", "") or ""), quote=True)
-    match_line = f"⭐⭐⭐⭐⭐ Match {match_score}%" if match_score else "⭐⭐⭐⭐⭐ Match"
+    match = html.escape(match_label(raw_match_score))
 
     return (
         "<li>"
         f"<h3>{title}</h3>"
-        f"<p><strong>{match_line}</strong></p>"
-        f"<p><strong>student:</strong> {student_score}</p>"
-        f"<p><strong>candidate:</strong> {candidate_score}</p>"
-        f"<p><strong>source:</strong> {source}</p>"
+        f"<p><strong>{match}</strong></p>"
+        f"<p><strong>Match:</strong> {match_score}</p>"
+        f"<p><strong>Student:</strong> {student_score}</p>"
+        f"<p><strong>Candidate:</strong> {candidate_score}</p>"
+        f"<p><strong>Location fit:</strong> {location_fit}</p>"
+        f"<p><strong>Source:</strong> {source}</p>"
+        f"<p><strong>Category:</strong> {category}</p>"
+        f'<p><strong>URL:</strong> <a href="{url}">{url}</a></p>'
         f"<p><strong>Company:</strong> {company}</p>"
         f"<p><strong>Location:</strong> {location}</p>"
         f"<p><strong>Score:</strong> {score}</p>"
-        f"<p><strong>Category:</strong> {category}</p>"
-        f'<p><strong>URL:</strong> <a href="{url}">{url}</a></p>'
         "</li>"
     )
 
 
 def build_email_html(jobs):
+    jobs = sorted_jobs(jobs)
+    top_match_score, recommended_count = email_summary(jobs)
     groups = grouped_jobs(jobs)
     blocks = []
     for block in BLOCKS:
@@ -183,6 +226,8 @@ def build_email_html(jobs):
         "<html><body>"
         "<h1>Job Intelligence V2</h1>"
         f"<p><strong>Total jobs in email:</strong> {len(jobs)}</p>"
+        f"<p><strong>Top match score:</strong> {top_match_score}</p>"
+        f"<p><strong>Recommended to apply today:</strong> {recommended_count}</p>"
         f"{''.join(blocks)}"
         "</body></html>"
     )
@@ -202,7 +247,7 @@ def send_html_email(subject, body):
 
 
 def send_v2_email_report(input_path=DEFAULT_INPUT_PATH, top=DEFAULT_TOP):
-    jobs = load_jobs(input_path)[:top]
+    jobs = sorted_jobs(load_jobs(input_path))[:top]
     if not jobs:
         print("No V2 jobs to email")
         return False

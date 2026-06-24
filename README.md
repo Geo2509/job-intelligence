@@ -148,7 +148,7 @@ python -m src.collectors.adecco_jobs \
 
 ### Job Aggregator V2
 
-`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed`, `subito`, `randstad` и `adecco`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score`, `candidate_score` и `match_score`, затем сортирует вакансии по `match_score`, `student_score` и обычному `score` по убыванию.
+`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed`, `subito`, `randstad` и `adecco`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score`, `candidate_score` и `match_score`, затем сортирует вакансии по `match_score`, `student_score`, `candidate_score` и обычному `score` по убыванию.
 
 Пример запуска:
 
@@ -205,7 +205,7 @@ V2 aggregator добавляет `location_fit` и `student_score` в JSON, CSV 
 match_score = 0.45 * student_score + 0.55 * candidate_score
 ```
 
-Значение округляется до `int` и экспортируется вместе с `candidate_score` в JSON, CSV и XLSX. V2 aggregator сортирует результат по `match_score`, затем `student_score`, затем обычному `score`.
+Значение округляется до `int` и экспортируется вместе с `candidate_score` в JSON, CSV и XLSX. V2 aggregator сортирует результат по `match_score`, затем `student_score`, затем `candidate_score`, затем обычному `score`.
 
 ### V2 Result Cleaner
 
@@ -643,6 +643,8 @@ EMAIL_TO
 ```
 
 V2 письмо отправляется только если `email_enabled=true`, `EMAIL_ENABLED=true` в окружении workflow и все SMTP secrets заполнены. Если `output/v2_jobs.json` пустой, письмо не отправляется, а в лог выводится `No V2 jobs to email`.
+
+V2 email показывает summary по письму (`Total jobs in email`, `Top match score`, `Recommended to apply today`) и для каждой вакансии выводит `match_score`, `student_score`, `candidate_score`, `location_fit`, source, category и URL. Вакансии в письме сортируются по `match_score`, затем `student_score`, `candidate_score` и обычному `score`.
 
 Тема V2 письма:
 

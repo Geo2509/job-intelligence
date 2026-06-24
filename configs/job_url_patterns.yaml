@@ -52,11 +52,15 @@ randstad:
   domains:
     - www.randstad.it
     - randstad.it
+  search_before_job: true
   job_all:
     - "/offerte-lavoro/"
     - "_"
   search:
     - "/offerte-lavoro/"
+    - "/offerte-lavoro/s-"
+    - "/page-"
+    - "/offerte-lavoro/s-customer-service"
     - "/offerte-lavoro/q-"
     - "/offerte-lavoro/re-"
     - "/offerte-lavoro/ci-"

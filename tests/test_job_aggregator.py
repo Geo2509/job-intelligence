@@ -65,7 +65,7 @@ def test_fallback_dedup_by_title_company_location():
     assert len(deduped) == 1
 
 
-def test_sorting_prioritizes_match_score_then_student_score_then_score():
+def test_sorting_prioritizes_match_score_then_student_score_then_candidate_score_then_score():
     remote = job(
         "Remote data entry",
         remote=True,
@@ -102,6 +102,27 @@ def test_sorting_uses_student_score_as_match_tiebreaker():
     sorted_jobs = job_aggregator.sort_jobs([lower_student, higher_student])
 
     assert [item["title"] for item in sorted_jobs] == ["Higher student", "Lower student"]
+
+
+def test_sorting_uses_candidate_score_as_student_tiebreaker():
+    lower_candidate = job(
+        "Lower candidate",
+        score=100,
+        match_score=90,
+        student_score=80,
+        candidate_score=70,
+    )
+    higher_candidate = job(
+        "Higher candidate",
+        score=10,
+        match_score=90,
+        student_score=80,
+        candidate_score=90,
+    )
+
+    sorted_jobs = job_aggregator.sort_jobs([lower_candidate, higher_candidate])
+
+    assert [item["title"] for item in sorted_jobs] == ["Higher candidate", "Lower candidate"]
 
 
 def test_one_collector_failure_does_not_break_aggregator(monkeypatch, capsys):

@@ -22,6 +22,7 @@ def job(title, **extra):
         "student_score": extra.pop("student_score", 90),
         "candidate_score": extra.pop("candidate_score", 100),
         "match_score": extra.pop("match_score", 95),
+        "location_fit": extra.pop("location_fit", "allowed_local"),
     }
     data.update(extra)
     return data
@@ -96,6 +97,36 @@ def test_top_limit_is_applied(tmp_path):
     assert "Second" not in body
 
 
+def test_top_limit_is_applied_after_match_sort(tmp_path):
+    input_path = write_jobs(
+        tmp_path,
+        [
+            job("Lower match", match_score=70, student_score=99, candidate_score=99),
+            job("Higher match", match_score=95, student_score=80, candidate_score=80),
+        ],
+    )
+
+    with patch.dict(
+        "os.environ",
+        {
+            "EMAIL_ENABLED": "true",
+            "EMAIL_SMTP_HOST": "smtp.example.com",
+            "EMAIL_SMTP_PORT": "587",
+            "EMAIL_SMTP_USER": "user",
+            "EMAIL_SMTP_PASSWORD": "password",
+            "EMAIL_FROM": "from@example.com",
+            "EMAIL_TO": "to@example.com",
+        },
+        clear=False,
+    ), patch("src.v2_email_report.send_html_email") as send_html_email:
+        was_sent = v2_email_report.send_v2_email_report(input_path, top=1)
+
+    assert was_sent is True
+    body = send_html_email.call_args.args[1]
+    assert "Higher match" in body
+    assert "Lower match" not in body
+
+
 def test_email_body_contains_required_job_fields():
     body = v2_email_report.build_email_html(
         [
@@ -104,18 +135,39 @@ def test_email_body_contains_required_job_fields():
                 score=91,
                 source="indeed",
                 url="https://example.com/data-entry",
+                location_fit="allowed_local",
             )
         ]
     )
 
     assert "Data Entry Napoli" in body
     assert "https://example.com/data-entry" in body
-    assert "⭐⭐⭐⭐⭐ Match 95%" in body
-    assert "student:" in body
-    assert "candidate:" in body
-    assert "source:" in body
+    assert "⭐⭐⭐⭐⭐ Strong match" in body
+    assert "<strong>Match:</strong> 95" in body
+    assert "<strong>Student:</strong> 90" in body
+    assert "<strong>Candidate:</strong> 100" in body
+    assert "<strong>Location fit:</strong> allowed_local" in body
+    assert "<strong>Source:</strong> indeed" in body
+    assert "<strong>Category:</strong> general" in body
     assert "91" in body
     assert "indeed" in body
+
+
+def test_email_body_contains_summary_metrics():
+    body = v2_email_report.build_email_html(
+        [
+            job("Strong", match_score=91),
+            job("Good", match_score=80),
+            job("Consider", match_score=79),
+        ]
+    )
+
+    assert "<strong>Total jobs in email:</strong> 3" in body
+    assert "<strong>Top match score:</strong> 91" in body
+    assert "<strong>Recommended to apply today:</strong> 2" in body
+    assert "⭐⭐⭐⭐⭐ Strong match" in body
+    assert "⭐⭐⭐⭐ Good match" in body
+    assert "⭐⭐⭐ Consider" in body
 
 
 def test_subject_is_correct(tmp_path):

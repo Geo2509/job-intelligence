@@ -69,6 +69,13 @@ def pattern_matches(target, pattern):
     return str(pattern or "").lower() in target
 
 
+def search_before_job_match(target, pattern):
+    pattern = str(pattern or "").lower()
+    if pattern == "/offerte-lavoro/":
+        return target.rstrip("/") == pattern.rstrip("/")
+    return pattern_matches(target, pattern)
+
+
 def more_specific_search_match(target, job_patterns, search_patterns):
     matching_search = [
         str(pattern or "").lower()
@@ -84,6 +91,17 @@ def more_specific_search_match(target, job_patterns, search_patterns):
         search_pattern.startswith(job_pattern) and len(search_pattern) > len(job_pattern)
         for search_pattern in matching_search
         for job_pattern in matching_job
+    )
+
+
+def segment_search_match(target, search_patterns):
+    if "/page-" not in target:
+        return False
+
+    return any(
+        pattern_matches(target, pattern)
+        for pattern in search_patterns or []
+        if str(pattern or "").lower() != "/page-"
     )
 
 
@@ -104,6 +122,12 @@ def classify_url(url, patterns):
 
         job_patterns = source_patterns.get("job", [])
         search_patterns = source_patterns.get("search", [])
+        if source_name == "randstad" and source_patterns.get("search_before_job"):
+            for pattern in search_patterns:
+                if search_before_job_match(target, pattern):
+                    return "search_page"
+            if segment_search_match(target, search_patterns):
+                return "search_page"
         if more_specific_search_match(target, job_patterns, search_patterns):
             return "search_page"
         if source_patterns.get("job_all") and all(

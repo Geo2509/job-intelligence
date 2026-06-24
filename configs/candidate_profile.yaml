@@ -1,0 +1,41 @@
+candidate:
+  languages:
+    italian: A2
+    english: B1
+    ukrainian: native
+    russian: native
+  education:
+    - engineering_degree
+    - gol_administration
+    - sia_in_progress
+  experience:
+    logistics_years: 15
+    administration_years: 3
+    office_years: 3
+    data_processing_years: 3
+  skills:
+    - excel
+    - google sheets
+    - python
+    - pandas
+    - data entry
+    - administration
+    - logistics
+    - documentation
+    - reporting
+    - office
+    - customer service
+    - freight forwarding
+    - shipping
+  preferred_roles:
+    - data entry
+    - back office
+    - receptionist
+    - administration
+    - hotel reception
+    - office assistant
+    - customer service
+    - logistics
+    - warehouse
+    - hotel
+    - gdo

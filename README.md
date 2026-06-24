@@ -148,7 +148,7 @@ python -m src.collectors.adecco_jobs \
 
 ### Job Aggregator V2
 
-`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed`, `subito`, `randstad` и `adecco`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score` и сортирует вакансии по `student_score`, затем по `score` по убыванию.
+`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed`, `subito`, `randstad` и `adecco`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score`, `candidate_score` и `match_score`, затем сортирует вакансии по `match_score`, `student_score` и обычному `score` по убыванию.
 
 Пример запуска:
 
@@ -191,7 +191,21 @@ Aggregator экспортирует:
 
 Location Guard добавляет поле `location_fit`: `remote`, `allowed_local`, `excluded_far` или `unknown`. Remote и локальные вакансии Campania/Napoli идут выше, неизвестные локации ниже, а явно далёкие города вроде Milano, Roma, Bologna, Prato и Valsamoggia уходят в конец. Для `excluded_far` `student_score` ограничен максимумом `40`, для `unknown` максимумом `70`; remote-вакансии могут получать высокий score.
 
-V2 aggregator добавляет `location_fit` и `student_score` в JSON, CSV и XLSX exports и сортирует вакансии по `location_fit`, затем по `student_score`, затем по обычному `score`.
+V2 aggregator добавляет `location_fit` и `student_score` в JSON, CSV и XLSX exports. `student_score` также участвует в итоговом `match_score`.
+
+### Candidate Profile Engine
+
+`src/candidate_profile.py` добавляет персональную оценку `candidate_score` для конкретного кандидата из `configs/candidate_profile.yaml`. Профиль описывает языки, образование, опыт, навыки и preferred roles: data entry, back office, reception, administration, hotel, logistics, warehouse и GDO.
+
+Оценка работает только по правилам. Базовое значение — `50`; бонусы начисляются за Data Entry, Back Office, Office, Administration, Reception, Excel, Google Sheets, Python, Logistics, Warehouse, Customer Service, Hotel, stage и part-time. Требование English до B1 не штрафуется. Требования Italian B2/C1, laurea obbligatoria, 5+ лет специфического опыта, night shift и only C1 English снижают оценку.
+
+Итоговый `match_score` показывает общий match вакансии под ситуацию и кандидата:
+
+```text
+match_score = 0.45 * student_score + 0.55 * candidate_score
+```
+
+Значение округляется до `int` и экспортируется вместе с `candidate_score` в JSON, CSV и XLSX. V2 aggregator сортирует результат по `match_score`, затем `student_score`, затем обычному `score`.
 
 ### V2 Result Cleaner
 

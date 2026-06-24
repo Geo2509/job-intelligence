@@ -19,6 +19,9 @@ def job(title, **extra):
         "remote": extra.pop("remote", False),
         "part_time": extra.pop("part_time", False),
         "priority_bucket": extra.pop("priority_bucket", "other"),
+        "student_score": extra.pop("student_score", 90),
+        "candidate_score": extra.pop("candidate_score", 100),
+        "match_score": extra.pop("match_score", 95),
     }
     data.update(extra)
     return data
@@ -107,6 +110,10 @@ def test_email_body_contains_required_job_fields():
 
     assert "Data Entry Napoli" in body
     assert "https://example.com/data-entry" in body
+    assert "⭐⭐⭐⭐⭐ Match 95%" in body
+    assert "student:" in body
+    assert "candidate:" in body
+    assert "source:" in body
     assert "91" in body
     assert "indeed" in body
 

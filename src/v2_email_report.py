@@ -144,18 +144,25 @@ def render_job(job):
     company = html.escape(str(job.get("company", "") or ""))
     location = html.escape(str(job.get("location", "") or ""))
     score = html.escape(str(job.get("score", "") or ""))
+    match_score = html.escape(str(job.get("match_score", "") or ""))
+    student_score = html.escape(str(job.get("student_score", "") or ""))
+    candidate_score = html.escape(str(job.get("candidate_score", "") or ""))
     category = html.escape(str(job.get("category", "") or ""))
     source = html.escape(str(job.get("source", "") or ""))
     url = html.escape(str(job.get("url", "") or ""), quote=True)
+    match_line = f"⭐⭐⭐⭐⭐ Match {match_score}%" if match_score else "⭐⭐⭐⭐⭐ Match"
 
     return (
         "<li>"
         f"<h3>{title}</h3>"
+        f"<p><strong>{match_line}</strong></p>"
+        f"<p><strong>student:</strong> {student_score}</p>"
+        f"<p><strong>candidate:</strong> {candidate_score}</p>"
+        f"<p><strong>source:</strong> {source}</p>"
         f"<p><strong>Company:</strong> {company}</p>"
         f"<p><strong>Location:</strong> {location}</p>"
         f"<p><strong>Score:</strong> {score}</p>"
         f"<p><strong>Category:</strong> {category}</p>"
-        f"<p><strong>Source:</strong> {source}</p>"
         f'<p><strong>URL:</strong> <a href="{url}">{url}</a></p>'
         "</li>"
     )

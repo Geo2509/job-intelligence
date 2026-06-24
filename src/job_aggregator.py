@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from src.candidate_profile import calculate_match_score, evaluate_candidate_score
 from src.job_collector_registry import enabled_collectors, get_collector
 from src.job_matching import (
     combined_text,
@@ -53,6 +54,8 @@ OUTPUT_FIELDS = [
     "priority_bucket",
     "location_fit",
     "student_score",
+    "candidate_score",
+    "match_score",
     "score",
     "found_at",
 ]
@@ -124,7 +127,7 @@ def run_collector(name, limit, top, campania_part_time_first):
         return []
 
 
-def normalize_job(job, include_student_score=True):
+def normalize_job(job, include_profile_scores=True):
     job = dict(job)
     title = job.get("title", "")
     company = job.get("company", "")
@@ -141,8 +144,10 @@ def normalize_job(job, include_student_score=True):
     job["category"] = job.get("category") or detect_category(title, snippet, query)
     job["score"] = int(job.get("score") or score_job(title, snippet, query))
     job["location_fit"] = detect_location_fit(job, load_student_profile())
-    if include_student_score:
+    if include_profile_scores:
         job["student_score"] = int(evaluate_student_score(job))
+        job["candidate_score"] = int(evaluate_candidate_score(job))
+        job["match_score"] = calculate_match_score(job["student_score"], job["candidate_score"])
     job["priority_bucket"] = detect_priority_bucket(
         searchable,
         job["part_time"],
@@ -185,7 +190,7 @@ def sort_jobs(jobs):
     return sorted(
         jobs,
         key=lambda job: (
-            location_fit_order(job),
+            -int(job.get("match_score") or 0),
             -int(job.get("student_score") or 0),
             -int(job.get("score") or 0),
         ),
@@ -196,19 +201,21 @@ def sort_by_score(jobs):
     return sorted(
         jobs,
         key=lambda job: (
-            location_fit_order(job),
+            -int(job.get("match_score") or 0),
             -int(job.get("student_score") or 0),
             -int(job.get("score") or 0),
         ),
     )
 
 
-def add_student_scores(jobs):
+def add_profile_scores(jobs):
     scored = []
     for job in jobs:
         job = dict(job)
         job["location_fit"] = job.get("location_fit") or detect_location_fit(job, load_student_profile())
         job["student_score"] = int(evaluate_student_score(job))
+        job["candidate_score"] = int(evaluate_candidate_score(job))
+        job["match_score"] = calculate_match_score(job["student_score"], job["candidate_score"])
         scored.append(job)
     return scored
 
@@ -332,7 +339,7 @@ def aggregate_jobs(
         collector_jobs = run_collector(name, limit, top, campania_part_time_first)
         print(f"Collector {name} returned: {len(collector_jobs)} jobs")
         jobs.extend(
-            normalize_job(job, include_student_score=not should_clean_results)
+            normalize_job(job, include_profile_scores=not should_clean_results)
             for job in collector_jobs
         )
 
@@ -348,7 +355,7 @@ def aggregate_jobs(
             before_drop = len(jobs)
             jobs = drop_far_location_jobs(jobs)
             print(f"Removed excluded_far location: {before_drop - len(jobs)}")
-        jobs = add_student_scores(jobs)
+        jobs = add_profile_scores(jobs)
     elif drop_far_locations:
         jobs = drop_far_location_jobs(jobs)
     jobs = sort_jobs(jobs)

@@ -588,6 +588,7 @@ V2 запускается из того же workflow `Run Job Collectors`.
    - `v2_limit`: сколько результатов брать у коллектора, по умолчанию `2`;
    - `v2_top`: максимум вакансий в экспорте и email, по умолчанию `100`;
    - `v2_clean_results`: `true`, чтобы включить email clean перед V2 email/export;
+   - `v2_drop_far_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать дальние non-remote вакансии из V2 export/email;
    - `email_enabled`: `true`, чтобы отправить V2 email.
 6. Нажмите зелёную кнопку запуска.
 
@@ -600,6 +601,7 @@ python -m src.job_aggregator \
   --top "$v2_top" \
   --campania-part-time-first \
   --email-clean-results \
+  --drop-far-locations \
   --min-remote 20
 
 python -m src.v2_email_report \
@@ -607,7 +609,7 @@ python -m src.v2_email_report \
   --top "$v2_top"
 ```
 
-GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и не добавляет `--strict-job-detail-only`. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
+GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`. Это рекомендовано для Yurii/student mode, чтобы вакансии с `location_fit=excluded_far` не попадали в `output/v2_jobs.json`, XLSX/CSV и V2 email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
 
 V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
 
@@ -628,7 +630,7 @@ python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --
 Локальный пример для email/export:
 
 ```bash
-python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --min-remote 20
+python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --drop-far-locations --min-remote 20
 ```
 
 Для email нужны GitHub Actions secrets:

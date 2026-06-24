@@ -31,6 +31,14 @@ on:
         description: Clean V2 search-result pages before export
         required: true
         default: "true"
+      v2_drop_far_locations:
+        description: Drop far non-remote locations from V2 results
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 permissions:
   contents: write
@@ -78,12 +86,17 @@ jobs:
           if [ "${{ inputs.v2_clean_results }}" = "true" ]; then
             CLEAN_ARGS="--email-clean-results"
           fi
+          DROP_FAR_ARGS=""
+          if [ "${{ inputs.v2_drop_far_locations }}" = "true" ]; then
+            DROP_FAR_ARGS="--drop-far-locations"
+          fi
           python -m src.job_aggregator \
             --output output/v2_jobs.json \
             --limit "${{ inputs.v2_limit }}" \
             --top "${{ inputs.v2_top }}" \
             --campania-part-time-first \
-            $CLEAN_ARGS
+            $CLEAN_ARGS \
+            $DROP_FAR_ARGS
           python -m src.v2_email_report \
             --input output/v2_jobs.json \
             --top "${{ inputs.v2_top }}"

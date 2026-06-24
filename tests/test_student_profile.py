@@ -180,6 +180,15 @@ def test_url_pozzuolo_martesana_is_excluded_far():
     assert fit == "excluded_far"
 
 
+def test_url_livorno_is_excluded_far():
+    fit = detect_location_fit({
+        "title": "Impiegato data entry",
+        "url": "https://www.randstad.it/offerte-lavoro/impiegato-data-entry_livorno_123/",
+    }, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
 def test_url_napoli_is_allowed_local():
     fit = detect_location_fit({
         "title": "Back office",

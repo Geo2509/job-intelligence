@@ -170,6 +170,14 @@ def test_email_body_contains_summary_metrics():
     assert "⭐⭐⭐ Consider" in body
 
 
+def test_email_body_contains_history_status_label():
+    body = v2_email_report.build_email_html([
+        job("Fresh job", history_status="NEW")
+    ])
+
+    assert "🔥 NEW" in body
+
+
 def test_subject_is_correct(tmp_path):
     input_path = write_jobs(tmp_path, [job("Data Entry Napoli")])
 

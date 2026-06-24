@@ -166,6 +166,15 @@ def match_label(match_score):
     return "⭐⭐⭐ Consider"
 
 
+def history_status_label(status):
+    return {
+        "NEW": "🔥 NEW",
+        "UPDATED": "♻️ UPDATED",
+        "RESURFACED": "↩️ RESURFACED",
+        "SEEN": "SEEN",
+    }.get(str(status or ""), "")
+
+
 def email_summary(jobs):
     top_match_score = max((score_value(job, "match_score") for job in jobs), default=0)
     recommended_count = sum(
@@ -190,10 +199,13 @@ def render_job(job):
     source = html.escape(str(job.get("source", "") or ""))
     url = html.escape(str(job.get("url", "") or ""), quote=True)
     match = html.escape(match_label(raw_match_score))
+    history_status = html.escape(history_status_label(job.get("history_status")))
+    status_line = f"<p><strong>Status:</strong> {history_status}</p>" if history_status else ""
 
     return (
         "<li>"
         f"<h3>{title}</h3>"
+        f"{status_line}"
         f"<p><strong>{match}</strong></p>"
         f"<p><strong>Match:</strong> {match_score}</p>"
         f"<p><strong>Student:</strong> {student_score}</p>"

@@ -205,6 +205,26 @@ Aggregator экспортирует:
 - `output/v2_jobs.csv`
 - `output/v2_jobs.xlsx`
 
+### V2 Sent Jobs History
+
+V2 aggregator ведёт историю отправленных вакансий в `output/v2_sent_jobs_history.json`. История помогает не занимать следующие письма теми же объявлениями: по умолчанию `NEW` и `UPDATED` вакансии попадают в export/email, `SEEN` пропускаются, а `RESURFACED` снова допускаются после `--skip-seen-days`.
+
+Стабильный `job_id` считается по нормализованному URL, а если URL нет — по `source + title + company + location`. `content_hash` считается по `title`, `company`, `location`, `category`, `match_score` и URL. Если `content_hash` изменился, вакансия получает статус `UPDATED`.
+
+Возможные `history_status`:
+- `NEW` — вакансии нет в истории;
+- `UPDATED` — `job_id` есть, но содержимое изменилось;
+- `SEEN` — вакансия уже отправлялась и не изменилась;
+- `RESURFACED` — вакансия не изменилась, но `last_sent` старше `--skip-seen-days`.
+
+Основные CLI-параметры:
+- `--history-path output/v2_sent_jobs_history.json`;
+- `--skip-seen-days 7`;
+- `--max-seen-repeat 1`;
+- `--include-seen false` или `--include-seen true`.
+
+После успешного export aggregator обновляет историю только для вакансий, реально попавших в `output/v2_jobs.json`, и пишет summary в `output/v2_run_stats.json`.
+
 ### Student Profile Engine
 
 `src/student_profile.py` добавляет персонализированную оценку `student_score` для пользователя из Monte di Procida, который планирует вечернее обучение в Napoli и ищет работу, совместимую с учёбой. Профиль хранится в `configs/student_profile.yaml`.
@@ -626,6 +646,7 @@ python -m src.job_aggregator \
   --email-clean-results \
   --drop-far-locations \
   --drop-unknown-locations \
+  --history-path output/v2_sent_jobs_history.json \
   --min-remote 20
 
 python -m src.v2_email_report \
@@ -633,7 +654,7 @@ python -m src.v2_email_report \
   --top "$v2_top"
 ```
 
-GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
+GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Workflow также использует `output/v2_sent_jobs_history.json`, пишет `output/v2_run_stats.json` и коммитит обновлённую V2 history после успешной отправки email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
 
 V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
 
@@ -654,7 +675,7 @@ python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --
 Локальный пример для email/export:
 
 ```bash
-python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --drop-far-locations --drop-unknown-locations --min-remote 20
+python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --drop-far-locations --drop-unknown-locations --history-path output/v2_sent_jobs_history.json --min-remote 20
 ```
 
 Для email нужны GitHub Actions secrets:
@@ -670,7 +691,7 @@ EMAIL_TO
 
 V2 письмо отправляется только если `email_enabled=true`, `EMAIL_ENABLED=true` в окружении workflow и все SMTP secrets заполнены. Если `output/v2_jobs.json` пустой, письмо не отправляется, а в лог выводится `No V2 jobs to email`.
 
-V2 email показывает summary по письму (`Total jobs in email`, `Top match score`, `Recommended to apply today`) и для каждой вакансии выводит `match_score`, `student_score`, `candidate_score`, `location_fit`, source, category и URL. Вакансии в письме сортируются по `match_score`, затем `student_score`, `candidate_score` и обычному `score`.
+V2 email показывает summary по письму (`Total jobs in email`, `Top match score`, `Recommended to apply today`) и для каждой вакансии выводит `history_status`, `match_score`, `student_score`, `candidate_score`, `location_fit`, source, category и URL. Вакансии в письме сортируются по `history_status`, затем `match_score`, `student_score`, `candidate_score` и обычному `score`.
 
 Тема V2 письма:
 
@@ -683,6 +704,8 @@ Job Intelligence V2: Campania Part-Time + Remote Jobs
 - `output/v2_jobs.json`;
 - `output/v2_jobs.csv`;
 - `output/v2_jobs.xlsx`.
+- `output/v2_sent_jobs_history.json`;
+- `output/v2_run_stats.json`.
 
 ### Email-отчёт
 

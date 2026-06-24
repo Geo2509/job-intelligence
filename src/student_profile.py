@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import yaml
 
@@ -102,8 +103,20 @@ def profile_config(profile):
     return profile.get("profile", profile or {})
 
 
+def normalized_match_text(value):
+    text = str(value or "").lower()
+    text = re.sub(r"[-_'/]+", " ", text)
+    text = re.sub(r"[^a-z0-9àèéìòù]+", " ", text)
+    return " ".join(text.split())
+
+
 def text_has_any(text, terms):
-    return any(str(term or "").strip().lower() in text for term in terms or [])
+    normalized_text = normalized_match_text(text)
+    normalized_terms = [
+        normalized_match_text(term)
+        for term in terms or []
+    ]
+    return any(term in normalized_text for term in normalized_terms if term)
 
 
 def detect_location_fit(job, profile):
@@ -111,11 +124,11 @@ def detect_location_fit(job, profile):
     remote_text = " ".join(
         str(job.get(field, "") or "")
         for field in ("title", "url", "query")
-    ).lower()
+    )
     local_text = " ".join(
         str(job.get(field, "") or "")
         for field in ("location", "title", "url")
-    ).lower()
+    )
 
     if bool(job.get("remote")) or text_has_any(remote_text, REMOTE_TERMS):
         return "remote"

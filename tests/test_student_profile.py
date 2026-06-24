@@ -142,3 +142,57 @@ def test_unknown_location_student_score_is_capped():
     })
 
     assert score <= 70
+
+
+def test_url_lonate_pozzolo_is_excluded_far():
+    fit = detect_location_fit({
+        "title": "Magazziniere",
+        "url": "https://www.randstad.it/offerte-lavoro/magazziniere_lonate-pozzolo_123/",
+    }, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_url_san_giuliano_milanese_is_excluded_far():
+    fit = detect_location_fit({
+        "title": "Back office",
+        "url": "https://www.randstad.it/offerte-lavoro/back-office_san-giuliano-milanese_123/",
+    }, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_url_castello_d_argile_is_excluded_far():
+    fit = detect_location_fit({
+        "title": "Impiegato",
+        "url": "https://www.randstad.it/offerte-lavoro/impiegato_castello-d-argile_123/",
+    }, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_url_pozzuolo_martesana_is_excluded_far():
+    fit = detect_location_fit({
+        "title": "Receptionist",
+        "url": "https://www.randstad.it/offerte-lavoro/receptionist_pozzuolo-martesana_123/",
+    }, load_student_profile())
+
+    assert fit == "excluded_far"
+
+
+def test_url_napoli_is_allowed_local():
+    fit = detect_location_fit({
+        "title": "Back office",
+        "url": "https://www.randstad.it/offerte-lavoro/back-office_napoli_123/",
+    }, load_student_profile())
+
+    assert fit == "allowed_local"
+
+
+def test_url_bacoli_is_allowed_local():
+    fit = detect_location_fit({
+        "title": "Pulizie",
+        "url": "https://www.randstad.it/offerte-lavoro/pulizie_bacoli_123/",
+    }, load_student_profile())
+
+    assert fit == "allowed_local"

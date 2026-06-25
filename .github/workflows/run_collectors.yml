@@ -79,16 +79,8 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python -m src.main --queries "${{ inputs.queries_file }}" --scoring "${{ inputs.scoring_file }}"
 
-      - name: Run V2 jobs pipeline
+      - name: Run V2 job aggregator
         if: ${{ inputs.run_v2_jobs == 'true' }}
-        env:
-          EMAIL_ENABLED: ${{ inputs.email_enabled }}
-          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
-          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
-          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
-          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
           CLEAN_ARGS=""
           if [ "${{ inputs.v2_clean_results }}" = "true" ]; then
@@ -110,6 +102,31 @@ jobs:
             $CLEAN_ARGS \
             $DROP_FAR_ARGS \
             $DROP_UNKNOWN_ARGS
+
+      - name: Verify V2 Candidate Pool artifacts
+        if: ${{ inputs.run_v2_jobs == 'true' }}
+        run: |
+          for artifact in \
+            output/v2_candidate_pool.json \
+            output/v2_candidate_pool.xlsx \
+            output/v2_collector_stats.json \
+            output/v2_collector_stats.xlsx
+          do
+            test -f "$artifact"
+            echo "Verified $artifact"
+          done
+
+      - name: Send V2 email report
+        if: ${{ inputs.run_v2_jobs == 'true' }}
+        env:
+          EMAIL_ENABLED: ${{ inputs.email_enabled }}
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: |
           python -m src.v2_email_report \
             --input output/v2_jobs.json \
             --top "${{ inputs.v2_top }}"
@@ -132,6 +149,7 @@ jobs:
           fi
 
       - name: Upload job results
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: job-results

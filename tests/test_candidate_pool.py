@@ -1,7 +1,9 @@
 import json
 import zipfile
+from dataclasses import replace
 
 from src import candidate_pool, job_aggregator
+from src.job_collector_registry import get_collector
 
 
 def job(title="Back office Napoli", url="https://it.indeed.com/viewjob?jk=1", **extra):
@@ -136,3 +138,46 @@ def test_action_is_preserved_between_exports(tmp_path):
 
     assert exported[0]["action"] == "Applied"
     assert json.loads(output_path.read_text(encoding="utf-8"))[0]["action"] == "Applied"
+
+
+def test_job_aggregator_main_creates_candidate_pool_artifacts(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "v2_jobs.json"
+    pool_path = tmp_path / "v2_candidate_pool.json"
+    stats_path = tmp_path / "v2_collector_stats.json"
+    history_path = tmp_path / "v2_sent_jobs_history.json"
+    run_stats_path = tmp_path / "v2_run_stats.json"
+    plugin = replace(
+        get_collector("gigroup"),
+        callable=lambda **kwargs: [job()],
+    )
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugin if name == "gigroup" else None)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "job_aggregator",
+            "--collectors",
+            "gigroup",
+            "--output",
+            str(output_path),
+            "--candidate-pool-output",
+            str(pool_path),
+            "--collector-stats-output",
+            str(stats_path),
+            "--history-path",
+            str(history_path),
+            "--run-stats-path",
+            str(run_stats_path),
+        ],
+    )
+
+    job_aggregator.main()
+
+    assert pool_path.exists()
+    assert pool_path.with_suffix(".xlsx").exists()
+    assert stats_path.exists()
+    assert stats_path.with_suffix(".xlsx").exists()
+    output = capsys.readouterr().out
+    assert f"Saved {pool_path}" in output
+    assert f"Saved {pool_path.with_suffix('.xlsx')}" in output
+    assert f"Saved {stats_path}" in output
+    assert f"Saved {stats_path.with_suffix('.xlsx')}" in output

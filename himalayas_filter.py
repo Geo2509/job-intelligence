@@ -2,10 +2,12 @@ import pandas as pd
 import re
 
 from config_loader import load_scoring_config
+from src.csv_utils import set_csv_field_limit
 
 
 _FILTER_CONFIG = load_scoring_config().get("filters", {}).get("himalayas", {})
 
+set_csv_field_limit()
 df = pd.read_csv("himalayas_jobs.csv")
 
 

@@ -6,6 +6,7 @@ from xml.sax.saxutils import escape
 import pandas as pd
 
 from config_loader import DEFAULT_SCORING_FILE, load_scoring_config
+from src.csv_utils import set_csv_field_limit
 
 
 OUTPUT_FILE = "scored_jobs.csv"
@@ -511,6 +512,7 @@ def read_csv(path):
         return pd.DataFrame()
 
     try:
+        set_csv_field_limit()
         df = pd.read_csv(path)
     except pd.errors.EmptyDataError:
         print(f"Skipped empty file: {path}")

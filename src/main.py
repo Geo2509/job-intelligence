@@ -13,6 +13,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
 from config_loader import QUERIES_ENV, SCORING_ENV, load_queries_config, load_scoring_config
+from src.csv_utils import set_csv_field_limit
 from scoring_jobs import score_jobs
 
 
@@ -70,6 +71,7 @@ def count_csv_rows(path):
     csv_path = Path(path)
     if not csv_path.exists():
         return 0
+    set_csv_field_limit()
     with csv_path.open("r", encoding="utf-8", errors="replace") as handle:
         return sum(1 for _ in csv.DictReader(handle))
 

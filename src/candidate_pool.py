@@ -16,7 +16,9 @@ POOL_FIELDS = [
     ("Match Score", "match_score"),
     ("Student Score", "student_score"),
     ("Candidate Score", "candidate_score"),
+    ("Remote Score", "remote_score"),
     ("Base Score", "score"),
+    ("Search Profile", "search_profile"),
     ("Title", "title"),
     ("Company", "company"),
     ("Location", "location"),
@@ -385,7 +387,7 @@ def export_candidate_pool(pool, output_path=DEFAULT_POOL_PATH):
     headers = [label for label, _ in POOL_FIELDS]
     rows = [
         [
-            score_value(job, field) if field in {"match_score", "student_score", "candidate_score", "score", "sent_count"} else job.get(field, "")
+            score_value(job, field) if field in {"match_score", "student_score", "candidate_score", "remote_score", "score", "sent_count"} else job.get(field, "")
             for _, field in POOL_FIELDS
         ]
         for job in pool

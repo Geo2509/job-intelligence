@@ -10,10 +10,12 @@ REQUIRED_GROUPS = {
     "agencies",
     "remote_data_ai",
     "public_employment",
+    "remote_discovery_queries",
     "duckduckgo_discovery_queries",
 }
 REQUIRED_SOURCE_FIELDS = {"name", "enabled", "type", "priority"}
-SOURCE_GROUPS = REQUIRED_GROUPS - {"duckduckgo_discovery_queries"}
+QUERY_GROUPS = {"duckduckgo_discovery_queries", "remote_discovery_queries"}
+SOURCE_GROUPS = REQUIRED_GROUPS - QUERY_GROUPS
 REQUIRED_DISCOVERY_CATEGORIES = {
     "# DATA / OFFICE",
     "# HOTEL",
@@ -60,6 +62,14 @@ def test_duckduckgo_discovery_has_at_least_10_queries():
     data = load_config()
 
     assert len(data["duckduckgo_discovery_queries"]) >= 10
+
+
+def test_remote_discovery_has_required_queries():
+    data = load_config()
+
+    assert len(data["remote_discovery_queries"]) >= 30
+    assert "AI trainer remote Italian" in data["remote_discovery_queries"]
+    assert "data entry smart working Italia" in data["remote_discovery_queries"]
 
 
 def test_duckduckgo_discovery_has_expanded_search_coverage():

@@ -22,6 +22,7 @@ class CollectorPlugin:
     supports_top: bool
     supports_limit: bool
     default_kwargs: dict = field(default_factory=dict)
+    supports_search_profile: bool = False
 
 
 COLLECTOR_REGISTRY = {
@@ -35,6 +36,7 @@ COLLECTOR_REGISTRY = {
         supports_top=True,
         supports_limit=True,
         default_kwargs={"pause_seconds": 0},
+        supports_search_profile=True,
     ),
     "indeed": CollectorPlugin(
         name="indeed",

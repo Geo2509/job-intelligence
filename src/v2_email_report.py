@@ -10,10 +10,15 @@ from src.main import email_enabled, require_email_settings, smtplib
 
 DEFAULT_INPUT_PATH = "output/v2_jobs.json"
 DEFAULT_RUN_STATS_PATH = "output/v2_run_stats.json"
+REMOTE_INPUT_PATH = "output/v2_remote_jobs.json"
+REMOTE_RUN_STATS_PATH = "output/v2_remote_run_stats.json"
 DEFAULT_TOP = 100
-SUBJECT = "Job Intelligence V2: Campania Part-Time + Remote Jobs"
+LOCAL_STUDENT_PROFILE = "local_student"
+REMOTE_PROFILE = "remote"
+SUBJECT = "Job Intelligence V2: Napoli Student Jobs"
+REMOTE_SUBJECT = "Job Intelligence V2: Remote AI/Data Jobs"
 
-BLOCKS = [
+LOCAL_BLOCKS = [
     "Campania part-time",
     "Hospitality / Hotel / Restaurant",
     "Cleaning / Pulizie",
@@ -22,6 +27,16 @@ BLOCKS = [
     "Remote / Data / AI",
     "Other",
 ]
+REMOTE_BLOCKS = [
+    "AI Trainer / Annotator",
+    "Data Entry / Data Processing",
+    "Transcription",
+    "Virtual Assistant",
+    "Customer Support / Moderation",
+    "Logistics / Operations",
+    "Other Remote",
+]
+BLOCKS = LOCAL_BLOCKS
 
 LOCAL_TERMS = [
     "napoli",
@@ -79,6 +94,12 @@ REMOTE_DATA_TERMS = [
     "inserimento dati",
     "back office",
 ]
+AI_TRAINER_TERMS = ["ai trainer", "ai annotator", "data annotator", "ai evaluator", "search evaluator", "data labeling", "data annotation"]
+DATA_PROCESSING_TERMS = ["data entry", "data processing", "google sheets", "excel"]
+TRANSCRIPTION_TERMS = ["transcription", "trascrizione"]
+VIRTUAL_ASSISTANT_TERMS = ["virtual assistant", "assistente virtuale"]
+SUPPORT_MODERATION_TERMS = ["customer support", "content reviewer", "moderation"]
+LOGISTICS_REMOTE_TERMS = ["logistics", "logistica", "operations", "freight forwarding"]
 
 
 def load_jobs(input_path):
@@ -119,9 +140,23 @@ def is_campania_part_time(job, text):
     )
 
 
-def classify_job(job):
+def classify_job(job, search_profile=LOCAL_STUDENT_PROFILE):
     text = job_text(job)
     category = str(job.get("category", "") or "").lower()
+    if search_profile == REMOTE_PROFILE:
+        if has_any(text, AI_TRAINER_TERMS):
+            return "AI Trainer / Annotator"
+        if has_any(text, DATA_PROCESSING_TERMS):
+            return "Data Entry / Data Processing"
+        if has_any(text, TRANSCRIPTION_TERMS):
+            return "Transcription"
+        if has_any(text, VIRTUAL_ASSISTANT_TERMS):
+            return "Virtual Assistant"
+        if has_any(text, SUPPORT_MODERATION_TERMS):
+            return "Customer Support / Moderation"
+        if has_any(text, LOGISTICS_REMOTE_TERMS):
+            return "Logistics / Operations"
+        return "Other Remote"
 
     if is_campania_part_time(job, text):
         return "Campania part-time"
@@ -143,10 +178,16 @@ def classify_job(job):
     return "Other"
 
 
-def grouped_jobs(jobs):
-    groups = {block: [] for block in BLOCKS}
+def blocks_for_profile(search_profile):
+    if search_profile == REMOTE_PROFILE:
+        return REMOTE_BLOCKS
+    return LOCAL_BLOCKS
+
+
+def grouped_jobs(jobs, search_profile=LOCAL_STUDENT_PROFILE):
+    groups = {block: [] for block in blocks_for_profile(search_profile)}
     for job in jobs:
-        groups[classify_job(job)].append(job)
+        groups[classify_job(job, search_profile)].append(job)
     return groups
 
 
@@ -238,6 +279,7 @@ def render_job(job):
     match_score = html.escape(str(job.get("match_score", "") or ""))
     student_score = html.escape(str(job.get("student_score", "") or ""))
     candidate_score = html.escape(str(job.get("candidate_score", "") or ""))
+    remote_score = html.escape(str(job.get("remote_score", "") or ""))
     location_fit = html.escape(str(job.get("location_fit", "") or ""))
     category = html.escape(str(job.get("category", "") or ""))
     source = html.escape(str(job.get("source", "") or ""))
@@ -254,6 +296,7 @@ def render_job(job):
         f"<p><strong>Match:</strong> {match_score}</p>"
         f"<p><strong>Student:</strong> {student_score}</p>"
         f"<p><strong>Candidate:</strong> {candidate_score}</p>"
+        f"<p><strong>Remote:</strong> {remote_score}</p>"
         f"<p><strong>Location fit:</strong> {location_fit}</p>"
         f"<p><strong>Source:</strong> {source}</p>"
         f"<p><strong>Category:</strong> {category}</p>"
@@ -265,12 +308,12 @@ def render_job(job):
     )
 
 
-def build_email_html(jobs, run_stats=None):
+def build_email_html(jobs, run_stats=None, search_profile=LOCAL_STUDENT_PROFILE):
     jobs = sorted_jobs(jobs)
     top_match_score, recommended_count = email_summary(jobs)
-    groups = grouped_jobs(jobs)
+    groups = grouped_jobs(jobs, search_profile)
     blocks = []
-    for block in BLOCKS:
+    for block in blocks_for_profile(search_profile):
         block_jobs = groups[block]
         if block_jobs:
             items = "".join(render_job(job) for job in block_jobs)
@@ -303,7 +346,30 @@ def send_html_email(subject, body):
         smtp.sendmail(os.environ["EMAIL_FROM"], recipients, message.as_string())
 
 
-def send_v2_email_report(input_path=DEFAULT_INPUT_PATH, top=DEFAULT_TOP, stats_path=DEFAULT_RUN_STATS_PATH):
+def subject_for_profile(search_profile):
+    if search_profile == REMOTE_PROFILE:
+        return REMOTE_SUBJECT
+    return SUBJECT
+
+
+def default_input_for_profile(search_profile):
+    if search_profile == REMOTE_PROFILE:
+        return REMOTE_INPUT_PATH
+    return DEFAULT_INPUT_PATH
+
+
+def default_stats_for_profile(search_profile):
+    if search_profile == REMOTE_PROFILE:
+        return REMOTE_RUN_STATS_PATH
+    return DEFAULT_RUN_STATS_PATH
+
+
+def send_v2_email_report(
+    input_path=DEFAULT_INPUT_PATH,
+    top=DEFAULT_TOP,
+    stats_path=DEFAULT_RUN_STATS_PATH,
+    search_profile=LOCAL_STUDENT_PROFILE,
+):
     jobs = sorted_jobs(load_jobs(input_path))[:top]
     if not jobs:
         print("No V2 jobs to email")
@@ -314,22 +380,31 @@ def send_v2_email_report(input_path=DEFAULT_INPUT_PATH, top=DEFAULT_TOP, stats_p
         return False
 
     require_email_settings()
-    send_html_email(SUBJECT, build_email_html(jobs, load_run_stats(stats_path)))
+    send_html_email(
+        subject_for_profile(search_profile),
+        build_email_html(jobs, load_run_stats(stats_path), search_profile=search_profile),
+    )
     print(f"V2 email report sent: {len(jobs)} jobs")
     return True
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default=DEFAULT_INPUT_PATH)
+    parser.add_argument("--search-profile", choices=[LOCAL_STUDENT_PROFILE, REMOTE_PROFILE], default=LOCAL_STUDENT_PROFILE)
+    parser.add_argument("--input", default=None)
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
-    parser.add_argument("--stats", default=DEFAULT_RUN_STATS_PATH)
+    parser.add_argument("--stats", default=None)
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
-    send_v2_email_report(args.input, args.top, args.stats)
+    send_v2_email_report(
+        args.input or default_input_for_profile(args.search_profile),
+        args.top,
+        args.stats or default_stats_for_profile(args.search_profile),
+        search_profile=args.search_profile,
+    )
 
 
 if __name__ == "__main__":

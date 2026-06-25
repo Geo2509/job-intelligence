@@ -218,6 +218,40 @@ remote_data_ai:
 
 public_employment: []
 
+remote_discovery_queries:
+  - AI trainer remote Italian
+  - AI annotator remote Italian
+  - data annotator Italian remote
+  - AI evaluator Italian remote
+  - search evaluator Italian remote
+  - data annotation Italian remote
+  - data labeling Italian remote
+  - remote data entry Italy
+  - data entry smart working Italia
+  - lavoro da casa inserimento dati
+  - trascrizione audio remoto italiano
+  - transcription remote Ukrainian
+  - transcription remote Russian
+  - Ukrainian transcription remote
+  - Russian transcription remote
+  - virtual assistant remote Italy
+  - assistente virtuale remoto
+  - Google Sheets remote job
+  - Excel data processing remote
+  - customer support remote Italian
+  - content reviewer remote Italian
+  - moderation remote Italian
+  - logistics coordinator remote
+  - freight forwarding remote
+  - Python data processing remote
+  - pandas automation remote
+  - AI training Ukrainian remote
+  - AI training Russian remote
+  - Outlier AI Italian remote
+  - DataAnnotation Italian remote
+  - Toloka AI trainer Italian
+  - TSMG Ukrainian transcription
+
 duckduckgo_discovery_queries:
   # DATA / OFFICE
   - data entry Campania part time

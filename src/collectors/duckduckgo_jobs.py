@@ -25,8 +25,10 @@ DEFAULT_OUTPUT_PATH = "output/duckduckgo_jobs.json"
 DEFAULT_TOP = 50
 
 
-def load_discovery_queries(config_path=DEFAULT_CONFIG_PATH):
+def load_discovery_queries(config_path=DEFAULT_CONFIG_PATH, search_profile="local_student"):
     data = yaml.safe_load(Path(config_path).read_text(encoding="utf-8")) or {}
+    if search_profile == "remote":
+        return list(data.get("remote_discovery_queries") or [])
     return list(data.get("duckduckgo_discovery_queries") or [])
 
 
@@ -105,12 +107,22 @@ def search_query(ddgs, query, limit):
         return []
 
 
-def collect_jobs(config_path=DEFAULT_CONFIG_PATH, limit=3, pause_seconds=1, top=DEFAULT_TOP, campania_part_time_first=False):
+def collect_jobs(
+    config_path=DEFAULT_CONFIG_PATH,
+    limit=3,
+    pause_seconds=1,
+    top=DEFAULT_TOP,
+    campania_part_time_first=False,
+    search_profile="local_student",
+):
     DDGS = get_ddgs_class()
     if DDGS is None:
         return []
 
-    queries = load_discovery_queries(config_path)
+    try:
+        queries = load_discovery_queries(config_path, search_profile=search_profile)
+    except TypeError:
+        queries = load_discovery_queries(config_path)
     jobs = []
     found_at = datetime.now(timezone.utc).isoformat()
 

@@ -27,6 +27,13 @@ on:
         description: V2 top jobs to export and email
         required: true
         default: "100"
+      v2_search_profile:
+        description: "V2 search profile"
+        default: "local_student"
+        type: choice
+        options:
+          - "local_student"
+          - "remote"
       v2_clean_results:
         description: Clean V2 search-result pages before export
         required: true
@@ -87,15 +94,29 @@ jobs:
             CLEAN_ARGS="--email-clean-results"
           fi
           DROP_FAR_ARGS=""
-          if [ "${{ inputs.v2_drop_far_locations }}" = "true" ]; then
+          if [ "${{ inputs.v2_search_profile }}" = "local_student" ] && [ "${{ inputs.v2_drop_far_locations }}" = "true" ]; then
             DROP_FAR_ARGS="--drop-far-locations"
           fi
           DROP_UNKNOWN_ARGS=""
-          if [ "${{ inputs.v2_drop_unknown_locations }}" = "true" ]; then
+          if [ "${{ inputs.v2_search_profile }}" = "local_student" ] && [ "${{ inputs.v2_drop_unknown_locations }}" = "true" ]; then
             DROP_UNKNOWN_ARGS="--drop-unknown-locations"
           fi
+          OUTPUT_PATH="output/v2_jobs.json"
+          POOL_PATH="output/v2_candidate_pool.json"
+          HISTORY_PATH="output/v2_sent_jobs_history.json"
+          RUN_STATS_PATH="output/v2_run_stats.json"
+          if [ "${{ inputs.v2_search_profile }}" = "remote" ]; then
+            OUTPUT_PATH="output/v2_remote_jobs.json"
+            POOL_PATH="output/v2_remote_candidate_pool.json"
+            HISTORY_PATH="output/v2_remote_sent_jobs_history.json"
+            RUN_STATS_PATH="output/v2_remote_run_stats.json"
+          fi
           python -m src.job_aggregator \
-            --output output/v2_jobs.json \
+            --search-profile "${{ inputs.v2_search_profile }}" \
+            --output "$OUTPUT_PATH" \
+            --candidate-pool-output "$POOL_PATH" \
+            --history-path "$HISTORY_PATH" \
+            --run-stats-path "$RUN_STATS_PATH" \
             --limit "${{ inputs.v2_limit }}" \
             --top "${{ inputs.v2_top }}" \
             --campania-part-time-first \
@@ -106,9 +127,15 @@ jobs:
       - name: Verify V2 Candidate Pool artifacts
         if: ${{ inputs.run_v2_jobs == 'true' }}
         run: |
+          POOL_JSON="output/v2_candidate_pool.json"
+          POOL_XLSX="output/v2_candidate_pool.xlsx"
+          if [ "${{ inputs.v2_search_profile }}" = "remote" ]; then
+            POOL_JSON="output/v2_remote_candidate_pool.json"
+            POOL_XLSX="output/v2_remote_candidate_pool.xlsx"
+          fi
           for artifact in \
-            output/v2_candidate_pool.json \
-            output/v2_candidate_pool.xlsx \
+            "$POOL_JSON" \
+            "$POOL_XLSX" \
             output/v2_collector_stats.json \
             output/v2_collector_stats.xlsx
           do
@@ -127,8 +154,16 @@ jobs:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
+          INPUT_PATH="output/v2_jobs.json"
+          STATS_PATH="output/v2_run_stats.json"
+          if [ "${{ inputs.v2_search_profile }}" = "remote" ]; then
+            INPUT_PATH="output/v2_remote_jobs.json"
+            STATS_PATH="output/v2_remote_run_stats.json"
+          fi
           python -m src.v2_email_report \
-            --input output/v2_jobs.json \
+            --search-profile "${{ inputs.v2_search_profile }}" \
+            --input "$INPUT_PATH" \
+            --stats "$STATS_PATH" \
             --top "${{ inputs.v2_top }}"
 
       - name: Commit sent jobs history
@@ -136,7 +171,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for history_file in output/sent_jobs_history.json output/v2_sent_jobs_history.json; do
+          for history_file in output/sent_jobs_history.json output/v2_sent_jobs_history.json output/v2_remote_sent_jobs_history.json; do
             if [ -f "$history_file" ]; then
               git add "$history_file"
             fi
@@ -164,4 +199,11 @@ jobs:
             output/v2_collector_stats.xlsx
             output/v2_sent_jobs_history.json
             output/v2_run_stats.json
+            output/v2_remote_jobs.json
+            output/v2_remote_jobs.csv
+            output/v2_remote_jobs.xlsx
+            output/v2_remote_candidate_pool.json
+            output/v2_remote_candidate_pool.xlsx
+            output/v2_remote_sent_jobs_history.json
+            output/v2_remote_run_stats.json
           if-no-files-found: warn

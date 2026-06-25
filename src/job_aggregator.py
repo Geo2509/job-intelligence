@@ -34,6 +34,12 @@ from src.student_profile import detect_location_fit, evaluate_student_score, loa
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
 DEFAULT_HISTORY_PATH = "output/v2_sent_jobs_history.json"
 DEFAULT_RUN_STATS_PATH = "output/v2_run_stats.json"
+REMOTE_OUTPUT_PATH = "output/v2_remote_jobs.json"
+REMOTE_POOL_PATH = "output/v2_remote_candidate_pool.json"
+REMOTE_HISTORY_PATH = "output/v2_remote_sent_jobs_history.json"
+REMOTE_RUN_STATS_PATH = "output/v2_remote_run_stats.json"
+LOCAL_STUDENT_PROFILE = "local_student"
+REMOTE_PROFILE = "remote"
 DEFAULT_LIMIT = 5
 DEFAULT_TOP = 50
 DEFAULT_SKIP_SEEN_DAYS = 7
@@ -69,7 +75,9 @@ OUTPUT_FIELDS = [
     "location_fit",
     "student_score",
     "candidate_score",
+    "remote_score",
     "match_score",
+    "search_profile",
     "history_status",
     "score",
     "found_at",
@@ -107,6 +115,60 @@ MAINTENANCE_TERMS = [
     "elettricista",
     "idraulico",
 ]
+REMOTE_KEYWORDS = [
+    "remote",
+    "remoto",
+    "full remote",
+    "smart working",
+    "lavoro da casa",
+    "work from home",
+    "home based",
+    "da remoto",
+    "online",
+    "freelance",
+    "contractor",
+    "ai trainer",
+    "ai annotator",
+    "data annotator",
+    "ai evaluator",
+    "search evaluator",
+    "data labeling",
+    "data annotation",
+    "transcription",
+    "trascrizione",
+    "virtual assistant",
+    "assistente virtuale",
+    "google sheets",
+    "excel remote",
+    "data processing",
+    "data entry remoto",
+    "customer support remote",
+    "content reviewer",
+    "moderation",
+    "logistics remote",
+]
+REMOTE_BLOCKER_TERMS = ["onsite", "in sede", "presenza", "non remoto"]
+REMOTE_BONUSES = [
+    (30, ["ai trainer", "ai annotator", "data annotator"]),
+    (30, ["transcription", "trascrizione"]),
+    (25, ["data entry remote", "data entry remoto"]),
+    (25, ["virtual assistant", "assistente virtuale"]),
+    (25, ["google sheets", "excel remote"]),
+    (20, ["customer support remote"]),
+    (20, ["content reviewer", "moderation"]),
+    (15, ["logistics remote"]),
+    (15, ["python", "automation"]),
+    (10, ["freelance", "contractor"]),
+    (10, ["part-time", "part time", "tempo parziale"]),
+]
+REMOTE_PENALTIES = [
+    (30, ["onsite"]),
+    (30, ["in sede"]),
+    (30, ["presenza"]),
+    (30, ["non remoto"]),
+    (20, ["italian c1 required", "italiano c1 richiesto"]),
+    (20, ["english c1 required", "inglese c1 richiesto"]),
+]
 
 
 def parse_collectors(value):
@@ -119,7 +181,7 @@ def parse_collectors(value):
     ]
 
 
-def run_collector(name, limit, top, campania_part_time_first):
+def run_collector(name, limit, top, campania_part_time_first, search_profile=LOCAL_STUDENT_PROFILE):
     plugin = get_collector(name)
     if plugin is None:
         print(f"Unknown collector skipped: {name}")
@@ -136,13 +198,15 @@ def run_collector(name, limit, top, campania_part_time_first):
             kwargs["top"] = top
         if plugin.supports_campania_part_time_first:
             kwargs["campania_part_time_first"] = campania_part_time_first
+        if getattr(plugin, "supports_search_profile", False):
+            kwargs["search_profile"] = search_profile
         return plugin.callable(**kwargs)
     except Exception as exc:
         print(f"Collector failed: {name} | {exc}")
         return []
 
 
-def normalize_job(job, include_profile_scores=True):
+def normalize_job(job, include_profile_scores=True, search_profile=LOCAL_STUDENT_PROFILE):
     job = dict(job)
     title = job.get("title", "")
     company = job.get("company", "")
@@ -159,16 +223,74 @@ def normalize_job(job, include_profile_scores=True):
     job["category"] = job.get("category") or detect_category(title, snippet, query)
     job["score"] = int(job.get("score") or score_job(title, snippet, query))
     job["location_fit"] = detect_location_fit(job, load_student_profile())
+    job["search_profile"] = search_profile
+    job.setdefault("remote_score", 0)
     if include_profile_scores:
         job["student_score"] = int(evaluate_student_score(job))
         job["candidate_score"] = int(evaluate_candidate_score(job))
-        job["match_score"] = calculate_match_score(job["student_score"], job["candidate_score"])
+        apply_profile_scores(job, search_profile)
     job["priority_bucket"] = detect_priority_bucket(
         searchable,
         job["part_time"],
         job["remote"],
     )
     job["found_at"] = job.get("found_at") or datetime.now(timezone.utc).isoformat()
+    return job
+
+
+def remote_text(job):
+    return combined_text(
+        job.get("title", ""),
+        " ".join([
+            str(job.get("company", "") or ""),
+            str(job.get("location", "") or ""),
+            str(job.get("category", "") or ""),
+            str(job.get("url", "") or ""),
+            str(job.get("source", "") or ""),
+        ]),
+        job.get("query", ""),
+    )
+
+
+def is_remote_related(job):
+    return has_any(remote_text(job), REMOTE_KEYWORDS)
+
+
+def has_remote_blocker(job):
+    return has_any(remote_text(job), REMOTE_BLOCKER_TERMS)
+
+
+def filter_remote_jobs(jobs):
+    return [
+        job
+        for job in jobs
+        if is_remote_related(job) and not has_remote_blocker(job)
+    ]
+
+
+def calculate_remote_score(job):
+    text = remote_text(job)
+    score = int(job.get("candidate_score") or 0)
+    for points, terms in REMOTE_BONUSES:
+        if has_any(text, terms):
+            score += points
+    for points, terms in REMOTE_PENALTIES:
+        if has_any(text, terms):
+            score -= points
+    return score
+
+
+def apply_profile_scores(job, search_profile=LOCAL_STUDENT_PROFILE):
+    job["search_profile"] = search_profile
+    if search_profile == REMOTE_PROFILE:
+        job["remote_score"] = int(calculate_remote_score(job))
+        job["match_score"] = int(round(
+            0.8 * int(job.get("candidate_score") or 0)
+            + 0.2 * int(job.get("remote_score") or 0)
+        ))
+    else:
+        job["remote_score"] = int(job.get("remote_score") or 0)
+        job["match_score"] = calculate_match_score(job["student_score"], job["candidate_score"])
     return job
 
 
@@ -243,7 +365,7 @@ def add_profile_scores(jobs):
         job["location_fit"] = job.get("location_fit") or detect_location_fit(job, load_student_profile())
         job["student_score"] = int(evaluate_student_score(job))
         job["candidate_score"] = int(evaluate_candidate_score(job))
-        job["match_score"] = calculate_match_score(job["student_score"], job["candidate_score"])
+        apply_profile_scores(job, job.get("search_profile") or LOCAL_STUDENT_PROFILE)
         scored.append(job)
     return scored
 
@@ -408,11 +530,13 @@ def update_sent_history(history, jobs, sent_at=None):
 
 def empty_run_stats():
     return {
+        "search_profile": LOCAL_STUDENT_PROFILE,
         "total_candidates": 0,
         "after_cleaning": 0,
         "candidate_pool_jobs": 0,
         "removed_far": 0,
         "removed_unknown": 0,
+        "removed_non_remote": 0,
         "new_jobs": 0,
         "updated_jobs": 0,
         "seen_skipped": 0,
@@ -554,19 +678,25 @@ def aggregate_jobs(
     min_cleaning=DEFAULT_MIN_CLEANING,
     min_maintenance=DEFAULT_MIN_MAINTENANCE,
     min_data_office=DEFAULT_MIN_DATA_OFFICE,
+    search_profile=LOCAL_STUDENT_PROFILE,
 ):
     jobs = []
     stats = empty_run_stats()
+    stats["search_profile"] = search_profile
     collected_counts = {}
     collector_names = collector_names or enabled_collectors()
     should_clean_results = clean_results or email_clean_results or strict_job_detail_only
     for name in collector_names:
-        collector_jobs = run_collector(name, limit, top, campania_part_time_first)
+        collector_jobs = run_collector(name, limit, top, campania_part_time_first, search_profile)
         print(f"Collector {name} returned: {len(collector_jobs)} jobs")
         collected_counts[name] = len(collector_jobs)
         jobs.extend(
             {
-                **normalize_job(job, include_profile_scores=not should_clean_results),
+                **normalize_job(
+                    job,
+                    include_profile_scores=not should_clean_results,
+                    search_profile=search_profile,
+                ),
                 "collector": name,
             }
             for job in collector_jobs
@@ -577,6 +707,8 @@ def aggregate_jobs(
     history = load_sent_history(history_path) if history_path else {}
     if return_artifacts:
         candidate_candidates = add_profile_scores(classify_candidates(jobs))
+        if search_profile == REMOTE_PROFILE:
+            candidate_candidates = filter_remote_jobs(candidate_candidates)
         candidate_candidates = annotate_history_status(
             candidate_candidates,
             history,
@@ -592,12 +724,16 @@ def aggregate_jobs(
         )
         print_cleaning_summary(summary)
         stats["after_cleaning"] = len(jobs)
-        if drop_far_locations:
+        if search_profile == REMOTE_PROFILE:
+            before_remote = len(jobs)
+            jobs = filter_remote_jobs(jobs)
+            stats["removed_non_remote"] = before_remote - len(jobs)
+        if drop_far_locations and search_profile != REMOTE_PROFILE:
             before_drop = len(jobs)
             jobs = drop_far_location_jobs(jobs)
             stats["removed_far"] = before_drop - len(jobs)
             print(f"Removed excluded_far location: {stats['removed_far']}")
-        if drop_unknown_locations:
+        if drop_unknown_locations and search_profile != REMOTE_PROFILE:
             before_drop = len(jobs)
             jobs = drop_unknown_location_jobs(jobs)
             stats["removed_unknown"] = before_drop - len(jobs)
@@ -605,11 +741,15 @@ def aggregate_jobs(
         jobs = add_profile_scores(jobs)
     else:
         stats["after_cleaning"] = len(jobs)
-        if drop_far_locations:
+        if search_profile == REMOTE_PROFILE:
+            before_remote = len(jobs)
+            jobs = filter_remote_jobs(jobs)
+            stats["removed_non_remote"] = before_remote - len(jobs)
+        if drop_far_locations and search_profile != REMOTE_PROFILE:
             before_drop = len(jobs)
             jobs = drop_far_location_jobs(jobs)
             stats["removed_far"] = before_drop - len(jobs)
-        if drop_unknown_locations:
+        if drop_unknown_locations and search_profile != REMOTE_PROFILE:
             before_drop = len(jobs)
             jobs = drop_unknown_location_jobs(jobs)
             stats["removed_unknown"] = before_drop - len(jobs)
@@ -626,15 +766,18 @@ def aggregate_jobs(
         stats["seen_skipped"] = seen_skipped
 
     jobs = sort_jobs(jobs)
-    jobs = balanced_top(
-        jobs,
-        top=top,
-        min_remote=min_remote,
-        min_hospitality=min_hospitality,
-        min_cleaning=min_cleaning,
-        min_maintenance=min_maintenance,
-        min_data_office=min_data_office,
-    )
+    if search_profile == REMOTE_PROFILE:
+        jobs = jobs[:top]
+    else:
+        jobs = balanced_top(
+            jobs,
+            top=top,
+            min_remote=min_remote,
+            min_hospitality=min_hospitality,
+            min_cleaning=min_cleaning,
+            min_maintenance=min_maintenance,
+            min_data_office=min_data_office,
+        )
     stats["email_jobs"] = len(jobs)
     if return_artifacts:
         candidate_pool = build_candidate_pool(candidate_candidates, jobs, history)
@@ -752,14 +895,39 @@ def export_jobs(jobs, output_path=DEFAULT_OUTPUT_PATH):
     write_xlsx(jobs, output_path)
 
 
+def default_paths_for_profile(search_profile):
+    if search_profile == REMOTE_PROFILE:
+        return {
+            "output": REMOTE_OUTPUT_PATH,
+            "candidate_pool_output": REMOTE_POOL_PATH,
+            "collector_stats_output": DEFAULT_COLLECTOR_STATS_PATH,
+            "history_path": REMOTE_HISTORY_PATH,
+            "run_stats_path": REMOTE_RUN_STATS_PATH,
+        }
+    return {
+        "output": DEFAULT_OUTPUT_PATH,
+        "candidate_pool_output": DEFAULT_POOL_PATH,
+        "collector_stats_output": DEFAULT_COLLECTOR_STATS_PATH,
+        "history_path": DEFAULT_HISTORY_PATH,
+        "run_stats_path": DEFAULT_RUN_STATS_PATH,
+    }
+
+
+def resolve_cli_path(value, key, search_profile):
+    if value:
+        return value
+    return default_paths_for_profile(search_profile)[key]
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--collectors", default=None)
-    parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
-    parser.add_argument("--candidate-pool-output", default=DEFAULT_POOL_PATH)
-    parser.add_argument("--collector-stats-output", default=DEFAULT_COLLECTOR_STATS_PATH)
-    parser.add_argument("--history-path", default=DEFAULT_HISTORY_PATH)
-    parser.add_argument("--run-stats-path", default=DEFAULT_RUN_STATS_PATH)
+    parser.add_argument("--search-profile", choices=[LOCAL_STUDENT_PROFILE, REMOTE_PROFILE], default=LOCAL_STUDENT_PROFILE)
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--candidate-pool-output", default=None)
+    parser.add_argument("--collector-stats-output", default=None)
+    parser.add_argument("--history-path", default=None)
+    parser.add_argument("--run-stats-path", default=None)
     parser.add_argument("--skip-seen-days", type=int, default=DEFAULT_SKIP_SEEN_DAYS)
     parser.add_argument("--max-seen-repeat", type=int, default=DEFAULT_MAX_SEEN_REPEAT)
     parser.add_argument("--include-seen", choices=["false", "true"], default="false")
@@ -781,6 +949,11 @@ def parse_args(argv=None):
 
 def main():
     args = parse_args()
+    output_path = resolve_cli_path(args.output, "output", args.search_profile)
+    candidate_pool_output = resolve_cli_path(args.candidate_pool_output, "candidate_pool_output", args.search_profile)
+    collector_stats_output = resolve_cli_path(args.collector_stats_output, "collector_stats_output", args.search_profile)
+    history_path = resolve_cli_path(args.history_path, "history_path", args.search_profile)
+    run_stats_path = resolve_cli_path(args.run_stats_path, "run_stats_path", args.search_profile)
     jobs, stats, artifacts = aggregate_jobs(
         parse_collectors(args.collectors),
         limit=args.limit,
@@ -791,7 +964,7 @@ def main():
         strict_job_detail_only=args.strict_job_detail_only,
         drop_far_locations=args.drop_far_locations,
         drop_unknown_locations=args.drop_unknown_locations,
-        history_path=args.history_path,
+        history_path=history_path,
         skip_seen_days=args.skip_seen_days,
         max_seen_repeat=args.max_seen_repeat,
         include_seen=args.include_seen == "true",
@@ -802,14 +975,15 @@ def main():
         min_cleaning=args.min_cleaning,
         min_maintenance=args.min_maintenance,
         min_data_office=args.min_data_office,
+        search_profile=args.search_profile,
     )
-    export_jobs(jobs, args.output)
-    export_candidate_pool(artifacts["candidate_pool"], args.candidate_pool_output)
-    export_collector_stats(artifacts["collector_stats"], args.collector_stats_output)
-    history = load_sent_history(args.history_path)
+    export_jobs(jobs, output_path)
+    export_candidate_pool(artifacts["candidate_pool"], candidate_pool_output)
+    export_collector_stats(artifacts["collector_stats"], collector_stats_output)
+    history = load_sent_history(history_path)
     history = update_sent_history(history, jobs)
-    write_sent_history(history, args.history_path)
-    write_run_stats(stats, args.run_stats_path)
+    write_sent_history(history, history_path)
+    write_run_stats(stats, run_stats_path)
 
 
 if __name__ == "__main__":

@@ -596,19 +596,16 @@ python scoring_jobs.py
 
 ## Удалённый запуск через GitHub Actions
 
-Проект можно запускать полностью удалённо через GitHub Actions, без локального компьютера:
+Workflow `Run Job Collectors` запускает два независимых потока. Их можно включать вместе или по отдельности через inputs:
 
-```bash
-python -m src.main --queries configs/queries.yaml --scoring configs/scoring.yaml
-```
+- `run_student_v2`: Student V2 для локальной работы под учёбу в Napoli/Campania;
+- `run_remote_legacy`: старый remote pipeline для удалённой работы, как раньше.
 
-Единый запуск выполняет:
-- все текущие collectors;
-- фильтрацию Reddit и Himalayas;
-- scoring с текущей формулой;
-- экспорт итогов в `output/latest/jobs_scored.csv` и `output/latest/jobs_scored.xlsx`;
-- создание `output/latest/run_summary.md`;
-- отправку HTML email-отчёта, если включены email-настройки.
+Student V2 использует `src.job_aggregator` с `--search-profile local_student`, Location Guard, student/candidate scoring, отдельную историю `output/v2_sent_jobs_history.json` и отдельное V2 письмо.
+
+Remote legacy не подключается к V2. Он запускает старые remote collectors и `scoring_jobs.py`, формирует `output/latest/*`, использует старую историю `output/sent_jobs_history.json` и отправляет старое HTML письмо через существующий email-механизм.
+
+Если один поток не найдёт новых вакансий и не отправит письмо, второй поток продолжит работать независимо.
 
 ### Конфигурация queries
 
@@ -657,7 +654,9 @@ configs/scoring.yaml
 5. При необходимости измените inputs:
    - `queries_file`: по умолчанию `configs/queries.yaml`;
    - `scoring_file`: по умолчанию `configs/scoring.yaml`;
-   - `email_enabled`: `true` или `false`.
+   - `email_enabled`: `true` или `false`;
+   - `run_student_v2`: `true` или `false`;
+   - `run_remote_legacy`: `true` или `false`.
 6. Нажмите зелёную кнопку запуска.
 
 ### Скачать artifact
@@ -668,34 +667,39 @@ configs/scoring.yaml
 2. Внизу страницы найдите `Artifacts`.
 3. Скачайте artifact `job-results`.
 
-Внутри будут файлы из `output/latest/`, включая:
-- `jobs_scored.csv`;
-- `jobs_scored.xlsx`;
-- `top_jobs.xlsx`;
-- `run_summary.md`.
+Student V2 artifact содержит:
+- `output/v2_jobs.xlsx`;
+- `output/v2_candidate_pool.xlsx`;
+- `output/v2_run_stats.json`.
 
-### Run V2 jobs from GitHub Actions
+Remote legacy artifact содержит:
+- `output/latest/jobs_scored.xlsx`;
+- `output/latest/top_jobs.xlsx`;
+- `output/latest/run_summary.md`.
 
-V2 запускается из того же workflow `Run Job Collectors`.
+### Student V2 from GitHub Actions
+
+Student V2 запускается из workflow `Run Job Collectors`.
 
 1. Откройте репозиторий на GitHub.
 2. Перейдите в `Actions`.
 3. Выберите workflow `Run Job Collectors`.
 4. Нажмите `Run workflow`.
 5. Установите inputs:
-   - `run_v2_jobs`: `true`;
+   - `run_student_v2`: `true`;
    - `v2_limit`: сколько результатов брать у коллектора, по умолчанию `2`;
    - `v2_top`: максимум вакансий в экспорте и email, по умолчанию `100`;
    - `v2_clean_results`: `true`, чтобы включить email clean перед V2 email/export;
    - `v2_drop_far_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать дальние non-remote вакансии из V2 export/email;
    - `v2_drop_unknown_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать unknown non-remote вакансии из V2 export/email;
-   - `email_enabled`: `true`, чтобы отправить V2 email.
+   - `email_enabled`: `true`, чтобы отправить Student V2 email.
 6. Нажмите зелёную кнопку запуска.
 
 Команды V2 внутри workflow:
 
 ```bash
 python -m src.job_aggregator \
+  --search-profile local_student \
   --output output/v2_jobs.json \
   --limit "$v2_limit" \
   --top "$v2_top" \
@@ -707,11 +711,30 @@ python -m src.job_aggregator \
   --min-remote 20
 
 python -m src.v2_email_report \
+  --search-profile local_student \
   --input output/v2_jobs.json \
   --top "$v2_top"
 ```
 
-GitHub V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Workflow также использует `output/v2_sent_jobs_history.json`, пишет `output/v2_run_stats.json` и коммитит обновлённую V2 history после успешной отправки email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
+GitHub Student V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Workflow также использует `output/v2_sent_jobs_history.json`, пишет `output/v2_run_stats.json` и коммитит обновлённую V2 history после успешной отправки email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
+
+### Remote legacy from GitHub Actions
+
+Remote legacy запускается тем же workflow, но остаётся старым pipeline и не подключает legacy remote collectors к V2:
+
+```bash
+python remotive_collector.py
+python remotejobs_org_collector.py
+python remotefirstjobs_collector.py
+python jobicy_collector.py
+python workanywhere_collector.py
+python himalayas_collector.py
+python arbeitnow_collector.py
+python duckduckgo_collector.py
+python scoring_jobs.py
+```
+
+После scoring workflow формирует старые `output/latest/jobs_scored.xlsx`, `output/latest/top_jobs.xlsx` и `output/latest/run_summary.md`, затем отправляет legacy email через существующую логику `src.main`. История remote legacy остаётся старой: `output/sent_jobs_history.json`.
 
 V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
 
@@ -753,16 +776,27 @@ V2 email показывает summary по письму (`Total jobs in email`, 
 Тема V2 письма:
 
 ```text
-Job Intelligence V2: Campania Part-Time + Remote Jobs
+Job Intelligence V2: Napoli Student Jobs
 ```
 
-После завершения workflow скачайте artifact `job-results` внизу страницы run. Для V2 внутри будут:
+После завершения workflow скачайте artifact `student-v2-results` внизу страницы run. Для V2 внутри будут:
 
 - `output/v2_jobs.json`;
 - `output/v2_jobs.csv`;
-- `output/v2_jobs.xlsx`.
+- `output/v2_jobs.xlsx`;
+- `output/v2_candidate_pool.json`;
+- `output/v2_candidate_pool.xlsx`;
 - `output/v2_sent_jobs_history.json`;
 - `output/v2_run_stats.json`.
+
+Для старого remote потока скачайте artifact `remote-legacy-results`; внутри будут:
+
+- `output/latest/jobs_scored.csv`;
+- `output/latest/jobs_scored.xlsx`;
+- `output/latest/top_50_jobs.csv`;
+- `output/latest/top_jobs.xlsx`;
+- `output/latest/run_summary.md`;
+- `output/sent_jobs_history.json`.
 
 ### Email-отчёт
 

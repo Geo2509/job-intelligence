@@ -186,14 +186,20 @@ def test_remote_email_subject_and_blocks():
     assert "NEW" in body
 
 
-def test_github_workflow_accepts_v2_search_profile():
+def test_github_workflow_splits_student_v2_and_remote_legacy():
     workflow = Path(".github/workflows/run_collectors.yml").read_text(encoding="utf-8")
 
-    assert "v2_search_profile:" in workflow
-    assert '--search-profile "${{ inputs.v2_search_profile }}"' in workflow
-    assert "output/v2_remote_jobs.json" in workflow
+    assert "run_student_v2:" in workflow
+    assert "run_remote_legacy:" in workflow
+    assert "student-v2:" in workflow
+    assert "remote-legacy:" in workflow
+    assert "--search-profile local_student" in workflow
+    assert "python remotive_collector.py" in workflow
+    assert "python scoring_jobs.py" in workflow
+    assert "output/sent_jobs_history.json" in workflow
+    assert "output/latest/top_jobs.xlsx" in workflow
+    assert "output/v2_remote_jobs.json" not in workflow
     assert "--drop-far-locations" in workflow
-    assert 'inputs.v2_search_profile }}" = "local_student"' in workflow
 
 
 def test_remote_discovery_queries_are_configured():

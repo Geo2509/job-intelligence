@@ -12,13 +12,25 @@ on:
         required: true
         default: configs/scoring.yaml
       email_enabled:
-        description: Send HTML email report
+        description: Send HTML email reports
         required: true
         default: "false"
-      run_v2_jobs:
-        description: Run V2 jobs aggregator and email report
+      run_student_v2:
+        description: Run Student/local V2 pipeline
         required: true
-        default: "false"
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      run_remote_legacy:
+        description: Run remote legacy pipeline
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
       v2_limit:
         description: V2 collector limit
         required: true
@@ -27,19 +39,12 @@ on:
         description: V2 top jobs to export and email
         required: true
         default: "100"
-      v2_search_profile:
-        description: "V2 search profile"
-        default: "local_student"
-        type: choice
-        options:
-          - "local_student"
-          - "remote"
       v2_clean_results:
         description: Clean V2 search-result pages before export
         required: true
         default: "true"
       v2_drop_far_locations:
-        description: Drop far non-remote locations from V2 results
+        description: Drop far non-remote locations from Student V2 results
         required: false
         default: "true"
         type: choice
@@ -47,7 +52,7 @@ on:
           - "true"
           - "false"
       v2_drop_unknown_locations:
-        description: Drop unknown non-remote locations from V2 results
+        description: Drop unknown non-remote locations from Student V2 results
         required: false
         default: "true"
         type: choice
@@ -59,7 +64,8 @@ permissions:
   contents: write
 
 jobs:
-  run-collectors:
+  student-v2:
+    if: ${{ inputs.run_student_v2 == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -74,49 +80,26 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Run full pipeline
-        if: ${{ inputs.run_v2_jobs != 'true' }}
-        env:
-          EMAIL_ENABLED: ${{ inputs.email_enabled }}
-          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
-          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
-          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
-          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
-        run: python -m src.main --queries "${{ inputs.queries_file }}" --scoring "${{ inputs.scoring_file }}"
-
-      - name: Run V2 job aggregator
-        if: ${{ inputs.run_v2_jobs == 'true' }}
+      - name: Run Student V2 job aggregator
         run: |
           CLEAN_ARGS=""
           if [ "${{ inputs.v2_clean_results }}" = "true" ]; then
             CLEAN_ARGS="--email-clean-results"
           fi
           DROP_FAR_ARGS=""
-          if [ "${{ inputs.v2_search_profile }}" = "local_student" ] && [ "${{ inputs.v2_drop_far_locations }}" = "true" ]; then
+          if [ "${{ inputs.v2_drop_far_locations }}" = "true" ]; then
             DROP_FAR_ARGS="--drop-far-locations"
           fi
           DROP_UNKNOWN_ARGS=""
-          if [ "${{ inputs.v2_search_profile }}" = "local_student" ] && [ "${{ inputs.v2_drop_unknown_locations }}" = "true" ]; then
+          if [ "${{ inputs.v2_drop_unknown_locations }}" = "true" ]; then
             DROP_UNKNOWN_ARGS="--drop-unknown-locations"
           fi
-          OUTPUT_PATH="output/v2_jobs.json"
-          POOL_PATH="output/v2_candidate_pool.json"
-          HISTORY_PATH="output/v2_sent_jobs_history.json"
-          RUN_STATS_PATH="output/v2_run_stats.json"
-          if [ "${{ inputs.v2_search_profile }}" = "remote" ]; then
-            OUTPUT_PATH="output/v2_remote_jobs.json"
-            POOL_PATH="output/v2_remote_candidate_pool.json"
-            HISTORY_PATH="output/v2_remote_sent_jobs_history.json"
-            RUN_STATS_PATH="output/v2_remote_run_stats.json"
-          fi
           python -m src.job_aggregator \
-            --search-profile "${{ inputs.v2_search_profile }}" \
-            --output "$OUTPUT_PATH" \
-            --candidate-pool-output "$POOL_PATH" \
-            --history-path "$HISTORY_PATH" \
-            --run-stats-path "$RUN_STATS_PATH" \
+            --search-profile local_student \
+            --output output/v2_jobs.json \
+            --candidate-pool-output output/v2_candidate_pool.json \
+            --history-path output/v2_sent_jobs_history.json \
+            --run-stats-path output/v2_run_stats.json \
             --limit "${{ inputs.v2_limit }}" \
             --top "${{ inputs.v2_top }}" \
             --campania-part-time-first \
@@ -124,27 +107,18 @@ jobs:
             $DROP_FAR_ARGS \
             $DROP_UNKNOWN_ARGS
 
-      - name: Verify V2 Candidate Pool artifacts
-        if: ${{ inputs.run_v2_jobs == 'true' }}
+      - name: Verify Student V2 artifacts
         run: |
-          POOL_JSON="output/v2_candidate_pool.json"
-          POOL_XLSX="output/v2_candidate_pool.xlsx"
-          if [ "${{ inputs.v2_search_profile }}" = "remote" ]; then
-            POOL_JSON="output/v2_remote_candidate_pool.json"
-            POOL_XLSX="output/v2_remote_candidate_pool.xlsx"
-          fi
           for artifact in \
-            "$POOL_JSON" \
-            "$POOL_XLSX" \
-            output/v2_collector_stats.json \
-            output/v2_collector_stats.xlsx
+            output/v2_jobs.xlsx \
+            output/v2_candidate_pool.xlsx \
+            output/v2_run_stats.json
           do
             test -f "$artifact"
             echo "Verified $artifact"
           done
 
-      - name: Send V2 email report
-        if: ${{ inputs.run_v2_jobs == 'true' }}
+      - name: Send Student V2 email report
         env:
           EMAIL_ENABLED: ${{ inputs.email_enabled }}
           EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
@@ -154,42 +128,34 @@ jobs:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
-          INPUT_PATH="output/v2_jobs.json"
-          STATS_PATH="output/v2_run_stats.json"
-          if [ "${{ inputs.v2_search_profile }}" = "remote" ]; then
-            INPUT_PATH="output/v2_remote_jobs.json"
-            STATS_PATH="output/v2_remote_run_stats.json"
-          fi
           python -m src.v2_email_report \
-            --search-profile "${{ inputs.v2_search_profile }}" \
-            --input "$INPUT_PATH" \
-            --stats "$STATS_PATH" \
+            --search-profile local_student \
+            --input output/v2_jobs.json \
+            --stats output/v2_run_stats.json \
             --top "${{ inputs.v2_top }}"
 
-      - name: Commit sent jobs history
+      - name: Commit Student V2 sent jobs history
         if: ${{ success() && inputs.email_enabled == 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for history_file in output/sent_jobs_history.json output/v2_sent_jobs_history.json output/v2_remote_sent_jobs_history.json; do
-            if [ -f "$history_file" ]; then
-              git add "$history_file"
-            fi
-          done
+          if [ -f output/v2_sent_jobs_history.json ]; then
+            git add output/v2_sent_jobs_history.json
+          fi
           if git diff --cached --quiet; then
-            echo "No sent jobs history changes to commit."
+            echo "No Student V2 sent jobs history changes to commit."
           else
-            git commit -m "Update sent jobs history"
+            git commit -m "Update student V2 sent jobs history"
+            git pull --rebase
             git push
           fi
 
-      - name: Upload job results
+      - name: Upload Student V2 results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: job-results
+          name: student-v2-results
           path: |
-            output/latest/
             output/v2_jobs.json
             output/v2_jobs.csv
             output/v2_jobs.xlsx
@@ -199,11 +165,130 @@ jobs:
             output/v2_collector_stats.xlsx
             output/v2_sent_jobs_history.json
             output/v2_run_stats.json
-            output/v2_remote_jobs.json
-            output/v2_remote_jobs.csv
-            output/v2_remote_jobs.xlsx
-            output/v2_remote_candidate_pool.json
-            output/v2_remote_candidate_pool.xlsx
-            output/v2_remote_sent_jobs_history.json
-            output/v2_remote_run_stats.json
+          if-no-files-found: warn
+
+  remote-legacy:
+    if: ${{ inputs.run_remote_legacy == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run remote legacy collectors and scoring
+        env:
+          JOB_INTELLIGENCE_QUERIES_FILE: ${{ inputs.queries_file }}
+          JOB_INTELLIGENCE_SCORING_FILE: ${{ inputs.scoring_file }}
+        run: |
+          python remotive_collector.py
+          python remotejobs_org_collector.py
+          python remotefirstjobs_collector.py
+          python jobicy_collector.py
+          python workanywhere_collector.py
+          python himalayas_collector.py
+          python arbeitnow_collector.py
+          python duckduckgo_collector.py
+          python scoring_jobs.py
+
+      - name: Build remote legacy report and send email
+        env:
+          EMAIL_ENABLED: ${{ inputs.email_enabled }}
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          JOB_INTELLIGENCE_SCORING_FILE: ${{ inputs.scoring_file }}
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          from src.main import (
+              COLLECTOR_OUTPUT_FILES,
+              OUTPUT_DIR,
+              count_csv_rows,
+              send_email_report,
+              validate_output_files,
+              write_summary,
+          )
+          from scoring_jobs import score_jobs
+
+          run_started = datetime.now(ZoneInfo("Europe/Rome"))
+          OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+          collector_counts = {
+              name: count_csv_rows(path)
+              for name, path in COLLECTOR_OUTPUT_FILES.items()
+              if Path(path).exists()
+          }
+          csv_path = OUTPUT_DIR / "jobs_scored.csv"
+          xlsx_path = OUTPUT_DIR / "jobs_scored.xlsx"
+          top_csv_path = OUTPUT_DIR / "top_50_jobs.csv"
+          top_jobs_xlsx_path = OUTPUT_DIR / "top_jobs.xlsx"
+          scoring_result = score_jobs(
+              csv_path=csv_path,
+              xlsx_path=xlsx_path,
+              top_csv_path=top_csv_path,
+              top_xlsx_path=top_jobs_xlsx_path,
+          )
+          summary_path = write_summary(
+              run_started,
+              collector_counts,
+              scoring_result,
+              [csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, OUTPUT_DIR / "run_summary.md"],
+          )
+          validate_output_files([csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, summary_path])
+          email_was_sent = send_email_report(run_started, collector_counts, scoring_result)
+          print(f"Remote legacy email sent: {email_was_sent}")
+          PY
+
+      - name: Verify remote legacy artifacts
+        run: |
+          for artifact in \
+            output/latest/jobs_scored.xlsx \
+            output/latest/top_jobs.xlsx \
+            output/latest/run_summary.md
+          do
+            test -f "$artifact"
+            echo "Verified $artifact"
+          done
+
+      - name: Commit remote legacy sent jobs history
+        if: ${{ success() && inputs.email_enabled == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f output/sent_jobs_history.json ]; then
+            git add output/sent_jobs_history.json
+          fi
+          if git diff --cached --quiet; then
+            echo "No remote legacy sent jobs history changes to commit."
+          else
+            git commit -m "Update remote legacy sent jobs history"
+            git pull --rebase
+            git push
+          fi
+
+      - name: Upload remote legacy results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-legacy-results
+          path: |
+            output/latest/jobs_scored.csv
+            output/latest/jobs_scored.xlsx
+            output/latest/top_50_jobs.csv
+            output/latest/top_jobs.xlsx
+            output/latest/run_summary.md
+            output/sent_jobs_history.json
           if-no-files-found: warn

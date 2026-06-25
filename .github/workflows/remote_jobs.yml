@@ -1,0 +1,134 @@
+name: Remote Jobs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  remote-legacy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run remote legacy collectors and scoring
+        env:
+          JOB_INTELLIGENCE_QUERIES_FILE: configs/queries.yaml
+          JOB_INTELLIGENCE_SCORING_FILE: configs/scoring.yaml
+        run: |
+          python remotive_collector.py
+          python remotejobs_org_collector.py
+          python remotefirstjobs_collector.py
+          python jobicy_collector.py
+          python workanywhere_collector.py
+          python himalayas_collector.py
+          python arbeitnow_collector.py
+          python duckduckgo_collector.py
+          python scoring_jobs.py
+
+      - name: Build remote legacy report and send email
+        env:
+          EMAIL_ENABLED: "true"
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          JOB_INTELLIGENCE_SCORING_FILE: configs/scoring.yaml
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          from src.main import (
+              COLLECTOR_OUTPUT_FILES,
+              OUTPUT_DIR,
+              count_csv_rows,
+              send_email_report,
+              validate_output_files,
+              write_summary,
+          )
+          from scoring_jobs import score_jobs
+
+          run_started = datetime.now(ZoneInfo("Europe/Rome"))
+          OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+          collector_counts = {
+              name: count_csv_rows(path)
+              for name, path in COLLECTOR_OUTPUT_FILES.items()
+              if Path(path).exists()
+          }
+          csv_path = OUTPUT_DIR / "jobs_scored.csv"
+          xlsx_path = OUTPUT_DIR / "jobs_scored.xlsx"
+          top_csv_path = OUTPUT_DIR / "top_50_jobs.csv"
+          top_jobs_xlsx_path = OUTPUT_DIR / "top_jobs.xlsx"
+          scoring_result = score_jobs(
+              csv_path=csv_path,
+              xlsx_path=xlsx_path,
+              top_csv_path=top_csv_path,
+              top_xlsx_path=top_jobs_xlsx_path,
+          )
+          summary_path = write_summary(
+              run_started,
+              collector_counts,
+              scoring_result,
+              [csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, OUTPUT_DIR / "run_summary.md"],
+          )
+          validate_output_files([csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, summary_path])
+          email_was_sent = send_email_report(run_started, collector_counts, scoring_result)
+          print(f"Remote legacy email sent: {email_was_sent}")
+          PY
+
+      - name: Verify remote legacy artifacts
+        run: |
+          for artifact in \
+            output/latest/jobs_scored.xlsx \
+            output/latest/top_jobs.xlsx \
+            output/latest/run_summary.md
+          do
+            test -f "$artifact"
+            echo "Verified $artifact"
+          done
+
+      - name: Commit remote legacy sent jobs history
+        if: ${{ success() }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f output/sent_jobs_history.json ]; then
+            git add output/sent_jobs_history.json
+          fi
+          if git diff --cached --quiet; then
+            echo "No remote legacy sent jobs history changes to commit."
+          else
+            git commit -m "Update remote legacy sent jobs history"
+            git pull --rebase
+            git push
+          fi
+
+      - name: Upload remote legacy results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-legacy-results
+          path: |
+            output/latest/jobs_scored.csv
+            output/latest/jobs_scored.xlsx
+            output/latest/top_50_jobs.csv
+            output/latest/top_jobs.xlsx
+            output/latest/run_summary.md
+            output/sent_jobs_history.json
+          if-no-files-found: warn

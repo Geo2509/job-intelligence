@@ -1,0 +1,17 @@
+name: Daily Job Search
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  student-jobs:
+    uses: ./.github/workflows/student_jobs.yml
+    secrets: inherit
+
+  remote-jobs:
+    needs: student-jobs
+    uses: ./.github/workflows/remote_jobs.yml
+    secrets: inherit

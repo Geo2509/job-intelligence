@@ -594,9 +594,25 @@ python scoring_jobs.py
 - Naples (Napoli) как региональный центр с реальными агентствами: Agenzia Genovese, F. Andolfi, Rigel, Wilhelmsen
 - Ключевые поисковые запросы в `MARITIME_QUERIES` для поиска как удалённых позиций, так и местных агентств
 
+## Daily Usage
+
+Для ежедневного использования доступны три one-click workflow без параметров:
+
+- **Student Jobs** — поиск локальной работы в Napoli/Campania, совместимой с учёбой. Использует Student V2, `local_student`, Location Guard, clean results и отдельное V2 письмо.
+- **Remote Jobs** — поиск удалённой работы через старый remote legacy pipeline. Использует legacy collectors, `scoring_jobs.py`, старую историю `output/sent_jobs_history.json` и старое remote email.
+- **Daily Job Search** — запускает оба сценария последовательно: сначала Student Jobs и Student email, затем Remote Jobs и Remote email.
+
+Для запуска:
+
+1. Откройте `Actions` в GitHub.
+2. Выберите `Student Jobs`, `Remote Jobs` или `Daily Job Search`.
+3. Нажмите `Run workflow`.
+
+**Advanced Job Search** — режим разработчика. В нём оставлены все параметры: config paths, включение потоков, V2 limits, clean/drop flags и email toggle.
+
 ## Удалённый запуск через GitHub Actions
 
-Workflow `Run Job Collectors` запускает два независимых потока. Их можно включать вместе или по отдельности через inputs:
+Workflow `Advanced Job Search` запускает два независимых потока. Их можно включать вместе или по отдельности через inputs:
 
 - `run_student_v2`: Student V2 для локальной работы под учёбу в Napoli/Campania;
 - `run_remote_legacy`: старый remote pipeline для удалённой работы, как раньше.
@@ -645,11 +661,11 @@ configs/scoring.yaml
 
 Формула подсчёта score осталась в `scoring_jobs.py`; YAML меняет только значения весов, порогов и существующие списки фильтрации.
 
-### Запуск workflow с телефона
+### Запуск advanced workflow с телефона
 
 1. Откройте репозиторий на GitHub.
 2. Перейдите в `Actions`.
-3. Выберите workflow `Run Job Collectors`.
+3. Выберите workflow `Advanced Job Search`.
 4. Нажмите `Run workflow`.
 5. При необходимости измените inputs:
    - `queries_file`: по умолчанию `configs/queries.yaml`;
@@ -665,7 +681,7 @@ configs/scoring.yaml
 
 1. Откройте завершённый run в `Actions`.
 2. Внизу страницы найдите `Artifacts`.
-3. Скачайте artifact `job-results`.
+3. Скачайте нужный artifact.
 
 Student V2 artifact содержит:
 - `output/v2_jobs.xlsx`;
@@ -679,11 +695,11 @@ Remote legacy artifact содержит:
 
 ### Student V2 from GitHub Actions
 
-Student V2 запускается из workflow `Run Job Collectors`.
+Student V2 запускается из workflow `Student Jobs` в one-click режиме или из `Advanced Job Search` в режиме разработчика.
 
 1. Откройте репозиторий на GitHub.
 2. Перейдите в `Actions`.
-3. Выберите workflow `Run Job Collectors`.
+3. Выберите workflow `Advanced Job Search`.
 4. Нажмите `Run workflow`.
 5. Установите inputs:
    - `run_student_v2`: `true`;
@@ -720,7 +736,7 @@ GitHub Student V2 workflow по умолчанию использует email cl
 
 ### Remote legacy from GitHub Actions
 
-Remote legacy запускается тем же workflow, но остаётся старым pipeline и не подключает legacy remote collectors к V2:
+Remote legacy запускается из `Remote Jobs` в one-click режиме или из `Advanced Job Search` в режиме разработчика, но остаётся старым pipeline и не подключает legacy remote collectors к V2:
 
 ```bash
 python remotive_collector.py
@@ -824,7 +840,7 @@ HTML-письмо содержит статистику запуска и TOP-20
 
 TTL истории — 90 дней: записи старше 90 дней удаляются при загрузке истории. Если после фильтрации новых вакансий нет, пустое письмо не отправляется, а в лог выводится `No new jobs to email.`.
 
-Для GitHub Actions история должна сохраняться между чистыми запусками. Workflow `Run Job Collectors` после успешного запуска с `email_enabled=true` автоматически коммитит обновлённый `output/sent_jobs_history.json` обратно в репозиторий, если файл изменился.
+Для GitHub Actions история должна сохраняться между чистыми запусками. Workflows `Remote Jobs`, `Daily Job Search` и `Advanced Job Search` после успешного remote legacy запуска с включённым email автоматически коммитят обновлённый `output/sent_jobs_history.json` обратно в репозиторий, если файл изменился.
 
 Тема письма:
 

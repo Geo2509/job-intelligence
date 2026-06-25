@@ -1,0 +1,99 @@
+name: Student Jobs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  student-v2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run Student V2 job aggregator
+        run: |
+          python -m src.job_aggregator \
+            --search-profile local_student \
+            --output output/v2_jobs.json \
+            --candidate-pool-output output/v2_candidate_pool.json \
+            --history-path output/v2_sent_jobs_history.json \
+            --run-stats-path output/v2_run_stats.json \
+            --limit 5 \
+            --top 100 \
+            --campania-part-time-first \
+            --email-clean-results \
+            --drop-far-locations \
+            --drop-unknown-locations
+
+      - name: Verify Student V2 artifacts
+        run: |
+          for artifact in \
+            output/v2_jobs.xlsx \
+            output/v2_candidate_pool.xlsx \
+            output/v2_run_stats.json
+          do
+            test -f "$artifact"
+            echo "Verified $artifact"
+          done
+
+      - name: Send Student V2 email report
+        env:
+          EMAIL_ENABLED: "true"
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: |
+          python -m src.v2_email_report \
+            --search-profile local_student \
+            --input output/v2_jobs.json \
+            --stats output/v2_run_stats.json \
+            --top 100
+
+      - name: Commit Student V2 sent jobs history
+        if: ${{ success() }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f output/v2_sent_jobs_history.json ]; then
+            git add output/v2_sent_jobs_history.json
+          fi
+          if git diff --cached --quiet; then
+            echo "No Student V2 sent jobs history changes to commit."
+          else
+            git commit -m "Update student V2 sent jobs history"
+            git pull --rebase
+            git push
+          fi
+
+      - name: Upload Student V2 results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-v2-results
+          path: |
+            output/v2_jobs.json
+            output/v2_jobs.csv
+            output/v2_jobs.xlsx
+            output/v2_candidate_pool.json
+            output/v2_candidate_pool.xlsx
+            output/v2_collector_stats.json
+            output/v2_collector_stats.xlsx
+            output/v2_sent_jobs_history.json
+            output/v2_run_stats.json
+          if-no-files-found: warn

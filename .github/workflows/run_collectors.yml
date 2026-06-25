@@ -1,4 +1,4 @@
-name: Run Job Collectors
+name: Advanced Job Search
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
       email_enabled:
         description: Send HTML email reports
         required: true
-        default: "false"
+        default: "true"
       run_student_v2:
         description: Run Student/local V2 pipeline
         required: true

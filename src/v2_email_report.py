@@ -9,6 +9,7 @@ from src.main import email_enabled, require_email_settings, smtplib
 
 
 DEFAULT_INPUT_PATH = "output/v2_jobs.json"
+DEFAULT_RUN_STATS_PATH = "output/v2_run_stats.json"
 DEFAULT_TOP = 100
 SUBJECT = "Job Intelligence V2: Campania Part-Time + Remote Jobs"
 
@@ -88,6 +89,16 @@ def load_jobs(input_path):
     if not isinstance(jobs, list):
         raise ValueError(f"Expected a JSON list in {path}")
     return jobs
+
+
+def load_run_stats(stats_path=DEFAULT_RUN_STATS_PATH):
+    path = Path(stats_path)
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected a JSON object in {path}")
+    return data
 
 
 def job_text(job):
@@ -185,6 +196,39 @@ def email_summary(jobs):
     return top_match_score, recommended_count
 
 
+def render_run_stats(stats):
+    if not stats:
+        return ""
+    collector_rows = stats.get("collector_stats") or []
+    contribution = "".join(
+        f"<li>{html.escape(str(row.get('collector', '')))}: {int(row.get('email_jobs') or 0)}</li>"
+        for row in collector_rows
+    )
+    history_skipped = int(stats.get("seen_skipped") or 0)
+    new_jobs = int(stats.get("new_jobs") or 0)
+    updated_jobs = int(stats.get("updated_jobs") or 0)
+    seen_jobs = sum(int(row.get("history_seen") or 0) for row in collector_rows)
+    allowed_local = sum(int(row.get("allowed_local") or 0) for row in collector_rows)
+    remote = sum(int(row.get("remote") or 0) for row in collector_rows)
+    unknown = sum(int(row.get("unknown_location") or 0) for row in collector_rows)
+    excluded_far = sum(int(row.get("excluded_far") or 0) for row in collector_rows)
+    return (
+        "<h2>Email Statistics</h2>"
+        f"<p><strong>Collected:</strong> {int(stats.get('total_candidates') or 0)}</p>"
+        f"<p><strong>After cleaner:</strong> {int(stats.get('candidate_pool_jobs') or stats.get('after_cleaning') or 0)}</p>"
+        f"<p><strong>Allowed local:</strong> {allowed_local}</p>"
+        f"<p><strong>Remote:</strong> {remote}</p>"
+        f"<p><strong>Unknown:</strong> {unknown}</p>"
+        f"<p><strong>Excluded far:</strong> {excluded_far}</p>"
+        f"<p><strong>History skipped:</strong> {history_skipped}</p>"
+        f"<p><strong>New jobs:</strong> {new_jobs}</p>"
+        f"<p><strong>Updated jobs:</strong> {updated_jobs}</p>"
+        f"<p><strong>Seen jobs:</strong> {seen_jobs}</p>"
+        "<h3>Collector contribution</h3>"
+        f"<ul>{contribution}</ul>"
+    )
+
+
 def render_job(job):
     title = html.escape(str(job.get("title", "") or ""))
     company = html.escape(str(job.get("company", "") or ""))
@@ -221,7 +265,7 @@ def render_job(job):
     )
 
 
-def build_email_html(jobs):
+def build_email_html(jobs, run_stats=None):
     jobs = sorted_jobs(jobs)
     top_match_score, recommended_count = email_summary(jobs)
     groups = grouped_jobs(jobs)
@@ -241,6 +285,7 @@ def build_email_html(jobs):
         f"<p><strong>Top match score:</strong> {top_match_score}</p>"
         f"<p><strong>Recommended to apply today:</strong> {recommended_count}</p>"
         f"{''.join(blocks)}"
+        f"{render_run_stats(run_stats or {})}"
         "</body></html>"
     )
 
@@ -258,7 +303,7 @@ def send_html_email(subject, body):
         smtp.sendmail(os.environ["EMAIL_FROM"], recipients, message.as_string())
 
 
-def send_v2_email_report(input_path=DEFAULT_INPUT_PATH, top=DEFAULT_TOP):
+def send_v2_email_report(input_path=DEFAULT_INPUT_PATH, top=DEFAULT_TOP, stats_path=DEFAULT_RUN_STATS_PATH):
     jobs = sorted_jobs(load_jobs(input_path))[:top]
     if not jobs:
         print("No V2 jobs to email")
@@ -269,7 +314,7 @@ def send_v2_email_report(input_path=DEFAULT_INPUT_PATH, top=DEFAULT_TOP):
         return False
 
     require_email_settings()
-    send_html_email(SUBJECT, build_email_html(jobs))
+    send_html_email(SUBJECT, build_email_html(jobs, load_run_stats(stats_path)))
     print(f"V2 email report sent: {len(jobs)} jobs")
     return True
 
@@ -278,12 +323,13 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default=DEFAULT_INPUT_PATH)
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
+    parser.add_argument("--stats", default=DEFAULT_RUN_STATS_PATH)
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
-    send_v2_email_report(args.input, args.top)
+    send_v2_email_report(args.input, args.top, args.stats)
 
 
 if __name__ == "__main__":

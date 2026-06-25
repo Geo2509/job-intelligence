@@ -7,6 +7,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from src.candidate_pool import (
+    DEFAULT_COLLECTOR_STATS_PATH,
+    DEFAULT_POOL_PATH,
+    build_candidate_pool,
+    build_collector_stats,
+    classify_candidates,
+    export_candidate_pool,
+    export_collector_stats,
+)
 from src.candidate_profile import calculate_match_score, evaluate_candidate_score
 from src.job_collector_registry import enabled_collectors, get_collector
 from src.job_matching import (
@@ -401,6 +410,7 @@ def empty_run_stats():
     return {
         "total_candidates": 0,
         "after_cleaning": 0,
+        "candidate_pool_jobs": 0,
         "removed_far": 0,
         "removed_unknown": 0,
         "new_jobs": 0,
@@ -538,6 +548,7 @@ def aggregate_jobs(
     max_seen_repeat=DEFAULT_MAX_SEEN_REPEAT,
     include_seen=False,
     return_stats=False,
+    return_artifacts=False,
     min_remote=DEFAULT_MIN_REMOTE,
     min_hospitality=DEFAULT_MIN_HOSPITALITY,
     min_cleaning=DEFAULT_MIN_CLEANING,
@@ -546,18 +557,33 @@ def aggregate_jobs(
 ):
     jobs = []
     stats = empty_run_stats()
+    collected_counts = {}
     collector_names = collector_names or enabled_collectors()
     should_clean_results = clean_results or email_clean_results or strict_job_detail_only
     for name in collector_names:
         collector_jobs = run_collector(name, limit, top, campania_part_time_first)
         print(f"Collector {name} returned: {len(collector_jobs)} jobs")
+        collected_counts[name] = len(collector_jobs)
         jobs.extend(
-            normalize_job(job, include_profile_scores=not should_clean_results)
+            {
+                **normalize_job(job, include_profile_scores=not should_clean_results),
+                "collector": name,
+            }
             for job in collector_jobs
         )
 
     stats["total_candidates"] = len(jobs)
     jobs = deduplicate_jobs(jobs)
+    history = load_sent_history(history_path) if history_path else {}
+    if return_artifacts:
+        candidate_candidates = add_profile_scores(classify_candidates(jobs))
+        candidate_candidates = annotate_history_status(
+            candidate_candidates,
+            history,
+            skip_seen_days=skip_seen_days,
+        )
+    else:
+        candidate_candidates = []
     if should_clean_results:
         jobs, summary = clean_results_with_summary(
             jobs,
@@ -588,7 +614,6 @@ def aggregate_jobs(
             jobs = drop_unknown_location_jobs(jobs)
             stats["removed_unknown"] = before_drop - len(jobs)
 
-    history = load_sent_history(history_path) if history_path else {}
     if history_path:
         jobs = annotate_history_status(jobs, history, skip_seen_days=skip_seen_days)
         status_counts = history_status_counts(jobs)
@@ -611,6 +636,19 @@ def aggregate_jobs(
         min_data_office=min_data_office,
     )
     stats["email_jobs"] = len(jobs)
+    if return_artifacts:
+        candidate_pool = build_candidate_pool(candidate_candidates, jobs, history)
+        collector_stats = build_collector_stats(collected_counts, candidate_candidates, jobs)
+        stats["candidate_pool_jobs"] = len(candidate_pool)
+        stats["collector_stats"] = collector_stats
+        stats["collector_contribution"] = {
+            row["collector"]: row["email_jobs"]
+            for row in collector_stats
+        }
+        return jobs, stats, {
+            "candidate_pool": candidate_pool,
+            "collector_stats": collector_stats,
+        }
     if return_stats:
         return jobs, stats
     return jobs
@@ -718,6 +756,8 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--collectors", default=None)
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument("--candidate-pool-output", default=DEFAULT_POOL_PATH)
+    parser.add_argument("--collector-stats-output", default=DEFAULT_COLLECTOR_STATS_PATH)
     parser.add_argument("--history-path", default=DEFAULT_HISTORY_PATH)
     parser.add_argument("--run-stats-path", default=DEFAULT_RUN_STATS_PATH)
     parser.add_argument("--skip-seen-days", type=int, default=DEFAULT_SKIP_SEEN_DAYS)
@@ -741,7 +781,7 @@ def parse_args(argv=None):
 
 def main():
     args = parse_args()
-    jobs, stats = aggregate_jobs(
+    jobs, stats, artifacts = aggregate_jobs(
         parse_collectors(args.collectors),
         limit=args.limit,
         top=args.top,
@@ -756,6 +796,7 @@ def main():
         max_seen_repeat=args.max_seen_repeat,
         include_seen=args.include_seen == "true",
         return_stats=True,
+        return_artifacts=True,
         min_remote=args.min_remote,
         min_hospitality=args.min_hospitality,
         min_cleaning=args.min_cleaning,
@@ -763,6 +804,8 @@ def main():
         min_data_office=args.min_data_office,
     )
     export_jobs(jobs, args.output)
+    export_candidate_pool(artifacts["candidate_pool"], args.candidate_pool_output)
+    export_collector_stats(artifacts["collector_stats"], args.collector_stats_output)
     history = load_sent_history(args.history_path)
     history = update_sent_history(history, jobs)
     write_sent_history(history, args.history_path)

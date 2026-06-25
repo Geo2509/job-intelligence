@@ -140,6 +140,10 @@ jobs:
             output/v2_jobs.json
             output/v2_jobs.csv
             output/v2_jobs.xlsx
+            output/v2_candidate_pool.json
+            output/v2_candidate_pool.xlsx
+            output/v2_collector_stats.json
+            output/v2_collector_stats.xlsx
             output/v2_sent_jobs_history.json
             output/v2_run_stats.json
           if-no-files-found: warn

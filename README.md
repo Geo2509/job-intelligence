@@ -204,6 +204,35 @@ Aggregator экспортирует:
 - `output/v2_jobs.json`
 - `output/v2_jobs.csv`
 - `output/v2_jobs.xlsx`
+- `output/v2_candidate_pool.json`
+- `output/v2_candidate_pool.xlsx`
+- `output/v2_collector_stats.json`
+- `output/v2_collector_stats.xlsx`
+- `output/v2_run_stats.json`
+
+### Candidate Pool
+
+Candidate Pool хранит все реальные вакансии после V2 Result Cleaner и URL classification. На этот пул не применяются history rotation, skip seen и email limit: если страница классифицирована как реальная вакансия, она остаётся в `output/v2_candidate_pool.json` и `output/v2_candidate_pool.xlsx`.
+
+Email показывает только лучшие вакансии текущего запуска, а Candidate Pool нужен для анализа всей воронки: почему вакансия попала в письмо или была отложена из-за location guard, истории, низкого match score или лимита письма. Для каждой строки добавляется `rejection_reason`: `passed`, `excluded_far`, `unknown_location`, `low_match`, `history_seen`, `email_limit` и другие причины cleaner/url-classification.
+
+### Collector Analytics
+
+`output/v2_collector_stats.json` и `output/v2_collector_stats.xlsx` показывают вклад каждого collector: сколько строк собрано, сколько осталось реальных вакансий после cleaner, сколько было `allowed_local`, `remote`, `excluded_far`, `unknown_location`, сколько найдено search/category/career/company/article/excluded-domain страниц, а также history-состояния и количество вакансий, попавших в email.
+
+### Excel Explorer
+
+`output/v2_candidate_pool.xlsx` предназначен для ручного анализа. В Excel включены автофильтр, заморозка первой строки, подобранные ширины колонок и условное форматирование `Match Score`: зелёный для `>=90`, жёлтый для `80-89`, оранжевый для `70-79`, красный ниже `70`.
+
+Последняя колонка `Action` пустая и предназначена для ручных статусов: `Applied`, `Interview`, `Skip`, `Interesting`, `CV Sent`, `Rejected`, `Saved`. При следующем экспорте существующие значения `Action` сохраняются по `Job ID`, если старый XLSX доступен.
+
+CLI explorer:
+
+```bash
+python -m src.candidate_pool --source gigroup
+python -m src.candidate_pool --reason excluded_far
+python -m src.candidate_pool --location unknown --top 50
+```
 
 ### V2 Sent Jobs History
 

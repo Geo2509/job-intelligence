@@ -106,13 +106,17 @@ def segment_search_match(target, search_patterns):
 
 
 def classify_url(url, patterns):
+    return classify_url_detail(url, patterns)["detected_type"]
+
+
+def classify_url_detail(url, patterns):
     hostname, target = normalized_url_parts(url)
     if not hostname:
-        return "unknown"
+        return {"detected_type": "unknown", "matched_pattern": "none"}
 
     excluded_domains = normalized_domains(patterns.get("general_exclude_domains", []))
     if hostname in excluded_domains:
-        return "excluded_domain"
+        return {"detected_type": "excluded_domain", "matched_pattern": "general_exclude_domains"}
 
     for source_name, source_patterns in patterns.items():
         if source_name == "general_exclude_domains":
@@ -125,20 +129,35 @@ def classify_url(url, patterns):
         if source_name == "randstad" and source_patterns.get("search_before_job"):
             for pattern in search_patterns:
                 if search_before_job_match(target, pattern):
-                    return "search_page"
+                    return {
+                        "detected_type": "search_page",
+                        "matched_pattern": f"{source_name}_search",
+                    }
             if segment_search_match(target, search_patterns):
-                return "search_page"
+                return {
+                    "detected_type": "search_page",
+                    "matched_pattern": f"{source_name}_search",
+                }
         if more_specific_search_match(target, job_patterns, search_patterns):
-            return "search_page"
+            return {
+                "detected_type": "search_page",
+                "matched_pattern": f"{source_name}_search",
+            }
         if source_patterns.get("job_all") and all(
             pattern_matches(target, pattern)
             for pattern in source_patterns.get("job_all", [])
         ):
-            return "real_job"
+            return {
+                "detected_type": "real_job",
+                "matched_pattern": f"{source_name}_job",
+            }
         if source_patterns.get("search_before_job"):
             for pattern in search_patterns:
                 if pattern_matches(target, pattern):
-                    return "search_page"
+                    return {
+                        "detected_type": "search_page",
+                        "matched_pattern": f"{source_name}_search",
+                    }
 
         for pattern_type in PATTERN_RESULT_TYPES:
             result_type = "real_job" if pattern_type == "job" else pattern_type
@@ -146,7 +165,11 @@ def classify_url(url, patterns):
                 result_type = "search_page"
             for pattern in source_patterns.get(pattern_type, []):
                 if pattern_matches(target, pattern):
-                    return result_type
-        return "unknown"
+                    pattern_label = "job" if pattern_type == "job" else pattern_type
+                    return {
+                        "detected_type": result_type,
+                        "matched_pattern": f"{source_name}_{pattern_label}",
+                    }
+        return {"detected_type": "unknown", "matched_pattern": "none"}
 
-    return "unknown"
+    return {"detected_type": "unknown", "matched_pattern": "none"}

@@ -96,4 +96,8 @@ jobs:
             output/v2_collector_stats.xlsx
             output/v2_sent_jobs_history.json
             output/v2_run_stats.json
+            output/url_pattern_debug.json
+            output/url_pattern_debug.xlsx
+            output/unknown_urls.xlsx
+            output/url_pattern_recommendations.md
           if-no-files-found: warn

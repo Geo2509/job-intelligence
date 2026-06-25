@@ -43,6 +43,11 @@ COLLECTOR_STAT_FIELDS = [
     "collected",
     "after_cleaner",
     "real_jobs",
+    "pattern_coverage",
+    "unknown_urls",
+    "accepted_urls",
+    "rejected_urls",
+    "real_job_ratio",
     "allowed_local",
     "remote",
     "excluded_far",
@@ -162,6 +167,7 @@ def build_collector_stats(collected_counts, candidates, email_jobs=None):
         stats = stats_by_collector.setdefault(name, new_collector_stats(name))
         result_type = job.get("result_type")
         if is_real_job(job):
+            stats["accepted_urls"] += 1
             stats["after_cleaner"] += 1
             stats["real_jobs"] += 1
             location_fit = job.get("location_fit")
@@ -194,15 +200,24 @@ def build_collector_stats(collected_counts, candidates, email_jobs=None):
         elif result_type == "excluded_domain":
             stats["excluded_domains"] += 1
 
+        if not is_real_job(job):
+            stats["rejected_urls"] += 1
+            if result_type == "unknown" or job.get("url_result_type") == "unknown":
+                stats["unknown_urls"] += 1
+
     for job in email_jobs or []:
         name = collector_name(job)
         stats = stats_by_collector.setdefault(name, new_collector_stats(name))
         stats["email_jobs"] += 1
 
-    return [
-        {field: stats.get(field, 0) for field in COLLECTOR_STAT_FIELDS}
-        for _, stats in sorted(stats_by_collector.items())
-    ]
+    rows = []
+    for _, stats in sorted(stats_by_collector.items()):
+        total_urls = int(stats.get("accepted_urls") or 0) + int(stats.get("rejected_urls") or 0)
+        accepted_urls = int(stats.get("accepted_urls") or 0)
+        stats["pattern_coverage"] = f"{round((accepted_urls / total_urls) * 100, 1)}%" if total_urls else "0%"
+        stats["real_job_ratio"] = f"{round((int(stats.get('real_jobs') or 0) / total_urls) * 100, 1)}%" if total_urls else "0%"
+        rows.append({field: stats.get(field, 0) for field in COLLECTOR_STAT_FIELDS})
+    return rows
 
 
 def write_json(rows, output_path):

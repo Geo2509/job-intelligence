@@ -1,4 +1,4 @@
-from src.job_url_patterns import classify_url, load_url_patterns
+from src.job_url_patterns import classify_url, classify_url_detail, load_url_patterns
 
 
 def patterns():
@@ -7,6 +7,15 @@ def patterns():
 
 def test_indeed_viewjob_is_real_job():
     assert classify_url("https://it.indeed.com/viewjob?jk=abc123", patterns()) == "real_job"
+
+
+def test_indeed_viewjob_reports_matched_pattern():
+    detail = classify_url_detail("https://it.indeed.com/viewjob?jk=abc123", patterns())
+
+    assert detail == {
+        "detected_type": "real_job",
+        "matched_pattern": "indeed_job",
+    }
 
 
 def test_indeed_root_is_career_page():
@@ -116,6 +125,15 @@ def test_general_excluded_domains_are_excluded():
 
 def test_unknown_domain_is_unknown():
     assert classify_url("https://example.com/job/123", patterns()) == "unknown"
+
+
+def test_unknown_domain_reports_no_matched_pattern():
+    detail = classify_url_detail("https://example.com/job/123", patterns())
+
+    assert detail == {
+        "detected_type": "unknown",
+        "matched_pattern": "none",
+    }
 
 
 def test_jobbydoo_lavoro_is_search_page():

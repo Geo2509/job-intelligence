@@ -29,6 +29,7 @@ from src.job_matching import (
 )
 from src.job_result_cleaner import clean_results_with_summary, print_cleaning_summary
 from src.student_profile import detect_location_fit, evaluate_student_score, load_student_profile
+from src.url_pattern_debug import build_url_pattern_debug_rows, export_url_pattern_debug
 
 
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
@@ -703,6 +704,7 @@ def aggregate_jobs(
         )
 
     stats["total_candidates"] = len(jobs)
+    raw_jobs = list(jobs)
     jobs = deduplicate_jobs(jobs)
     history = load_sent_history(history_path) if history_path else {}
     if return_artifacts:
@@ -782,6 +784,7 @@ def aggregate_jobs(
     if return_artifacts:
         candidate_pool = build_candidate_pool(candidate_candidates, jobs, history)
         collector_stats = build_collector_stats(collected_counts, candidate_candidates, jobs)
+        url_pattern_debug = build_url_pattern_debug_rows(raw_jobs, candidate_candidates, jobs)
         stats["candidate_pool_jobs"] = len(candidate_pool)
         stats["collector_stats"] = collector_stats
         stats["collector_contribution"] = {
@@ -791,6 +794,7 @@ def aggregate_jobs(
         return jobs, stats, {
             "candidate_pool": candidate_pool,
             "collector_stats": collector_stats,
+            "url_pattern_debug": url_pattern_debug,
         }
     if return_stats:
         return jobs, stats
@@ -980,6 +984,7 @@ def main():
     export_jobs(jobs, output_path)
     export_candidate_pool(artifacts["candidate_pool"], candidate_pool_output)
     export_collector_stats(artifacts["collector_stats"], collector_stats_output)
+    export_url_pattern_debug(artifacts["url_pattern_debug"])
     history = load_sent_history(history_path)
     history = update_sent_history(history, jobs)
     write_sent_history(history, history_path)

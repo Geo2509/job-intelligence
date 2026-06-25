@@ -234,6 +234,34 @@ python -m src.candidate_pool --reason excluded_far
 python -m src.candidate_pool --location unknown --top 50
 ```
 
+### Collector Debug Suite
+
+`src/collector_debug.py` помогает понять, что именно возвращает конкретный V2 collector до cleaner и как каждый URL классифицируется. Это удобно, когда Candidate Pool показывает, что collector собирает результаты, но они не проходят как `real_job`.
+
+Пример для Gi Group:
+
+```bash
+python -m src.collector_debug \
+  --collector gigroup \
+  --limit 5 \
+  --output-dir output/debug/gigroup
+```
+
+Debug suite сохраняет:
+- `output/debug/gigroup/raw_jobs.json` — сырые результаты collector до cleaner;
+- `output/debug/gigroup/url_classification.csv`;
+- `output/debug/gigroup/url_classification.xlsx`;
+- `output/debug/gigroup/summary.json`.
+
+`url_classification` показывает `url_result_type`, `result_type`, `location_fit`, category, base/student/candidate/match score и `rejection_reason` для каждой строки.
+
+Другие collectors:
+
+```bash
+python -m src.collector_debug --collector adecco --limit 5
+python -m src.collector_debug --collector subito --limit 5
+```
+
 ### V2 Sent Jobs History
 
 V2 aggregator ведёт историю отправленных вакансий в `output/v2_sent_jobs_history.json`. История помогает не занимать следующие письма теми же объявлениями: по умолчанию `NEW` и `UPDATED` вакансии попадают в export/email, `SEEN` пропускаются, а `RESURFACED` снова допускаются после `--skip-seen-days`.

@@ -1239,7 +1239,8 @@ def score_jobs(
         | (df["normalized_remote_category"].fillna("") != "Other")
     ]
     after_filtering = len(df)
-    df[["job_score", "score_reason"]] = df.apply(calculate_score, axis=1)
+    score_columns = ["job_score", "score_reason", "positive_reason", "negative_reason"]
+    df[score_columns] = df.apply(calculate_score, axis=1)[score_columns]
     df = df[
         df.apply(
             lambda row: row["job_score"] >= MIN_SCORE_BY_SOURCE.get(

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scoring_jobs import calculate_score, enrich_remote_quality
+from scoring_jobs import calculate_score, enrich_remote_quality, remote_quality_signals
 from src import job_aggregator, v2_email_report
 
 
@@ -22,6 +22,22 @@ def scored(title, **extra):
     row = remote_job(title, **extra)
     row.update(enrich_remote_quality(row))
     return calculate_score(pd.Series(row))
+
+
+def test_scoring_dataframe_assignment_matches_returned_columns():
+    df = pd.DataFrame([
+        remote_job("AI Trainer remote", description="Worldwide LLM human feedback role"),
+        remote_job("Data Annotation remote", description="US only"),
+    ])
+    quality_rows = df.apply(lambda row: pd.Series(remote_quality_signals(row)), axis=1)
+    for column in quality_rows.columns:
+        df[column] = quality_rows[column]
+
+    score_columns = ["job_score", "score_reason", "positive_reason", "negative_reason"]
+    df[score_columns] = df.apply(calculate_score, axis=1)[score_columns]
+
+    assert df["job_score"].tolist()
+    assert all(column in df for column in score_columns)
 
 
 def test_remote_positive_ai_trainer_scores_high():

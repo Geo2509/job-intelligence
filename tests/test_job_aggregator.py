@@ -65,6 +65,88 @@ def test_fallback_dedup_by_title_company_location():
     assert len(deduped) == 1
 
 
+def rotation_job(title, status, match_score=80, **extra):
+    item = job(
+        title,
+        url=extra.pop("url", f"https://example.com/{title.lower().replace(' ', '-')}"),
+        match_score=match_score,
+        student_score=match_score,
+        candidate_score=match_score,
+        history_status=status,
+    )
+    item.update(extra)
+    return item
+
+
+def test_candidate_rotation_acceptance_mix():
+    jobs = (
+        [rotation_job(f"New {i}", "NEW", 100 - i) for i in range(20)]
+        + [rotation_job(f"Updated {i}", "UPDATED", 99 - i) for i in range(15)]
+        + [
+            rotation_job(
+                f"Never {i}",
+                "SEEN",
+                90 - i,
+                selection_pool_status="never_sent",
+                sent_count=0,
+            )
+            for i in range(40)
+        ]
+    )
+
+    selected = job_aggregator.select_email_jobs(jobs, email_target=50, email_min_match=50)
+
+    reasons = [item["selection_reason"] for item in selected]
+    assert reasons.count("NEW") == 20
+    assert reasons.count("UPDATED") == 15
+    assert reasons.count("NEVER_SENT_FILL") == 15
+    assert len(selected) == 50
+
+
+def test_candidate_rotation_new_before_never_sent():
+    selected = job_aggregator.select_email_jobs(
+        [
+            rotation_job("Never high", "SEEN", 100, selection_pool_status="never_sent"),
+            rotation_job("New lower", "NEW", 70),
+        ],
+        email_target=2,
+        email_min_match=50,
+    )
+
+    assert [item["selection_reason"] for item in selected] == ["NEW", "NEVER_SENT_FILL"]
+
+
+def test_candidate_rotation_never_sent_before_resurfaced_and_seen_skipped():
+    selected = job_aggregator.select_email_jobs(
+        [
+            rotation_job("Seen top", "SEEN", 100, sent_count=3),
+            rotation_job("Resurfaced", "RESURFACED", 95),
+            rotation_job("Never", "SEEN", 75, selection_pool_status="never_sent"),
+        ],
+        email_target=2,
+        email_min_match=50,
+    )
+
+    assert [item["selection_reason"] for item in selected] == ["NEVER_SENT_FILL", "RESURFACED"]
+    assert "Seen top" not in {item["title"] for item in selected}
+
+
+def test_candidate_rotation_target_and_min_match_are_enforced():
+    selected = job_aggregator.select_email_jobs(
+        [
+            rotation_job("New high", "NEW", 90),
+            rotation_job("New low", "NEW", 49),
+            rotation_job("Updated high", "UPDATED", 80),
+        ],
+        email_target=1,
+        email_min_match=50,
+    )
+
+    assert len(selected) == 1
+    assert selected[0]["title"] == "New high"
+    assert all(int(item["match_score"]) >= 50 for item in selected)
+
+
 def test_remote_detection_ignores_query_without_remote_signal():
     normalized = job_aggregator.normalize_job(
         job(

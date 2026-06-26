@@ -221,12 +221,23 @@ def sorted_jobs(jobs):
     return sorted(
         jobs,
         key=lambda job: (
+            selection_reason_order(job),
             -score_value(job, "match_score"),
             -score_value(job, "student_score"),
             -score_value(job, "candidate_score"),
             -score_value(job, "score"),
         ),
     )
+
+
+def selection_reason_order(job):
+    return {
+        "NEW": 0,
+        "UPDATED": 1,
+        "NEVER_SENT_FILL": 2,
+        "RESURFACED": 3,
+        "SEEN": 4,
+    }.get(str(job.get("selection_reason") or ""), 4)
 
 
 def match_label(match_score):
@@ -350,12 +361,15 @@ def render_job(job):
     url = html.escape(str(job.get("url", "") or ""), quote=True)
     match = html.escape(match_label(raw_match_score))
     history_status = html.escape(history_status_label(job.get("history_status")))
+    selection_reason = html.escape(str(job.get("selection_reason", "") or ""))
     status_line = f"<p><strong>Status:</strong> {history_status}</p>" if history_status else ""
+    selection_line = f"<p><strong>Selection:</strong> {selection_reason}</p>" if selection_reason else ""
 
     return (
         "<li>"
         f"<h3>{title}</h3>"
         f"{status_line}"
+        f"{selection_line}"
         f"<p><strong>{match}</strong></p>"
         f"<p><strong>Match:</strong> {match_score}</p>"
         f"<p><strong>Student:</strong> {student_score}</p>"

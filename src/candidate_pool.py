@@ -50,6 +50,7 @@ POOL_FIELDS = [
     ("Priority Bucket", "priority_bucket"),
     ("URL", "url"),
     ("History Status", "history_status"),
+    ("Selection Reason", "selection_reason"),
     ("Rejection Reason", "rejection_reason"),
     ("First Seen", "first_seen"),
     ("Last Seen", "last_seen"),
@@ -166,12 +167,18 @@ def rejection_reason(job, email_job_ids):
 
 def build_candidate_pool(candidates, email_jobs=None, history=None):
     email_job_ids = {job.get("job_id") for job in email_jobs or [] if job.get("job_id")}
+    selection_reasons = {
+        job.get("job_id"): job.get("selection_reason", "")
+        for job in email_jobs or []
+        if job.get("job_id")
+    }
     pool = []
     for job in candidates:
         if not is_real_job(job):
             continue
         item = apply_history_fields(job, history or {})
         item["collector"] = item.get("collector") or item.get("source", "")
+        item["selection_reason"] = item.get("selection_reason") or selection_reasons.get(item.get("job_id"), "")
         item["rejection_reason"] = rejection_reason(item, email_job_ids)
         item.setdefault("action", "")
         pool.append(item)

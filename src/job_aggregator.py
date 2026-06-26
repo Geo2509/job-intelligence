@@ -48,6 +48,9 @@ DEFAULT_LIMIT = 5
 DEFAULT_TOP = 50
 DEFAULT_SKIP_SEEN_DAYS = 7
 DEFAULT_MAX_SEEN_REPEAT = 1
+DEFAULT_EMAIL_TARGET = 50
+DEFAULT_EMAIL_MIN_MATCH = 50
+DEFAULT_ROTATION_DAYS = 7
 DEFAULT_MIN_REMOTE = 20
 DEFAULT_MIN_HOSPITALITY = 20
 DEFAULT_MIN_CLEANING = 15
@@ -103,6 +106,7 @@ OUTPUT_FIELDS = [
     "match_score",
     "search_profile",
     "history_status",
+    "selection_reason",
     "score",
     "found_at",
 ]
@@ -391,6 +395,7 @@ def sort_jobs(jobs):
     return sorted(
         jobs,
         key=lambda job: (
+            selection_reason_order(job),
             history_status_order(job),
             -int(job.get("match_score") or 0),
             -int(job.get("student_score") or 0),
@@ -404,6 +409,7 @@ def sort_by_score(jobs):
     return sorted(
         jobs,
         key=lambda job: (
+            selection_reason_order(job),
             history_status_order(job),
             -int(job.get("match_score") or 0),
             -int(job.get("student_score") or 0),
@@ -420,6 +426,16 @@ def history_status_order(job):
         "RESURFACED": 2,
         "SEEN": 3,
     }.get(str(job.get("history_status") or ""), 4)
+
+
+def selection_reason_order(job):
+    return {
+        "NEW": 0,
+        "UPDATED": 1,
+        "NEVER_SENT_FILL": 2,
+        "RESURFACED": 3,
+        "SEEN": 4,
+    }.get(str(job.get("selection_reason") or ""), 4)
 
 
 def add_profile_scores(jobs):
@@ -615,6 +631,60 @@ def filter_history_jobs(jobs, include_seen=False, max_seen_repeat=DEFAULT_MAX_SE
     return filtered, seen_skipped
 
 
+def is_never_sent(job):
+    status = str(job.get("history_status") or "").upper()
+    pool_status = str(job.get("selection_pool_status") or "").lower()
+    if status == "NEVER_SENT" or pool_status == "never_sent":
+        return True
+    if status in {"NEW", "UPDATED", "SEEN", "RESURFACED"}:
+        return False
+    return int(job.get("sent_count") or 0) == 0
+
+
+def with_selection_reason(job, reason):
+    item = dict(job)
+    item["selection_reason"] = reason
+    return item
+
+
+def select_email_jobs(
+    jobs,
+    email_target=DEFAULT_EMAIL_TARGET,
+    email_min_match=DEFAULT_EMAIL_MIN_MATCH,
+    include_seen=False,
+    max_seen_repeat=DEFAULT_MAX_SEEN_REPEAT,
+):
+    selected = []
+    selected_keys = set()
+
+    def eligible(job):
+        try:
+            return int(job.get("match_score") or 0) >= email_min_match
+        except (TypeError, ValueError):
+            return False
+
+    def add_bucket(candidates, reason):
+        for job in sort_by_score([item for item in candidates if eligible(item)]):
+            if len(selected) >= email_target:
+                return
+            key = aggregator_dedup_key(job)
+            if key in selected_keys:
+                continue
+            selected.append(with_selection_reason(job, reason))
+            selected_keys.add(key)
+
+    add_bucket([job for job in jobs if job.get("history_status") == "NEW"], "NEW")
+    add_bucket([job for job in jobs if job.get("history_status") == "UPDATED"], "UPDATED")
+    add_bucket([job for job in jobs if is_never_sent(job)], "NEVER_SENT_FILL")
+    add_bucket([job for job in jobs if job.get("history_status") == "RESURFACED"], "RESURFACED")
+    if include_seen:
+        add_bucket(
+            [job for job in jobs if job.get("history_status") == "SEEN"][:max_seen_repeat],
+            "SEEN",
+        )
+    return selected[:email_target]
+
+
 def history_status_counts(jobs):
     return {
         "new_jobs": sum(1 for job in jobs if job.get("history_status") == "NEW"),
@@ -797,10 +867,17 @@ def aggregate_jobs(
     min_maintenance=DEFAULT_MIN_MAINTENANCE,
     min_data_office=DEFAULT_MIN_DATA_OFFICE,
     search_profile=LOCAL_STUDENT_PROFILE,
+    email_target=None,
+    email_min_match=DEFAULT_EMAIL_MIN_MATCH,
+    rotation_days=DEFAULT_ROTATION_DAYS,
 ):
     jobs = []
     stats = empty_run_stats()
     stats["search_profile"] = search_profile
+    target_count = email_target or top
+    stats["email_target"] = target_count
+    stats["email_min_match"] = email_min_match
+    stats["rotation_days"] = rotation_days
     collected_counts = {}
     collector_names = collector_names or enabled_collectors()
     should_clean_results = clean_results or email_clean_results or strict_job_detail_only
@@ -873,24 +950,39 @@ def aggregate_jobs(
             jobs = drop_unknown_location_jobs(jobs)
             stats["removed_unknown"] = before_drop - len(jobs)
 
+    effective_rotation_days = rotation_days if rotation_days is not None else skip_seen_days
     if history_path:
-        jobs = annotate_history_status(jobs, history, skip_seen_days=skip_seen_days)
+        jobs = annotate_history_status(jobs, history, skip_seen_days=effective_rotation_days)
         status_counts = history_status_counts(jobs)
         stats.update(status_counts)
-        jobs, seen_skipped = filter_history_jobs(
+        selected_jobs = select_email_jobs(
             jobs,
+            email_target=target_count,
+            email_min_match=email_min_match,
             include_seen=include_seen,
             max_seen_repeat=max_seen_repeat,
         )
-        stats["seen_skipped"] = seen_skipped
+        selected_keys = {aggregator_dedup_key(job) for job in selected_jobs}
+        stats["seen_skipped"] = sum(
+            1
+            for job in jobs
+            if job.get("history_status") == "SEEN" and aggregator_dedup_key(job) not in selected_keys
+        )
+        jobs = selected_jobs
+    else:
+        jobs = [
+            with_selection_reason(job, job.get("selection_reason") or "NEW")
+            for job in jobs
+            if int(job.get("match_score") or 0) >= email_min_match
+        ]
 
     jobs = sort_jobs(jobs)
     if search_profile == REMOTE_PROFILE:
-        jobs = jobs[:top]
+        jobs = jobs[:target_count]
     else:
         jobs = balanced_top(
             jobs,
-            top=top,
+            top=target_count,
             min_remote=min_remote,
             min_hospitality=min_hospitality,
             min_cleaning=min_cleaning,
@@ -1057,6 +1149,9 @@ def parse_args(argv=None):
     parser.add_argument("--include-seen", choices=["false", "true"], default="false")
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
+    parser.add_argument("--email-target", type=int, default=DEFAULT_EMAIL_TARGET)
+    parser.add_argument("--email-min-match", type=int, default=DEFAULT_EMAIL_MIN_MATCH)
+    parser.add_argument("--rotation-days", type=int, default=DEFAULT_ROTATION_DAYS)
     parser.add_argument("--campania-part-time-first", action="store_true")
     parser.add_argument("--clean-results", action="store_true")
     parser.add_argument("--email-clean-results", action="store_true")
@@ -1100,6 +1195,9 @@ def main():
         min_maintenance=args.min_maintenance,
         min_data_office=args.min_data_office,
         search_profile=args.search_profile,
+        email_target=args.email_target,
+        email_min_match=args.email_min_match,
+        rotation_days=args.rotation_days,
     )
     export_jobs(jobs, output_path)
     export_candidate_pool(artifacts["candidate_pool"], candidate_pool_output)

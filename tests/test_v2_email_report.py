@@ -128,6 +128,17 @@ def test_top_limit_is_applied_after_match_sort(tmp_path):
     assert "Lower match" not in body
 
 
+def test_email_preserves_selection_priority_before_match_sort():
+    body = v2_email_report.build_email_html([
+        job("Never sent higher", match_score=100, selection_reason="NEVER_SENT_FILL"),
+        job("Fresh lower", match_score=70, selection_reason="NEW"),
+    ])
+
+    assert body.index("Fresh lower") < body.index("Never sent higher")
+    assert "<strong>Selection:</strong> NEW" in body
+    assert "<strong>Selection:</strong> NEVER_SENT_FILL" in body
+
+
 def test_email_body_contains_required_job_fields():
     body = v2_email_report.build_email_html(
         [

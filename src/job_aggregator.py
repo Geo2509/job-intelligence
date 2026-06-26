@@ -32,6 +32,7 @@ from src.job_matching import (
 from src.job_result_cleaner import clean_results_with_summary, print_cleaning_summary
 from src.student_profile import detect_location_fit, evaluate_student_score, load_student_profile
 from src.url_pattern_debug import build_url_pattern_debug_rows, export_url_pattern_debug
+from scoring_jobs import enrich_remote_quality
 
 
 DEFAULT_OUTPUT_PATH = "output/v2_jobs.json"
@@ -90,6 +91,15 @@ OUTPUT_FIELDS = [
     "student_score",
     "candidate_score",
     "remote_score",
+    "country_restriction",
+    "employment_type",
+    "salary_min",
+    "salary_max",
+    "currency",
+    "salary_text",
+    "normalized_remote_category",
+    "positive_reason",
+    "negative_reason",
     "match_score",
     "search_profile",
     "history_status",
@@ -272,6 +282,11 @@ def normalize_job(job, include_profile_scores=True, search_profile=LOCAL_STUDENT
     job["location_fit"] = detect_location_fit(job, load_student_profile())
     job["search_profile"] = search_profile
     job.setdefault("remote_score", 0)
+    if search_profile == REMOTE_PROFILE:
+        job.update(enrich_remote_quality(job))
+        if job.get("normalized_remote_category") and job["normalized_remote_category"] != "Other":
+            job["category"] = job["normalized_remote_category"]
+            job["normalized_category"] = job["category"]
     if include_profile_scores:
         job["student_score"] = int(evaluate_student_score(job))
         job["candidate_score"] = int(evaluate_candidate_score(job))
@@ -291,10 +306,11 @@ def remote_text(job):
         " ".join([
             str(job.get("company", "") or ""),
             str(job.get("location", "") or ""),
-            str(job.get("category", "") or ""),
-        str(job.get("url", "") or ""),
-        str(job.get("source", "") or ""),
-    ]),
+            str(job.get("description", "") or ""),
+            str(job.get("query", "") or ""),
+            str(job.get("url", "") or ""),
+            str(job.get("source", "") or ""),
+        ]),
         "",
     )
 
@@ -324,6 +340,7 @@ def calculate_remote_score(job):
     for points, terms in REMOTE_PENALTIES:
         if has_any(text, terms):
             score -= points
+    score += int(job.get("remote_score_delta") or 0)
     return score
 
 
@@ -448,6 +465,11 @@ def add_profile_scores(jobs):
         job["normalized_category"] = job["category"]
         job["part_time"] = detect_part_time(title, snippet, "")
         job["score"] = int(score_job(title, snippet, ""))
+        if (job.get("search_profile") or LOCAL_STUDENT_PROFILE) == REMOTE_PROFILE:
+            job.update(enrich_remote_quality(job))
+            if job.get("normalized_remote_category") and job["normalized_remote_category"] != "Other":
+                job["category"] = job["normalized_remote_category"]
+                job["normalized_category"] = job["category"]
         job["location_fit"] = detect_location_fit(job, load_student_profile())
         job["student_score"] = int(evaluate_student_score(job))
         job["candidate_score"] = int(evaluate_candidate_score(job))

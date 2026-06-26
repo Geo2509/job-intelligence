@@ -28,13 +28,12 @@ LOCAL_BLOCKS = [
     "Other",
 ]
 REMOTE_BLOCKS = [
-    "AI Trainer / Annotator",
-    "Data Entry / Data Processing",
-    "Transcription",
+    "AI Training",
+    "Data",
+    "Logistics",
     "Virtual Assistant",
-    "Customer Support / Moderation",
-    "Logistics / Operations",
-    "Other Remote",
+    "Transcription",
+    "Other",
 ]
 BLOCKS = LOCAL_BLOCKS
 
@@ -96,7 +95,7 @@ REMOTE_DATA_TERMS = [
 ]
 AI_TRAINER_TERMS = ["ai trainer", "ai annotator", "data annotator", "ai evaluator", "search evaluator", "data labeling", "data annotation"]
 DATA_PROCESSING_TERMS = ["data entry", "data processing", "google sheets", "excel"]
-TRANSCRIPTION_TERMS = ["transcription", "trascrizione"]
+TRANSCRIPTION_TERMS = ["transcription", "trascrizione", "localization", "translation"]
 VIRTUAL_ASSISTANT_TERMS = ["virtual assistant", "assistente virtuale"]
 SUPPORT_MODERATION_TERMS = ["customer support", "content reviewer", "moderation"]
 LOGISTICS_REMOTE_TERMS = ["logistics", "logistica", "operations", "freight forwarding"]
@@ -125,7 +124,16 @@ def load_run_stats(stats_path=DEFAULT_RUN_STATS_PATH):
 def job_text(job):
     return " ".join(
         str(job.get(field, "") or "")
-        for field in ["title", "company", "location", "category", "query", "source"]
+        for field in [
+            "title",
+            "company",
+            "location",
+            "category",
+            "normalized_remote_category",
+            "description",
+            "query",
+            "source",
+        ]
     ).lower()
 
 
@@ -144,19 +152,30 @@ def classify_job(job, search_profile=LOCAL_STUDENT_PROFILE):
     text = job_text(job)
     category = str(job.get("category", "") or "").lower()
     if search_profile == REMOTE_PROFILE:
+        remote_category = str(job.get("normalized_remote_category") or "")
+        if remote_category in {"AI Training", "AI Annotation"}:
+            return "AI Training"
+        if remote_category in {"Data Entry", "Analytics", "Python"}:
+            return "Data"
+        if remote_category == "Logistics":
+            return "Logistics"
+        if remote_category == "Virtual Assistant":
+            return "Virtual Assistant"
+        if remote_category in {"Transcription", "Translation"}:
+            return "Transcription"
         if has_any(text, AI_TRAINER_TERMS):
-            return "AI Trainer / Annotator"
+            return "AI Training"
         if has_any(text, DATA_PROCESSING_TERMS):
-            return "Data Entry / Data Processing"
+            return "Data"
+        if has_any(text, LOGISTICS_REMOTE_TERMS):
+            return "Logistics"
         if has_any(text, TRANSCRIPTION_TERMS):
             return "Transcription"
         if has_any(text, VIRTUAL_ASSISTANT_TERMS):
             return "Virtual Assistant"
         if has_any(text, SUPPORT_MODERATION_TERMS):
-            return "Customer Support / Moderation"
-        if has_any(text, LOGISTICS_REMOTE_TERMS):
-            return "Logistics / Operations"
-        return "Other Remote"
+            return "Other"
+        return "Other"
 
     if is_campania_part_time(job, text):
         return "Campania part-time"
@@ -285,12 +304,21 @@ def render_collector_health(rows):
         email_jobs = int(row.get("email") or 0)
         real_jobs = int(row.get("real_jobs") or 0)
         candidate_pool = int(row.get("candidate_pool") or 0)
+        worldwide = int(row.get("worldwide_jobs") or 0)
+        eu_jobs = int(row.get("eu_jobs") or 0)
+        rejected_country = int(row.get("rejected_by_country") or 0)
+        rejected_seniority = int(row.get("rejected_by_seniority") or 0)
+        rejected_profile = int(row.get("rejected_by_profile") or 0)
         if real_jobs == 0:
             detail = "0 real jobs"
         else:
             detail = (
                 f"{email_jobs} email / {real_jobs} real jobs / {candidate_pool} candidate pool"
                 f" | NEW: {new} | UPDATED: {updated} | SEEN: {seen} | RESURFACED: {resurfaced}"
+                f" | Worldwide: {worldwide} | EU: {eu_jobs}"
+                f" | Rejected country: {rejected_country}"
+                f" | Rejected seniority: {rejected_seniority}"
+                f" | Rejected profile: {rejected_profile}"
             )
         items.append(f"<li><strong>{collector}</strong> ({status}) - {detail}</li>")
     return "<h2>Collector Health</h2><ul>" + "".join(items) + "</ul>"
@@ -312,6 +340,12 @@ def render_job(job):
     location_fit = html.escape(str(job.get("location_fit", "") or ""))
     category = html.escape(str(job.get("category", "") or ""))
     rejection_reason = html.escape(str(job.get("rejection_reason", "") or ""))
+    country = html.escape(str(job.get("country_restriction", "") or ""))
+    employment = html.escape(str(job.get("employment_type", "") or ""))
+    salary = html.escape(str(job.get("salary_text", "") or ""))
+    remote_category = html.escape(str(job.get("normalized_remote_category", "") or ""))
+    positive_reason = html.escape(str(job.get("positive_reason", "") or ""))
+    negative_reason = html.escape(str(job.get("negative_reason", "") or ""))
     source = html.escape(str(job.get("source", "") or ""))
     url = html.escape(str(job.get("url", "") or ""), quote=True)
     match = html.escape(match_label(raw_match_score))
@@ -334,6 +368,12 @@ def render_job(job):
         f"<p><strong>Rejection reason:</strong> {rejection_reason}</p>"
         f"<p><strong>Source:</strong> {source}</p>"
         f"<p><strong>Category:</strong> {category}</p>"
+        f"<p><strong>Remote category:</strong> {remote_category}</p>"
+        f"<p><strong>Country:</strong> {country}</p>"
+        f"<p><strong>Employment:</strong> {employment}</p>"
+        f"<p><strong>Salary:</strong> {salary}</p>"
+        f"<p><strong>Positive reasons:</strong> {positive_reason}</p>"
+        f"<p><strong>Negative reasons:</strong> {negative_reason}</p>"
         f'<p><strong>URL:</strong> <a href="{url}">{url}</a></p>'
         f"<p><strong>Company:</strong> {company}</p>"
         f"<p><strong>Location:</strong> {location}</p>"

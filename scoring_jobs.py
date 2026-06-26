@@ -18,17 +18,95 @@ SEARCH_DESCRIPTION_LIMIT = 6000
 OUTPUT_COLUMNS = [
     "job_score",
     "apply_priority",
+    "normalized_remote_category",
+    "country_restriction",
+    "employment_type",
+    "salary_min",
+    "salary_max",
+    "currency",
+    "salary_text",
     "source",
     "title",
     "company",
     "location",
     "url",
     "clickable",
+    "positive_reason",
+    "negative_reason",
     "score_reason",
 ]
 TOP_JOBS_MIN_SCORE = 70
 PRIORITY_HIGH_SCORE = 90
 PRIORITY_MEDIUM_SCORE = 75
+
+REMOTE_CATEGORY_RULES = [
+    ("AI Training", ["ai trainer", "ai evaluator", "ai tutor", "search evaluator", "rlhf", "human feedback"]),
+    ("AI Annotation", ["ai annotation", "ai annotator", "data annotation", "data annotator", "data labeling", "llm annotation"]),
+    ("Data Entry", ["data entry", "data processing", "inserimento dati", "excel", "google sheets", "csv", "validation", "qa data"]),
+    ("Virtual Assistant", ["virtual assistant", "administrative assistant", "back office", "admin assistant"]),
+    ("Logistics", ["ocean freight", "shipping", "freight forwarding", "container", "supply chain", "logistics coordinator"]),
+    ("Analytics", ["operations analyst", "junior analyst", "reporting analyst", "analytics", "dashboard", "reporting"]),
+    ("Python", ["python", "automation", "pandas", "api"]),
+    ("Customer Support", ["customer support", "customer service", "support specialist"]),
+    ("Translation", ["translation", "translator", "localization", "localisation", "multilingual"]),
+    ("Transcription", ["transcription", "transcriber", "speech", "audio annotation"]),
+    ("Moderation", ["content moderator", "content moderation", "moderation", "content reviewer"]),
+    ("Research", ["research assistant", "research", "web research"]),
+]
+
+COUNTRY_RESTRICTION_RULES = [
+    ("US only", ["us only", "u.s. only", "usa only", "united states only", "must be based in the us", "us-based only"]),
+    ("Canada only", ["canada only", "canadian only", "must be based in canada"]),
+    ("Brazil only", ["brazil only", "brazilian only", "brasil only"]),
+    ("LATAM only", ["latam only", "latin america only", "south america only"]),
+    ("India only", ["india only", "india-based only", "must be based in india"]),
+    ("Italy", ["italy only", "italia", "italy-based", "based in italy"]),
+    ("Europe", ["europe only", "european time zones", "european timezone", "based in europe"]),
+    ("EU", ["eu only", "european union"]),
+    ("EMEA", ["emea"]),
+    ("Worldwide", ["worldwide", "anywhere", "global", "fully remote", "work from anywhere"]),
+]
+
+EMPLOYMENT_TYPE_RULES = [
+    ("Part-time", ["part-time", "part time", "tempo parziale"]),
+    ("Full-time", ["full-time", "full time", "tempo pieno"]),
+    ("Contract", ["contract", "contractor", "contratto"]),
+    ("Freelance", ["freelance", "freelancer"]),
+    ("Project", ["project based", "project-based", "per project"]),
+    ("Temporary", ["temporary", "temp", "fixed term", "tempo determinato"]),
+    ("Internship", ["internship", "intern", "stage", "tirocinio"]),
+]
+
+COUNTRY_SCORE_WEIGHTS = {
+    "Worldwide": 20,
+    "Europe": 15,
+    "EU": 15,
+    "Italy": 15,
+    "EMEA": 10,
+    "US only": -40,
+    "Canada only": -35,
+    "Brazil only": -40,
+    "LATAM only": -40,
+    "India only": -40,
+}
+
+REMOTE_POSITIVE_RULES = [
+    ("AI Trainer", ["ai trainer", "ai evaluator", "ai tutor"], 45),
+    ("AI Annotation", ["ai annotation", "data annotation", "data labeling", "human feedback", "rlhf", "llm"], 45),
+    ("Data", ["data entry", "excel", "google sheets", "csv", "reporting", "dashboard", "validation", "qa data"], 35),
+    ("Logistics", ["ocean freight", "shipping", "freight forwarding", "container", "supply chain", "operations analyst", "logistics coordinator"], 40),
+    ("Languages", ["ukrainian", "russian", "english", "multilingual", "українська", "русский"], 20),
+    ("Virtual Assistant", ["virtual assistant", "administrative", "back office"], 30),
+]
+
+REMOTE_NEGATIVE_RULES = [
+    ("seniority", ["senior", "lead", "principal", "head", "director", "manager", "staff engineer"], -35),
+    ("country", ["us only", "canada only", "latam only", "brazil only", "india only"], -40),
+    ("restriction", ["relocation required", "security clearance", "licensed", "certification required"], -35),
+    ("irrelevant", ["geopolitical", "intelligence analyst", "military", "cyber security", "cybersecurity", "soc analyst", "penetration testing"], -55),
+    ("medical", ["physician", "medical doctor", "doctor", "nurse", "dentist", "pharmacist"], -60),
+    ("low priority", ["sales", "marketing", "recruiter", "hr", "graphic design", "manual qa", "finance senior", "project manager"], -30),
+]
 
 
 POSITIVE_WEIGHTS = {
@@ -502,6 +580,149 @@ def phrase_matches(text, phrase):
     return PHRASE_PATTERNS[phrase].search(text) is not None
 
 
+def normalize_text(value):
+    return " ".join(str(value or "").lower().split())
+
+
+def row_text(row):
+    return normalize_text(" ".join([
+        str(row.get("title", "") or ""),
+        str(row.get("company", "") or ""),
+        str(row.get("location", "") or ""),
+        str(row.get("description", "") or ""),
+        str(row.get("category", "") or ""),
+        str(row.get("query", "") or ""),
+    ]))
+
+
+def contains_any(text, terms):
+    return any(term in text for term in terms)
+
+
+def detect_remote_category(row):
+    text = row_text(row)
+    for category, terms in REMOTE_CATEGORY_RULES:
+        if contains_any(text, terms):
+            return category
+    return "Other"
+
+
+def detect_country_restriction(row):
+    text = row_text(row)
+    location = normalize_text(row.get("location", ""))
+    for restriction, terms in COUNTRY_RESTRICTION_RULES:
+        if contains_any(text, terms) or contains_any(location, terms):
+            return restriction
+    if location in {"remote", "worldwide", "anywhere"}:
+        return "Worldwide"
+    return ""
+
+
+def normalize_employment_type(row):
+    text = row_text(row)
+    for employment_type, terms in EMPLOYMENT_TYPE_RULES:
+        if contains_any(text, terms):
+            return employment_type
+    existing = str(row.get("employment_type") or row.get("job_type") or "").strip()
+    return existing
+
+
+def parse_money(value):
+    if value is None or value == "":
+        return None
+    try:
+        return int(float(str(value).replace(",", "").replace(" ", "")))
+    except ValueError:
+        return None
+
+
+def extract_salary(row):
+    existing_text = str(row.get("salary_text") or row.get("salary") or "")
+    existing_min = parse_money(row.get("salary_min"))
+    existing_max = parse_money(row.get("salary_max"))
+    currency = str(row.get("currency") or "").strip()
+    if existing_min or existing_max:
+        return {
+            "salary_min": existing_min or "",
+            "salary_max": existing_max or existing_min or "",
+            "currency": currency,
+            "salary_text": existing_text,
+        }
+
+    text = row_text(row)
+    salary_match = re.search(
+        r"(?P<currency>€|\$|£|eur|usd|gbp)\s*(?P<min>\d[\d,\. ]{2,})(?:\s*(?:-|–|to|/)\s*(?:€|\$|£|eur|usd|gbp)?\s*(?P<max>\d[\d,\. ]{2,}))?",
+        text,
+        re.IGNORECASE,
+    )
+    if not salary_match:
+        return {"salary_min": "", "salary_max": "", "currency": currency, "salary_text": existing_text}
+    raw_currency = salary_match.group("currency")
+    currency_map = {"€": "EUR", "$": "USD", "£": "GBP", "eur": "EUR", "usd": "USD", "gbp": "GBP"}
+    salary_min = parse_money(salary_match.group("min"))
+    salary_max = parse_money(salary_match.group("max")) or salary_min
+    salary_text = existing_text or salary_match.group(0)
+    return {
+        "salary_min": salary_min or "",
+        "salary_max": salary_max or "",
+        "currency": currency_map.get(raw_currency.lower(), raw_currency.upper()),
+        "salary_text": salary_text,
+    }
+
+
+def remote_quality_signals(row):
+    text = row_text(row)
+    score_delta = 0
+    positive = []
+    negative = []
+
+    for label, terms, points in REMOTE_POSITIVE_RULES:
+        matched = [term for term in terms if term in text]
+        if matched:
+            score_delta += points
+            positive.append(f"+{points} {label}: {', '.join(matched[:3])}")
+
+    country = detect_country_restriction(row)
+    country_points = COUNTRY_SCORE_WEIGHTS.get(country, 0)
+    if country_points:
+        score_delta += country_points
+        reason = f"{country_points:+d} country: {country}"
+        if country_points > 0:
+            positive.append(reason)
+        else:
+            negative.append(reason)
+
+    salary = extract_salary(row)
+    if salary.get("salary_min"):
+        score_delta += 5
+        positive.append("+5 salary present")
+
+    for label, terms, points in REMOTE_NEGATIVE_RULES:
+        matched = [term for term in terms if term in text]
+        if matched:
+            score_delta += points
+            negative.append(f"{points} {label}: {', '.join(matched[:3])}")
+
+    return {
+        "remote_score_delta": score_delta,
+        "normalized_remote_category": detect_remote_category(row),
+        "country_restriction": country,
+        "employment_type": normalize_employment_type(row),
+        "salary_min": salary["salary_min"],
+        "salary_max": salary["salary_max"],
+        "currency": salary["currency"],
+        "salary_text": salary["salary_text"],
+        "positive_reason": "; ".join(positive),
+        "negative_reason": "; ".join(negative),
+    }
+
+
+def enrich_remote_quality(row):
+    enriched = dict(row)
+    enriched.update(remote_quality_signals(enriched))
+    return enriched
+
+
 def has_signal_phrase(text):
     return any(phrase_matches(text, phrase) for phrase in SIGNAL_PHRASES)
 
@@ -737,13 +958,18 @@ def calculate_score(row):
         if phrase_matches(title_text, phrase)
     ]
     if hard_exclusions:
+        quality = remote_quality_signals(row)
         return pd.Series({
             "job_score": -100,
             "score_reason": "excluded title: " + ", ".join(hard_exclusions),
+            "positive_reason": quality["positive_reason"],
+            "negative_reason": "excluded title: " + ", ".join(hard_exclusions),
         })
 
     score = SOURCE_BONUS.get(row.get("source"), 0)
     reasons = []
+    positive_reasons = []
+    negative_reasons = []
     matched_signals = set()
 
     def add_signal(signal_id, points, reason):
@@ -753,6 +979,10 @@ def calculate_score(row):
         matched_signals.add(signal_id)
         score += points
         reasons.append(reason)
+        if points >= 0:
+            positive_reasons.append(reason)
+        else:
+            negative_reasons.append(reason)
 
     for phrase, points in POSITIVE_WEIGHTS.items():
         if phrase_matches(text, phrase):
@@ -767,7 +997,24 @@ def calculate_score(row):
         if phrase_matches(text, phrase):
             add_signal(f"negative:{phrase}", points, f"{points} {phrase}")
 
-    return pd.Series({"job_score": score, "score_reason": ", ".join(reasons)})
+    quality = remote_quality_signals(row)
+    score += int(quality["remote_score_delta"] or 0)
+    if quality["positive_reason"]:
+        positive_reasons.append(quality["positive_reason"])
+    if quality["negative_reason"]:
+        negative_reasons.append(quality["negative_reason"])
+
+    all_reasons = reasons + [
+        reason
+        for reason in [quality["positive_reason"], quality["negative_reason"]]
+        if reason
+    ]
+    return pd.Series({
+        "job_score": score,
+        "score_reason": ", ".join(all_reasons),
+        "positive_reason": "; ".join(positive_reasons),
+        "negative_reason": "; ".join(negative_reasons),
+    })
 
 
 def column_name(index):
@@ -978,13 +1225,19 @@ def score_jobs(
     df = df.drop_duplicates(subset=["url"], keep="first")
     df = df.drop_duplicates(subset=["source", "title", "company"], keep="first")
     after_deduplication = len(df)
+    quality_rows = df.apply(lambda row: pd.Series(remote_quality_signals(row)), axis=1)
+    for column in quality_rows.columns:
+        df[column] = quality_rows[column]
     signal_text = (
         df["title"].fillna("").astype(str) + " " +
         df["company"].fillna("").astype(str) + " " +
         df["location"].fillna("").astype(str) + " " +
         df["description"].fillna("").astype(str)
     ).str.lower()
-    df = df[signal_text.apply(has_signal_phrase)]
+    df = df[
+        signal_text.apply(has_signal_phrase)
+        | (df["normalized_remote_category"].fillna("") != "Other")
+    ]
     after_filtering = len(df)
     df[["job_score", "score_reason"]] = df.apply(calculate_score, axis=1)
     df = df[

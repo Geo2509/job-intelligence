@@ -31,6 +31,15 @@ POOL_FIELDS = [
     ("Skills", "skills"),
     ("Smart Working", "smart_working"),
     ("Full Time", "full_time"),
+    ("Country Restriction", "country_restriction"),
+    ("Remote Employment Type", "employment_type"),
+    ("Salary Min", "salary_min"),
+    ("Salary Max", "salary_max"),
+    ("Currency", "currency"),
+    ("Salary Text", "salary_text"),
+    ("Remote Category", "normalized_remote_category"),
+    ("Positive Reason", "positive_reason"),
+    ("Negative Reason", "negative_reason"),
     ("Location Fit", "location_fit"),
     ("Remote", "remote"),
     ("Remote Reason", "remote_reason"),
@@ -75,6 +84,12 @@ COLLECTOR_STAT_FIELDS = [
     "history_new",
     "history_seen_status",
     "history_resurfaced",
+    "country_restricted",
+    "worldwide_jobs",
+    "eu_jobs",
+    "rejected_by_country",
+    "rejected_by_seniority",
+    "rejected_by_profile",
     "email_jobs",
 ]
 
@@ -139,6 +154,11 @@ def rejection_reason(job, email_job_ids):
         return "unknown_location"
     if job.get("history_status") == "SEEN":
         return "history_seen"
+    negative_reason = str(job.get("negative_reason") or "").lower()
+    if "country" in negative_reason:
+        return "rejected_by_country"
+    if "seniority" in negative_reason or "excluded title" in negative_reason:
+        return "rejected_by_seniority"
     if score_value(job, "match_score") < MATCH_THRESHOLD:
         return "low_match"
     return "email_limit"
@@ -204,6 +224,22 @@ def build_collector_stats(collected_counts, candidates, email_jobs=None):
                 stats["history_new"] += 1
             elif status == "RESURFACED":
                 stats["history_resurfaced"] += 1
+
+            country = str(job.get("country_restriction") or "")
+            if country:
+                stats["country_restricted"] += 1
+            if country == "Worldwide":
+                stats["worldwide_jobs"] += 1
+            if country in {"EU", "Europe", "EMEA", "Italy"}:
+                stats["eu_jobs"] += 1
+
+            negative_reason = str(job.get("negative_reason") or "").lower()
+            if "country" in negative_reason:
+                stats["rejected_by_country"] += 1
+            if "seniority" in negative_reason or "excluded title" in negative_reason:
+                stats["rejected_by_seniority"] += 1
+            if score_value(job, "match_score") < MATCH_THRESHOLD:
+                stats["rejected_by_profile"] += 1
         elif result_type == "search_page":
             stats["search_pages"] += 1
         elif result_type == "category_page":

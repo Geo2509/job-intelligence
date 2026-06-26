@@ -280,6 +280,8 @@ def render_job(job):
     student_score = html.escape(str(job.get("student_score", "") or ""))
     candidate_score = html.escape(str(job.get("candidate_score", "") or ""))
     remote_score = html.escape(str(job.get("remote_score", "") or ""))
+    remote = html.escape(str(job.get("remote", "")))
+    remote_reason = html.escape(str(job.get("remote_reason", "") or "none"))
     location_fit = html.escape(str(job.get("location_fit", "") or ""))
     category = html.escape(str(job.get("category", "") or ""))
     source = html.escape(str(job.get("source", "") or ""))
@@ -296,7 +298,9 @@ def render_job(job):
         f"<p><strong>Match:</strong> {match_score}</p>"
         f"<p><strong>Student:</strong> {student_score}</p>"
         f"<p><strong>Candidate:</strong> {candidate_score}</p>"
-        f"<p><strong>Remote:</strong> {remote_score}</p>"
+        f"<p><strong>Remote:</strong> {remote}</p>"
+        f"<p><strong>Remote reason:</strong> {remote_reason}</p>"
+        f"<p><strong>Remote score:</strong> {remote_score}</p>"
         f"<p><strong>Location fit:</strong> {location_fit}</p>"
         f"<p><strong>Source:</strong> {source}</p>"
         f"<p><strong>Category:</strong> {category}</p>"

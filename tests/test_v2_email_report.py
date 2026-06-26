@@ -17,6 +17,7 @@ def job(title, **extra):
         "url": extra.pop("url", "https://example.com/job"),
         "query": extra.pop("query", ""),
         "remote": extra.pop("remote", False),
+        "remote_reason": extra.pop("remote_reason", "none"),
         "part_time": extra.pop("part_time", False),
         "priority_bucket": extra.pop("priority_bucket", "other"),
         "student_score": extra.pop("student_score", 90),
@@ -146,6 +147,8 @@ def test_email_body_contains_required_job_fields():
     assert "<strong>Match:</strong> 95" in body
     assert "<strong>Student:</strong> 90" in body
     assert "<strong>Candidate:</strong> 100" in body
+    assert "<strong>Remote:</strong> False" in body
+    assert "<strong>Remote reason:</strong> none" in body
     assert "<strong>Location fit:</strong> allowed_local" in body
     assert "<strong>Source:</strong> indeed" in body
     assert "<strong>Category:</strong> general" in body

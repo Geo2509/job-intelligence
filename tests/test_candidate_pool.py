@@ -63,6 +63,8 @@ def test_candidate_pool_excel_is_created_with_action_column(tmp_path):
     with zipfile.ZipFile(output_path.with_suffix(".xlsx")) as xlsx:
         sheet = xlsx.read("xl/worksheets/sheet1.xml").decode("utf-8")
     assert "Action" in sheet
+    assert "Remote Reason" in sheet
+    assert "Normalized Category" in sheet
     assert "autoFilter" in sheet
     assert "state=\"frozen\"" in sheet
     assert "conditionalFormatting" in sheet

@@ -18,6 +18,7 @@ from src.job_matching import (
     detect_part_time,
     detect_priority_bucket,
     detect_remote,
+    detect_remote_reason,
     is_bad_job,
     normalize_url,
     score_job,
@@ -86,7 +87,9 @@ OUTPUT_FIELDS = [
     "source",
     "query",
     "category",
+    "normalized_category",
     "remote",
+    "remote_reason",
     "part_time",
     "priority_bucket",
     "score",
@@ -295,17 +298,21 @@ def normalize_gigroup_result(result, query, found_at=None):
     company = result.get("company") or "Gi Group"
     location = result.get("location") or ""
     searchable = combined_text(title, " ".join([snippet, company, location]), query)
-    remote = detect_remote(title, snippet, query)
+    url = normalize_url(result.get("url") or result.get("href") or result.get("link") or "")
+    remote = detect_remote(title, snippet, query, location=location, url=url)
+    category = detect_category(title, snippet, query)
     part_time = detect_part_time(title, snippet, query)
     job = {
         "title": title,
         "company": company,
         "location": location,
-        "url": normalize_url(result.get("url") or result.get("href") or result.get("link") or ""),
+        "url": url,
         "source": SOURCE_NAME,
         "query": query,
-        "category": detect_category(title, snippet, query),
+        "category": category,
+        "normalized_category": category,
         "remote": remote,
+        "remote_reason": detect_remote_reason(title, snippet, query, location=location, url=url),
         "part_time": part_time,
         "priority_bucket": detect_priority_bucket(searchable, part_time, remote),
         "score": score_job(title, snippet, query),

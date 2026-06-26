@@ -65,6 +65,80 @@ def test_fallback_dedup_by_title_company_location():
     assert len(deduped) == 1
 
 
+def test_remote_detection_ignores_query_without_remote_signal():
+    normalized = job_aggregator.normalize_job(
+        job(
+            "Addetto/addetta ufficio acquisti",
+            location="San Marco Evangelista, CE, Campania",
+            query="remote back office Napoli",
+        )
+    )
+
+    assert normalized["remote"] is False
+    assert normalized["remote_reason"] == "none"
+    assert normalized["location_fit"] == "allowed_local"
+
+
+def test_negative_remote_pattern_wins():
+    normalized = job_aggregator.normalize_job(
+        job(
+            "Customer Service smart working in sede",
+            location="Napoli",
+            query="remote",
+        )
+    )
+
+    assert normalized["remote"] is False
+    assert normalized["remote_reason"] == "negative: in sede"
+    assert normalized["location_fit"] == "allowed_local"
+
+
+def test_remote_detection_requires_explicit_job_signal():
+    normalized = job_aggregator.normalize_job(
+        job(
+            "Customer Service 100% SMARTWORKING",
+            location="Italia",
+            query="customer service Napoli",
+        )
+    )
+
+    assert normalized["remote"] is True
+    assert normalized["remote_reason"] == "title: smartworking"
+    assert normalized["location_fit"] == "remote"
+
+
+def test_job_classification_v2_categories_and_score_guards():
+    examples = {
+        "Talent Acquisition Consultant": ("hr_recruiting", 75),
+        "GRAFICO": ("design", 75),
+        "Contabile con SAP": ("accounting", 100),
+        "Impiegato/a spedizioni aeree": ("logistics", 100),
+        "Facilities junior officer": ("facilities", 100),
+        "Stage addetto amministrativo": ("administration", 100),
+        "Addetto/addetta ufficio acquisti": ("administration", 100),
+        "Data Entry Excel Napoli": ("data_entry", 100),
+    }
+
+    for title, (category, max_match) in examples.items():
+        normalized = job_aggregator.normalize_job(job(title, location="Napoli"))
+
+        assert normalized["category"] == category
+        assert normalized["match_score"] <= max_match
+
+
+def test_gigroup_local_examples_are_not_remote():
+    for title in [
+        "Addetto/addetta ufficio acquisti",
+        "Impiegato/a spedizioni aeree",
+    ]:
+        normalized = job_aggregator.normalize_job(
+            job(title, source="gigroup", location="San Marco Evangelista, CE, Campania")
+        )
+
+        assert normalized["remote"] is False
+        assert normalized["remote_reason"] == "none"
+
+
 def test_sorting_prioritizes_match_score_then_student_score_then_candidate_score_then_score():
     remote = job(
         "Remote data entry",

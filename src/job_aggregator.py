@@ -24,6 +24,7 @@ from src.job_matching import (
     detect_part_time,
     detect_priority_bucket,
     detect_remote,
+    detect_remote_reason,
     normalize_url,
     score_job,
 )
@@ -70,8 +71,10 @@ OUTPUT_FIELDS = [
     "source",
     "query",
     "remote",
+    "remote_reason",
     "part_time",
     "category",
+    "normalized_category",
     "priority_bucket",
     "location_fit",
     "student_score",
@@ -213,15 +216,34 @@ def normalize_job(job, include_profile_scores=True, search_profile=LOCAL_STUDENT
     company = job.get("company", "")
     location = job.get("location", "")
     query = job.get("query", "")
-    snippet = " ".join([str(company or ""), str(location or "")])
-    searchable = combined_text(title, " ".join([snippet, query]), "")
+    snippet = " ".join([
+        str(job.get(field, "") or "")
+        for field in ("description", "snippet", "summary", "body", "company", "location", "url")
+    ])
+    searchable = combined_text(title, " ".join([snippet, str(job.get("category", "") or "")]), "")
 
     job["url"] = normalize_url(job.get("url", ""))
     job["company"] = company or ""
     job["location"] = location or ""
-    job["remote"] = bool(job.get("remote")) or detect_remote(title, snippet, query)
+    job["remote"] = detect_remote(
+        title,
+        snippet,
+        query,
+        location=location,
+        url=job["url"],
+        description=job.get("description", ""),
+    )
+    job["remote_reason"] = detect_remote_reason(
+        title,
+        snippet,
+        query,
+        location=location,
+        url=job["url"],
+        description=job.get("description", ""),
+    )
     job["part_time"] = bool(job.get("part_time")) or detect_part_time(title, snippet, query)
-    job["category"] = job.get("category") or detect_category(title, snippet, query)
+    job["category"] = detect_category(title, snippet, query)
+    job["normalized_category"] = job["category"]
     job["score"] = int(job.get("score") or score_job(title, snippet, query))
     job["location_fit"] = detect_location_fit(job, load_student_profile())
     job["search_profile"] = search_profile
@@ -246,10 +268,10 @@ def remote_text(job):
             str(job.get("company", "") or ""),
             str(job.get("location", "") or ""),
             str(job.get("category", "") or ""),
-            str(job.get("url", "") or ""),
-            str(job.get("source", "") or ""),
-        ]),
-        job.get("query", ""),
+        str(job.get("url", "") or ""),
+        str(job.get("source", "") or ""),
+    ]),
+        "",
     )
 
 
@@ -363,7 +385,30 @@ def add_profile_scores(jobs):
     scored = []
     for job in jobs:
         job = dict(job)
-        job["location_fit"] = job.get("location_fit") or detect_location_fit(job, load_student_profile())
+        title = job.get("title", "")
+        snippet = " ".join([
+            str(job.get(field, "") or "")
+            for field in ("description", "snippet", "summary", "body", "company", "location", "url")
+        ])
+        job["remote"] = detect_remote(
+            title,
+            snippet,
+            job.get("query", ""),
+            location=job.get("location", ""),
+            url=job.get("url", ""),
+            description=job.get("description", ""),
+        )
+        job["remote_reason"] = detect_remote_reason(
+            title,
+            snippet,
+            job.get("query", ""),
+            location=job.get("location", ""),
+            url=job.get("url", ""),
+            description=job.get("description", ""),
+        )
+        job["category"] = detect_category(title, snippet, job.get("query", ""))
+        job["normalized_category"] = job["category"]
+        job["location_fit"] = detect_location_fit(job, load_student_profile())
         job["student_score"] = int(evaluate_student_score(job))
         job["candidate_score"] = int(evaluate_candidate_score(job))
         apply_profile_scores(job, job.get("search_profile") or LOCAL_STUDENT_PROFILE)

@@ -45,7 +45,8 @@ def test_remote_mode_does_not_drop_unknown_or_far_locations(monkeypatch):
     )
 
     assert {item["title"] for item in jobs} == {"AI trainer online", "AI annotator online"}
-    assert {item["location_fit"] for item in jobs} == {"excluded_far", "unknown"}
+    assert {item["location_fit"] for item in jobs} == {"remote"}
+    assert {item["remote_reason"] for item in jobs} == {"title: online"}
 
 
 def test_remote_mode_removes_onsite_in_sede_and_non_remoto(monkeypatch):

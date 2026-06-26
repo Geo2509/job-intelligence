@@ -20,6 +20,37 @@ BONUSES = [
     (["customer service", "assistenza clienti", "servizio clienti"], 10),
     (["hotel", "albergo", "hotel reception"], 10),
 ]
+CATEGORY_BONUSES = {
+    "data_entry": 35,
+    "back_office": 35,
+    "administration": 35,
+    "accounting": 30,
+    "logistics": 25,
+    "reception": 25,
+    "customer_service": 25,
+    "remote_data": 25,
+    "ai_annotation": 20,
+    "transcription": 20,
+    "warehouse": 10,
+    "gdo": 10,
+    "hotel": 10,
+    "cleaning": 10,
+    "facilities": 10,
+    "hr_recruiting": -10,
+    "design": -10,
+    "sales": -10,
+    "security": -10,
+    "technical": -10,
+}
+LOW_FIT_CATEGORIES = {"hr_recruiting", "design", "sales", "security", "technical"}
+TECHNICAL_SPECIALIST_TERMS = [
+    "laurea",
+    "certificazione",
+    "abilitazione",
+    "ingegnere",
+    "engineer",
+    "specialist",
+]
 PENALTIES = [
     (["laurea obbligatoria", "laurea richiesta", "laurea necessaria"], -25),
     (["5 anni", "5+ anni", "almeno 5 anni", "minimo 5 anni"], -15),
@@ -54,7 +85,6 @@ def job_text(job):
                 "location",
                 "url",
                 "category",
-                "query",
                 "description",
                 "snippet",
                 "summary",
@@ -70,6 +100,8 @@ def has_any(text, terms):
 def evaluate_candidate_score(job):
     text = job_text(job)
     score = 50
+    category = str(job.get("category") or "").lower()
+    score += CATEGORY_BONUSES.get(category, 0)
 
     for terms, bonus in BONUSES:
         if has_any(text, terms):
@@ -88,6 +120,11 @@ def evaluate_candidate_score(job):
     for terms, penalty in PENALTIES:
         if has_any(text, terms):
             score += penalty
+
+    if category in LOW_FIT_CATEGORIES:
+        if category == "technical" and not has_any(text, TECHNICAL_SPECIALIST_TERMS):
+            return max(0, min(100, int(score)))
+        score = min(score, 60)
 
     return max(0, min(100, int(score)))
 

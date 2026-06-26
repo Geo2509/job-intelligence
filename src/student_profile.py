@@ -11,10 +11,19 @@ LOCATION_BONUSES = {
     "pozzuoli": 20,
     "bacoli": 20,
     "monte di procida": 20,
+    "casoria": 15,
+    "caivano": 15,
+    "arzano": 15,
+    "marano di napoli": 15,
 }
 CATEGORY_BONUSES = {
     "data_office": 20,
+    "data_entry": 20,
+    "back_office": 20,
     "administration": 20,
+    "accounting": 15,
+    "logistics": 15,
+    "customer_service": 15,
     "reception": 15,
     "hotel": 15,
     "hospitality": 15,
@@ -22,6 +31,7 @@ CATEGORY_BONUSES = {
     "maintenance": 10,
     "warehouse": 5,
     "gdo": 5,
+    "facilities": 5,
 }
 KEYWORD_BONUSES = {
     "mattina": 15,
@@ -58,8 +68,13 @@ CATEGORY_TERMS = {
     "maintenance": ["maintenance", "manutenzione", "manutentore"],
     "warehouse": ["warehouse", "magazzino", "magazziniere", "logistica"],
     "gdo": ["gdo", "supermercato", "scaffalista", "cassiere", "addetto vendita"],
+    "accounting": ["contabile", "contabilità", "contabilita", "ciclo attivo", "ciclo passivo", "tesoreria"],
+    "logistics": ["logistica", "spedizioni", "supply chain", "trasporti"],
+    "customer_service": ["customer service", "assistenza clienti", "servizio clienti", "call center"],
+    "facilities": ["facilities", "facility", "servizi generali"],
 }
 CATEGORY_ALIASES = {
+    "ai_data": "ai_annotation",
     "data_entry": "data_office",
     "campania_part_time_data": "data_office",
     "office": "data_office",
@@ -91,7 +106,6 @@ def job_text(job):
             "location",
             "url",
             "category",
-            "query",
             "description",
             "snippet",
             "summary",
@@ -121,16 +135,12 @@ def text_has_any(text, terms):
 
 def detect_location_fit(job, profile):
     profile = profile_config(profile)
-    remote_text = " ".join(
-        str(job.get(field, "") or "")
-        for field in ("title", "url", "query")
-    )
     local_text = " ".join(
         str(job.get(field, "") or "")
         for field in ("location", "title", "url")
     )
 
-    if bool(job.get("remote")) or text_has_any(remote_text, REMOTE_TERMS):
+    if bool(job.get("remote")):
         return "remote"
     if text_has_any(local_text, profile.get("allowed_locations", [])):
         return "allowed_local"
@@ -156,9 +166,9 @@ def evaluate_student_score(job):
     text = job_text(job)
     score = 50
 
-    if bool(job.get("remote")) or "remote" in text or "remoto" in text or "smart working" in text:
+    if bool(job.get("remote")):
         score += 30
-    if "full remote" in text:
+    if bool(job.get("remote")) and "full remote" in text:
         score += 30
     if bool(job.get("part_time")) or "part time" in text or "part-time" in text:
         score += 25

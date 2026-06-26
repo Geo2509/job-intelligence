@@ -167,10 +167,17 @@ def rejection_reason(job, email_job_ids):
 
 
 def selection_rejection_reason(job, email_job_ids, email_min_match=50):
-    if score_value(job, "match_score") < email_min_match:
-        return "low_match"
     if job.get("job_id") in email_job_ids:
         return "selected"
+    if job.get("location_fit") == "excluded_far" or (
+        job.get("location_fit") == "unknown" and not bool(job.get("remote"))
+    ):
+        return "location_rejected"
+    negative_reason = str(job.get("negative_reason") or "").lower()
+    if "country" in negative_reason or "seniority" in negative_reason or "excluded title" in negative_reason:
+        return "profile_rejected"
+    if score_value(job, "match_score") < email_min_match:
+        return "low_match"
     status = str(job.get("history_status") or "").upper()
     try:
         sent_count = int(job.get("sent_count") or 0)
@@ -180,8 +187,11 @@ def selection_rejection_reason(job, email_job_ids, email_min_match=50):
     never_sent = sent_count == 0 or not last_sent
     if status == "SEEN" and not never_sent:
         return "seen_recently"
-    if not never_sent and status not in {"NEW", "UPDATED", "RESURFACED"}:
-        return "already_sent"
+    if not (
+        status in {"NEW", "UPDATED", "RESURFACED"}
+        or (never_sent and status not in {"NEW", "UPDATED"})
+    ):
+        return "no_selection_bucket"
     return "not_selected_due_to_limit"
 
 

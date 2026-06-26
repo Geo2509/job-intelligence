@@ -236,8 +236,9 @@ def selection_reason_order(job):
         "UPDATED": 1,
         "NEVER_SENT_FILL": 2,
         "RESURFACED": 3,
-        "SEEN": 4,
-    }.get(str(job.get("selection_reason") or ""), 4)
+        "FALLBACK_FILL": 4,
+        "SEEN": 5,
+    }.get(str(job.get("selection_reason") or ""), 6)
 
 
 def match_label(match_score):

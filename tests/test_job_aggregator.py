@@ -194,6 +194,146 @@ def test_candidate_rotation_fallback_can_fill_seen_recent_jobs():
     assert [item["selection_reason"] for item in selected] == ["FALLBACK_FILL"]
 
 
+def test_candidate_rotation_does_not_collapse_large_candidate_pool_to_one():
+    jobs = [rotation_job(f"Randstad {i}", "NEW", 90 - (i % 10)) for i in range(80)]
+
+    selected, debug = job_aggregator.select_email_jobs(
+        jobs,
+        email_target=50,
+        email_min_match=50,
+        return_debug=True,
+    )
+
+    assert len(selected) == 50
+    assert debug["candidate_pool_total"] == 80
+    assert debug["eligible_new"] == 80
+    assert debug["selected_total"] == 50
+
+
+def test_selection_debug_accounts_for_every_candidate_pool_row():
+    jobs = [
+        rotation_job("Selected", "NEW", 90),
+        rotation_job("Limited", "NEW", 89),
+        rotation_job("Low", "NEW", 49),
+        rotation_job("Seen", "SEEN", 88, sent_count=1),
+        rotation_job("Profile", "NEW", 87, negative_reason="excluded title seniority"),
+        rotation_job("Location", "NEW", 86, location_fit="excluded_far"),
+        rotation_job("No bucket", "ARCHIVED", 85, sent_count=1),
+    ]
+
+    _, debug = job_aggregator.select_email_jobs(
+        jobs,
+        email_target=1,
+        email_min_match=50,
+        return_debug=True,
+    )
+
+    explained = (
+        debug["selected_total"]
+        + debug["rejected_low_match"]
+        + debug["rejected_profile"]
+        + debug["rejected_location"]
+        + debug["rejected_seen_recently"]
+        + debug["rejected_no_selection_bucket"]
+        + debug["rejected_not_selected_due_to_limit"]
+    )
+    assert debug["candidate_pool_total"] == len(jobs)
+    assert explained == len(jobs)
+
+
+def test_aggregate_selects_from_full_randstad_candidate_pool(monkeypatch, tmp_path):
+    collector_jobs = [
+        job(
+            f"Randstad back office {i}",
+            f"https://it.indeed.com/viewjob?jk=randstad{i}",
+            source="randstad",
+            location="Napoli",
+            query="back office Napoli",
+        )
+        for i in range(50)
+    ]
+    plugin = replace(
+        get_collector("randstad"),
+        callable=lambda **kwargs: collector_jobs,
+    )
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugin if name == "randstad" else None)
+
+    jobs, stats, artifacts = job_aggregator.aggregate_jobs(
+        ["randstad"],
+        email_clean_results=True,
+        history_path=tmp_path / "history.json",
+        email_target=20,
+        return_stats=True,
+        return_artifacts=True,
+    )
+
+    assert len(artifacts["candidate_pool"]) == 50
+    assert len(jobs) == 20
+    assert stats["selection_debug"]["candidate_pool_total"] == 50
+    assert stats["selection_debug"]["eligible_new"] == 50
+    assert stats["selection_debug"]["selected_total"] == 20
+    assert {item["source"] for item in jobs} == {"randstad"}
+
+
+def test_aggregate_fallback_selects_seen_gigroup_candidate_pool(monkeypatch, tmp_path):
+    collector_jobs = [
+        job(
+            f"GiGroup back office {i}",
+            f"https://it.indeed.com/viewjob?jk=gigroup{i}",
+            source="gigroup",
+            location="Napoli",
+            query="back office Napoli",
+        )
+        for i in range(37)
+    ]
+    history_records = []
+    for item in collector_jobs:
+        normalized = job_aggregator.normalize_job(
+            item,
+            include_profile_scores=False,
+            search_profile=job_aggregator.LOCAL_STUDENT_PROFILE,
+        )
+        scored = job_aggregator.add_profile_scores([normalized])[0]
+        history_records.append(
+            {
+                "job_id": job_aggregator.job_id(scored),
+                "url": scored["url"],
+                "title": scored["title"],
+                "source": scored["source"],
+                "first_seen": "2026-06-26T00:00:00+00:00",
+                "last_seen": "2026-06-26T00:00:00+00:00",
+                "last_sent": "2026-06-26T00:00:00+00:00",
+                "sent_count": 1,
+                "content_hash": job_aggregator.content_hash(scored),
+                "match_score": scored["match_score"],
+            }
+        )
+    history_path = tmp_path / "history.json"
+    history_path.write_text(json.dumps(history_records), encoding="utf-8")
+    plugin = replace(
+        get_collector("gigroup"),
+        callable=lambda **kwargs: collector_jobs,
+    )
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugin if name == "gigroup" else None)
+
+    jobs, stats, artifacts = job_aggregator.aggregate_jobs(
+        ["gigroup"],
+        email_clean_results=True,
+        history_path=history_path,
+        email_target=10,
+        selection_fallback=True,
+        return_stats=True,
+        return_artifacts=True,
+    )
+
+    assert len(artifacts["candidate_pool"]) == 37
+    assert len(jobs) == 10
+    assert {item["selection_reason"] for item in jobs} == {"FALLBACK_FILL"}
+    assert stats["selection_debug"]["candidate_pool_total"] == 37
+    assert stats["selection_debug"]["eligible_fallback"] == 37
+    assert stats["selection_debug"]["selected_total"] == 10
+
+
 def test_candidate_rotation_target_and_min_match_are_enforced():
     selected = job_aggregator.select_email_jobs(
         [

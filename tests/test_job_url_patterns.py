@@ -102,6 +102,12 @@ def test_gigroup_job_detail_is_real_job():
     assert classify_url(url, patterns()) == "real_job"
 
 
+def test_gigroup_current_job_detail_is_real_job():
+    url = "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-back-office-part-time/1323119/"
+
+    assert classify_url(url, patterns()) == "real_job"
+
+
 def test_gigroup_search_is_search_page():
     url = "https://www.gigroup.it/offerte-lavoro/?q=back-office&location=Napoli"
 

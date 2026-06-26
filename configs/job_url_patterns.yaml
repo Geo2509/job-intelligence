@@ -89,6 +89,7 @@ gigroup:
     - www.gigroup.it
     - gigroup.it
   job:
+    - "/offerte-lavoro-dettaglio/"
     - "/offerte-lavoro/dettaglio-offerta/"
     - "/offerte-lavoro/job-detail/"
     - "/annunci/"

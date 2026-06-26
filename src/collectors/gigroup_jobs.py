@@ -5,7 +5,7 @@ import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import urlencode, urljoin, urlsplit
 
 import requests
 
@@ -47,6 +47,12 @@ DIRECT_QUERIES = [
     "Bacoli",
     "Casoria",
 ]
+PLACE_TERMS = [
+    "Napoli",
+    "Pozzuoli",
+    "Bacoli",
+    "Casoria",
+]
 FALLBACK_DUCKDUCKGO_QUERIES = [
     "site:gigroup.it lavoro Napoli",
     "site:gigroup.it offerte lavoro Napoli",
@@ -60,6 +66,7 @@ FALLBACK_DUCKDUCKGO_QUERIES = [
     "site:gigroup.it Casoria",
 ]
 JOB_DETAIL_PARTS = [
+    "/offerte-lavoro-dettaglio/",
     "/offerte-lavoro/dettaglio-offerta/",
     "/offerte-lavoro/job-detail/",
     "/annunci/",
@@ -89,10 +96,29 @@ OUTPUT_FIELDS = [
     "location_fit",
     "found_at",
 ]
+GIGROUP_DETAIL_PATH_RE = re.compile(
+    r"^/offerte-lavoro-dettaglio/[^/]+/(?:\d+|a\d+)/?$",
+    re.IGNORECASE,
+)
 
 
 def build_gigroup_search_url(query):
-    return f"{GIGROUP_BASE_URL}/offerte-lavoro/?q={quote_plus(str(query or '').strip())}"
+    query = clean_text(query)
+    place = ""
+    job = query
+    for term in PLACE_TERMS:
+        if re.search(rf"\b{re.escape(term)}\b", query, re.IGNORECASE):
+            place = term
+            job = clean_text(re.sub(rf"\b{re.escape(term)}\b", " ", query, flags=re.IGNORECASE))
+            break
+    if job.lower() in {"lavoro", "offerte lavoro"}:
+        job = ""
+    params = {
+        "job": job,
+        "placeOfWork": place,
+        "radius": "25",
+    }
+    return f"{GIGROUP_BASE_URL}/offerte-lavoro/?{urlencode(params)}"
 
 
 def is_blocked_response(response):
@@ -142,7 +168,9 @@ def is_gigroup_job_detail_url(url):
     normalized = normalize_url(url)
     if not is_gigroup_domain(normalized):
         return False
-    path = normalized.split("gigroup.it", 1)[-1].split("?", 1)[0].lower()
+    path = urlsplit(normalized).path.lower()
+    if GIGROUP_DETAIL_PATH_RE.match(path):
+        return True
     if path.rstrip("/") in {"", "/", "/offerte-lavoro", "/lavora-con-noi", "/candidati"}:
         return False
     if any(part in path for part in CAREER_PAGE_PARTS):
@@ -151,7 +179,7 @@ def is_gigroup_job_detail_url(url):
         return False
     if any(part in path for part in JOB_DETAIL_PARTS):
         return True
-    return "/offerte-lavoro/" in path and len([part for part in path.split("/") if part]) >= 2
+    return False
 
 
 def extract_title_from_url(url):
@@ -161,27 +189,103 @@ def extract_title_from_url(url):
     return clean_text(title.replace("-", " "))
 
 
+def extract_first(pattern, text, flags=re.DOTALL | re.IGNORECASE):
+    match = re.search(pattern, text, flags)
+    if not match:
+        return ""
+    return clean_text(re.sub(r"<[^>]+>", " ", match.group(1)))
+
+
+def parse_data_job(anchor_html):
+    match = re.search(r"\sdata-job='([^']+)'", anchor_html, re.IGNORECASE)
+    if not match:
+        return {}
+    try:
+        return json.loads(html.unescape(match.group(1)))
+    except json.JSONDecodeError:
+        return {}
+
+
+def job_article_blocks(page_html):
+    blocks = re.findall(
+        r'<article\b[^>]*class="[^"]*\bggp-job-item\b[^"]*"[^>]*>.*?</article>',
+        page_html,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if blocks:
+        return blocks
+    return [page_html]
+
+
+def extract_location_from_article(article_html):
+    return extract_first(
+        r"Luogo di lavoro:\s*</span>\s*<span[^>]*>(.*?)</span>",
+        article_html,
+    )
+
+
+def extract_detail_anchors(block_html):
+    anchors = []
+    for match in re.finditer(r'<a\b([^>]*)>(.*?)</a>', block_html, re.DOTALL | re.IGNORECASE):
+        attrs = match.group(1)
+        href_match = re.search(r'href=["\']([^"\']+)["\']', attrs, re.IGNORECASE)
+        if not href_match:
+            continue
+        href = html.unescape(href_match.group(1))
+        url = normalize_url(urljoin(GIGROUP_BASE_URL, href))
+        if not is_gigroup_job_detail_url(url):
+            continue
+        anchors.append({
+            "attrs": attrs,
+            "body": match.group(2),
+            "url": url,
+            "data_job": parse_data_job(attrs),
+        })
+    return anchors
+
+
+def title_from_anchor(anchor):
+    return (
+        anchor.get("data_job", {}).get("offerTitle")
+        or extract_first(r"<h[1-6][^>]*>(.*?)</h[1-6]>", anchor.get("body", ""))
+        or anchor_text(anchor.get("body", ""))
+        or extract_title_from_url(anchor.get("url", ""))
+    )
+
+
 def parse_gigroup_html(page_html, query):
     jobs = []
     seen_urls = set()
-    for match in re.finditer(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', page_html, re.DOTALL | re.IGNORECASE):
-        href = html.unescape(match.group(1))
-        url = normalize_url(urljoin(GIGROUP_BASE_URL, href))
-        if not is_gigroup_job_detail_url(url) or url in seen_urls:
-            continue
+    for block in job_article_blocks(page_html):
+        location = extract_location_from_article(block)
+        for anchor in extract_detail_anchors(block):
+            url = anchor["url"]
+            if url in seen_urls:
+                continue
 
-        title = anchor_text(match.group(2)) or extract_title_from_url(url)
-        if not title:
-            continue
+            title = title_from_anchor(anchor)
+            if not title:
+                continue
 
-        seen_urls.add(url)
-        jobs.append(normalize_gigroup_result({
-            "title": title,
-            "company": "Gi Group",
-            "location": "",
-            "url": url,
-            "snippet": "",
-        }, query))
+            data_job = anchor.get("data_job", {})
+            snippet = " ".join(
+                value
+                for value in [
+                    data_job.get("industry"),
+                    data_job.get("professionalArea"),
+                    extract_first(r'<div[^>]*class="[^"]*\bggp-job-keywords\b[^"]*"[^>]*>(.*?)</div>', block),
+                    anchor_text(block),
+                ]
+                if value
+            )
+            seen_urls.add(url)
+            jobs.append(normalize_gigroup_result({
+                "title": title,
+                "company": "Gi Group",
+                "location": location or data_job.get("province", ""),
+                "url": url,
+                "snippet": snippet,
+            }, query))
     return jobs
 
 
@@ -216,7 +320,11 @@ def normalize_gigroup_result(result, query, found_at=None):
 
 def collect_direct_jobs(limit=DEFAULT_LIMIT, pause_seconds=3):
     jobs = []
+    seen_urls = set()
+    target_count = limit * len(DIRECT_QUERIES)
     for query in DIRECT_QUERIES:
+        if len(jobs) >= target_count:
+            break
         search_url = build_gigroup_search_url(query)
         print(f"Gi Group direct search: {search_url}")
         page_html = fetch_direct_search(search_url)
@@ -224,8 +332,11 @@ def collect_direct_jobs(limit=DEFAULT_LIMIT, pause_seconds=3):
             for job in parse_gigroup_html(page_html, query):
                 if is_bad_job(job["title"], ""):
                     continue
+                if job["url"] in seen_urls:
+                    continue
+                seen_urls.add(job["url"])
                 jobs.append(job)
-                if len(jobs) >= limit * len(DIRECT_QUERIES):
+                if len(jobs) >= target_count:
                     break
         if pause_seconds:
             time.sleep(pause_seconds)
@@ -258,15 +369,16 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                 snippet = result.get("body") or result.get("snippet") or ""
                 if is_bad_job(title, snippet):
                     continue
+                url = result.get("href") or result.get("url") or result.get("link") or ""
+                if not is_gigroup_job_detail_url(url):
+                    continue
                 job = normalize_gigroup_result({
                     "title": title,
                     "company": "Gi Group",
                     "location": "",
-                    "url": result.get("href") or result.get("url") or result.get("link") or "",
+                    "url": url,
                     "snippet": snippet,
                 }, query, found_at)
-                if not is_gigroup_domain(job["url"]):
-                    continue
                 jobs.append(job)
     return deduplicate_jobs(jobs)
 

@@ -14,7 +14,9 @@ def test_build_gigroup_search_url():
     assert parsed.scheme == "https"
     assert parsed.netloc == "www.gigroup.it"
     assert parsed.path == "/offerte-lavoro/"
-    assert params["q"] == ["back office Napoli"]
+    assert params["job"] == ["back office"]
+    assert params["placeOfWork"] == ["Napoli"]
+    assert params["radius"] == ["25"]
 
 
 def test_registry_contains_gigroup():
@@ -67,14 +69,52 @@ def test_fallback_duckduckgo_works_with_mocks(monkeypatch):
     assert jobs[0]["priority_bucket"] == "campania_part_time"
 
 
+def test_fallback_duckduckgo_skips_search_urls(monkeypatch):
+    class FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def text(self, query, region, safesearch, max_results):
+            return [
+                {
+                    "title": "Offerte lavoro Napoli",
+                    "href": "https://www.gigroup.it/offerte-lavoro/?q=Napoli",
+                    "body": "Search results",
+                },
+                {
+                    "title": "Back office part time Napoli",
+                    "href": "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-back-office-part-time/1323119/",
+                    "body": "Tempo parziale ufficio",
+                },
+            ]
+
+    monkeypatch.setattr(gigroup_jobs, "get_ddgs_class", lambda: FakeDDGS)
+
+    jobs = gigroup_jobs.collect_fallback_duckduckgo_jobs(limit=2)
+
+    assert [job["url"] for job in jobs] == [
+        "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-back-office-part-time/1323119"
+    ]
+
+
 def test_parse_gigroup_html_extracts_job_detail_links():
     page_html = """
     <html><body>
-      <a href="/offerte-lavoro/dettaglio-offerta/data-entry-part-time-napoli_123/">
-        Data entry part time Napoli
-      </a>
+      <article class="ggp-job-item">
+        <a itemprop="url"
+           href="/offerte-lavoro-dettaglio/napoli-data-entry-part-time/1323119/"
+           class="ggp-job-title-url"
+           data-job='{"offerTitle":"Data entry part time Napoli","industry":"Office","professionalArea":"Back office","province":"Napoli"}'>
+          <h2 class="ggp-job-item-title">Data entry part time Napoli</h2>
+        </a>
+        <span class="visually-hidden">Luogo di lavoro:</span><span>Napoli, NA, Campania</span>
+      </article>
       <a href="/offerte-lavoro/?q=data-entry">Search page</a>
       <a href="/lavora-con-noi">Career page</a>
+      <a href="https://it.mygigroup.com/members/jobs/seek/viewoffer/1323119">Candidati</a>
     </body></html>
     """
 
@@ -82,10 +122,39 @@ def test_parse_gigroup_html_extracts_job_detail_links():
 
     assert len(jobs) == 1
     assert jobs[0]["title"] == "Data entry part time Napoli"
+    assert jobs[0]["location"] == "Napoli, NA, Campania"
     assert jobs[0]["url"] == (
-        "https://www.gigroup.it/offerte-lavoro/dettaglio-offerta/"
-        "data-entry-part-time-napoli_123"
+        "https://www.gigroup.it/offerte-lavoro-dettaglio/"
+        "napoli-data-entry-part-time/1323119"
     )
+
+
+def test_parse_gigroup_html_tolerates_missing_optional_fields():
+    page_html = """
+    <html><body>
+      <article class="ggp-job-item">
+        <a href="/offerte-lavoro-dettaglio/napoli-magazziniere/1323120/">
+          Magazziniere
+        </a>
+      </article>
+    </body></html>
+    """
+
+    jobs = gigroup_jobs.parse_gigroup_html(page_html, "magazziniere Napoli")
+
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "Magazziniere"
+    assert jobs[0]["location"] == ""
+    assert jobs[0]["url"] == "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-magazziniere/1323120"
+
+
+def test_gigroup_job_detail_url_detection_filters_service_links():
+    assert gigroup_jobs.is_gigroup_job_detail_url(
+        "https://www.gigroup.it/offerte-lavoro-dettaglio/piove-di-sacco-padova-recruitment-consultant-senior/A1605/"
+    )
+    assert not gigroup_jobs.is_gigroup_job_detail_url("https://www.gigroup.it/offerte-lavoro/?q=Napoli")
+    assert not gigroup_jobs.is_gigroup_job_detail_url("https://www.gigroup.it/offerte-lavoro/part-time-do/")
+    assert not gigroup_jobs.is_gigroup_job_detail_url("https://it.mygigroup.com/members/jobs/seek/viewoffer/1323119")
 
 
 def test_normalize_gigroup_result_output_schema():

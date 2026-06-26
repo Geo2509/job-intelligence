@@ -189,6 +189,7 @@ def test_remote_email_subject_and_blocks():
 
 def test_github_workflow_splits_student_v2_and_remote_legacy():
     workflow = Path(".github/workflows/run_collectors.yml").read_text(encoding="utf-8")
+    student_workflow = Path(".github/workflows/student_jobs.yml").read_text(encoding="utf-8")
 
     assert "run_student_v2:" in workflow
     assert "run_remote_legacy:" in workflow
@@ -201,6 +202,8 @@ def test_github_workflow_splits_student_v2_and_remote_legacy():
     assert "output/latest/top_jobs.xlsx" in workflow
     assert "output/v2_remote_jobs.json" not in workflow
     assert "--drop-far-locations" in workflow
+    assert "--selection-fallback true" in workflow
+    assert "--selection-fallback true" in student_workflow
 
 
 def test_remote_discovery_queries_are_configured():

@@ -105,7 +105,8 @@ jobs:
             --campania-part-time-first \
             $CLEAN_ARGS \
             $DROP_FAR_ARGS \
-            $DROP_UNKNOWN_ARGS
+            $DROP_UNKNOWN_ARGS \
+            --selection-fallback true
 
       - name: Verify Student V2 artifacts
         run: |

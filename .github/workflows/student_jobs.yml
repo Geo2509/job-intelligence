@@ -36,7 +36,8 @@ jobs:
             --campania-part-time-first \
             --email-clean-results \
             --drop-far-locations \
-            --drop-unknown-locations
+            --drop-unknown-locations \
+            --selection-fallback true
 
       - name: Verify Student V2 artifacts
         run: |

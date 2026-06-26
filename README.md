@@ -598,7 +598,7 @@ python scoring_jobs.py
 
 Для ежедневного использования доступны три one-click workflow без параметров:
 
-- **Student Jobs** — поиск локальной работы в Napoli/Campania, совместимой с учёбой. Использует Student V2, `local_student`, Location Guard, clean results и отдельное V2 письмо.
+- **Student Jobs** — поиск локальной работы в Napoli/Campania, совместимой с учёбой. Использует Student V2, `local_student`, Location Guard, clean results, fair selection fallback и отдельное V2 письмо.
 - **Remote Jobs** — поиск удалённой работы через старый remote legacy pipeline. Использует legacy collectors, `scoring_jobs.py`, старую историю `output/sent_jobs_history.json` и старое remote email.
 - **Daily Job Search** — запускает оба сценария последовательно: сначала Student Jobs и Student email, затем Remote Jobs и Remote email.
 
@@ -723,6 +723,7 @@ python -m src.job_aggregator \
   --email-clean-results \
   --drop-far-locations \
   --drop-unknown-locations \
+  --selection-fallback true \
   --history-path output/v2_sent_jobs_history.json \
   --min-remote 20
 
@@ -732,7 +733,7 @@ python -m src.v2_email_report \
   --top "$v2_top"
 ```
 
-GitHub Student V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Workflow также использует `output/v2_sent_jobs_history.json`, пишет `output/v2_run_stats.json` и коммитит обновлённую V2 history после успешной отправки email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
+GitHub Student V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Workflow также включает fair selection fallback через `--selection-fallback true`, чтобы не отправлять пустое письмо, когда Candidate Pool содержит валидные вакансии с `match_score >= email_min_match`. Workflow также использует `output/v2_sent_jobs_history.json`, пишет `output/v2_run_stats.json` и коммитит обновлённую V2 history после успешной отправки email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
 
 ### Remote legacy from GitHub Actions
 

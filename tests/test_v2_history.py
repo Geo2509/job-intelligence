@@ -178,5 +178,7 @@ def test_v2_run_stats_json_is_created(monkeypatch, tmp_path):
     assert stats["total_candidates"] == 1
     assert stats["new_jobs"] == 1
     assert stats["email_jobs"] == 1
+    assert stats["selection_debug"]["candidates_total"] == 1
+    assert stats["selection_debug"]["selected_total"] == 1
     assert output_path.exists()
     assert history_path.exists()

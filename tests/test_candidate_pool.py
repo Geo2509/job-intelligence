@@ -180,11 +180,13 @@ def test_rejection_reason_is_filled_for_location_and_low_match():
     far = pool_candidate(job("Milano", location="Milano", location_fit="excluded_far"))
     low = pool_candidate(job("Low", url="https://it.indeed.com/viewjob?jk=3", match_score=55))
 
-    pool = candidate_pool.build_candidate_pool([far, low], email_jobs=[], history={})
+    pool = candidate_pool.build_candidate_pool([far, low], email_jobs=[], history={}, email_min_match=70)
 
     reasons = {item["title"]: item["rejection_reason"] for item in pool}
+    selection_reasons = {item["title"]: item["selection_rejection_reason"] for item in pool}
     assert reasons["Milano"] == "excluded_far"
     assert reasons["Low"] == "low_match"
+    assert selection_reasons["Low"] == "low_match"
 
 
 def test_cli_filters_source_location_reason_and_top(tmp_path, capsys):

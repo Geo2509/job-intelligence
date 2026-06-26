@@ -75,6 +75,10 @@ def rotation_job(title, status, match_score=80, **extra):
         history_status=status,
     )
     item.update(extra)
+    if status in {"SEEN", "RESURFACED"} and not item.get("selection_pool_status") and "sent_count" not in item:
+        item["sent_count"] = 1
+    if int(item.get("sent_count") or 0) > 0 and not item.get("last_sent"):
+        item["last_sent"] = "2026-06-21T00:00:00+00:00"
     return item
 
 
@@ -103,6 +107,18 @@ def test_candidate_rotation_acceptance_mix():
     assert len(selected) == 50
 
 
+def test_candidate_rotation_never_sent_pool_is_not_empty():
+    jobs = [
+        rotation_job(f"Never {i}", "SEEN", 90 - i, sent_count=0, last_sent="")
+        for i in range(10)
+    ]
+
+    selected = job_aggregator.select_email_jobs(jobs, email_target=5, email_min_match=50)
+
+    assert len(selected) == 5
+    assert {item["selection_reason"] for item in selected} == {"NEVER_SENT_FILL"}
+
+
 def test_candidate_rotation_new_before_never_sent():
     selected = job_aggregator.select_email_jobs(
         [
@@ -129,6 +145,53 @@ def test_candidate_rotation_never_sent_before_resurfaced_and_seen_skipped():
 
     assert [item["selection_reason"] for item in selected] == ["NEVER_SENT_FILL", "RESURFACED"]
     assert "Seen top" not in {item["title"] for item in selected}
+
+
+def test_candidate_rotation_seen_top_skips_to_lower_never_sent():
+    selected = job_aggregator.select_email_jobs(
+        [
+            rotation_job("Seen top 1", "SEEN", 100, sent_count=2),
+            rotation_job("Seen top 2", "SEEN", 95, sent_count=1),
+            rotation_job("Never lower", "SEEN", 70, sent_count=0, last_sent=""),
+        ],
+        email_target=1,
+        email_min_match=50,
+    )
+
+    assert [item["title"] for item in selected] == ["Never lower"]
+    assert selected[0]["selection_reason"] == "NEVER_SENT_FILL"
+
+
+def test_candidate_rotation_seen_recent_selects_zero_without_fallback():
+    jobs = [
+        rotation_job(f"Seen {i}", "SEEN", 90 - i, sent_count=1)
+        for i in range(3)
+    ]
+
+    selected, debug = job_aggregator.select_email_jobs(
+        jobs,
+        email_target=5,
+        email_min_match=50,
+        return_debug=True,
+    )
+
+    assert selected == []
+    assert debug["selected_total"] == 0
+    assert debug["rejected_seen"] == 3
+
+
+def test_candidate_rotation_fallback_can_fill_seen_recent_jobs():
+    selected = job_aggregator.select_email_jobs(
+        [
+            rotation_job("Seen high", "SEEN", 90, sent_count=1),
+            rotation_job("Seen lower", "SEEN", 80, sent_count=1),
+        ],
+        email_target=1,
+        email_min_match=50,
+        fallback_enabled=True,
+    )
+
+    assert [item["selection_reason"] for item in selected] == ["FALLBACK_FILL"]
 
 
 def test_candidate_rotation_target_and_min_match_are_enforced():

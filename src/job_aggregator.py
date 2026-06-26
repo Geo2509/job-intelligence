@@ -107,6 +107,7 @@ OUTPUT_FIELDS = [
     "search_profile",
     "history_status",
     "selection_reason",
+    "selection_rejection_reason",
     "score",
     "found_at",
 ]
@@ -601,11 +602,22 @@ def annotate_history_status(jobs, history, now=None, skip_seen_days=DEFAULT_SKIP
     for job in jobs:
         job = dict(job)
         current_job_id = job_id(job)
+        history_record = history.get(current_job_id)
         job["job_id"] = current_job_id
         job["content_hash"] = content_hash(job)
+        if history_record:
+            job["first_seen"] = history_record.get("first_seen") or job.get("found_at", "")
+            job["last_seen"] = history_record.get("last_seen") or job.get("found_at", "")
+            job["last_sent"] = history_record.get("last_sent") or ""
+            job["sent_count"] = int(history_record.get("sent_count") or 0)
+        else:
+            job["first_seen"] = job.get("first_seen") or job.get("found_at", "")
+            job["last_seen"] = job.get("last_seen") or job.get("found_at", "")
+            job["last_sent"] = job.get("last_sent") or ""
+            job["sent_count"] = int(job.get("sent_count") or 0)
         job["history_status"] = classify_history_status(
             job,
-            history.get(current_job_id),
+            history_record,
             now=now,
             skip_seen_days=skip_seen_days,
         )
@@ -632,13 +644,18 @@ def filter_history_jobs(jobs, include_seen=False, max_seen_repeat=DEFAULT_MAX_SE
 
 
 def is_never_sent(job):
+    last_sent = str(job.get("last_sent") or "").strip()
+    try:
+        sent_count = int(job.get("sent_count") or 0)
+    except (TypeError, ValueError):
+        sent_count = 0
+    if sent_count == 0 or not last_sent:
+        return True
     status = str(job.get("history_status") or "").upper()
     pool_status = str(job.get("selection_pool_status") or "").lower()
     if status == "NEVER_SENT" or pool_status == "never_sent":
         return True
-    if status in {"NEW", "UPDATED", "SEEN", "RESURFACED"}:
-        return False
-    return int(job.get("sent_count") or 0) == 0
+    return False
 
 
 def with_selection_reason(job, reason):
@@ -647,21 +664,61 @@ def with_selection_reason(job, reason):
     return item
 
 
+def empty_selection_debug():
+    return {
+        "candidates_total": 0,
+        "eligible_new": 0,
+        "eligible_updated": 0,
+        "eligible_never_sent": 0,
+        "eligible_resurfaced": 0,
+        "rejected_seen": 0,
+        "rejected_low_match": 0,
+        "rejected_history": 0,
+        "selected_total": 0,
+    }
+
+
+def match_score_value(job):
+    try:
+        return int(job.get("match_score") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def is_match_eligible(job, email_min_match):
+    return match_score_value(job) >= email_min_match
+
+
+def selection_rejection_reason(job, selected_keys, email_min_match, include_seen=False):
+    key = aggregator_dedup_key(job)
+    if key in selected_keys:
+        return "selected"
+    if not is_match_eligible(job, email_min_match):
+        return "low_match"
+    status = str(job.get("history_status") or "").upper()
+    if status == "SEEN" and not include_seen and not is_never_sent(job):
+        return "seen_recently"
+    if not is_never_sent(job) and status not in {"NEW", "UPDATED", "RESURFACED"}:
+        return "already_sent"
+    return "not_selected_due_to_limit"
+
+
 def select_email_jobs(
     jobs,
     email_target=DEFAULT_EMAIL_TARGET,
     email_min_match=DEFAULT_EMAIL_MIN_MATCH,
     include_seen=False,
     max_seen_repeat=DEFAULT_MAX_SEEN_REPEAT,
+    fallback_enabled=False,
+    return_debug=False,
 ):
     selected = []
     selected_keys = set()
+    debug = empty_selection_debug()
+    debug["candidates_total"] = len(jobs)
 
     def eligible(job):
-        try:
-            return int(job.get("match_score") or 0) >= email_min_match
-        except (TypeError, ValueError):
-            return False
+        return is_match_eligible(job, email_min_match)
 
     def add_bucket(candidates, reason):
         for job in sort_by_score([item for item in candidates if eligible(item)]):
@@ -673,6 +730,13 @@ def select_email_jobs(
             selected.append(with_selection_reason(job, reason))
             selected_keys.add(key)
 
+    eligible_jobs = [job for job in jobs if eligible(job)]
+    debug["rejected_low_match"] = len(jobs) - len(eligible_jobs)
+    debug["eligible_new"] = sum(1 for job in eligible_jobs if job.get("history_status") == "NEW")
+    debug["eligible_updated"] = sum(1 for job in eligible_jobs if job.get("history_status") == "UPDATED")
+    debug["eligible_never_sent"] = sum(1 for job in eligible_jobs if is_never_sent(job))
+    debug["eligible_resurfaced"] = sum(1 for job in eligible_jobs if job.get("history_status") == "RESURFACED")
+
     add_bucket([job for job in jobs if job.get("history_status") == "NEW"], "NEW")
     add_bucket([job for job in jobs if job.get("history_status") == "UPDATED"], "UPDATED")
     add_bucket([job for job in jobs if is_never_sent(job)], "NEVER_SENT_FILL")
@@ -682,7 +746,29 @@ def select_email_jobs(
             [job for job in jobs if job.get("history_status") == "SEEN"][:max_seen_repeat],
             "SEEN",
         )
-    return selected[:email_target]
+    if not selected and fallback_enabled and eligible_jobs:
+        add_bucket(eligible_jobs, "FALLBACK_FILL")
+
+    selected = selected[:email_target]
+    selected_keys = {aggregator_dedup_key(job) for job in selected}
+    debug["rejected_seen"] = sum(
+        1
+        for job in eligible_jobs
+        if job.get("history_status") == "SEEN"
+        and not is_never_sent(job)
+        and aggregator_dedup_key(job) not in selected_keys
+    )
+    debug["rejected_history"] = sum(
+        1
+        for job in eligible_jobs
+        if selection_rejection_reason(job, selected_keys, email_min_match, include_seen=include_seen)
+        in {"seen_recently", "already_sent"}
+    )
+    debug["selected_total"] = len(selected)
+
+    if return_debug:
+        return selected, debug
+    return selected
 
 
 def history_status_counts(jobs):
@@ -730,6 +816,7 @@ def empty_run_stats():
         "seen_skipped": 0,
         "resurfaced_jobs": 0,
         "email_jobs": 0,
+        "selection_debug": empty_selection_debug(),
     }
 
 
@@ -870,6 +957,7 @@ def aggregate_jobs(
     email_target=None,
     email_min_match=DEFAULT_EMAIL_MIN_MATCH,
     rotation_days=DEFAULT_ROTATION_DAYS,
+    selection_fallback=False,
 ):
     jobs = []
     stats = empty_run_stats()
@@ -955,14 +1043,24 @@ def aggregate_jobs(
         jobs = annotate_history_status(jobs, history, skip_seen_days=effective_rotation_days)
         status_counts = history_status_counts(jobs)
         stats.update(status_counts)
-        selected_jobs = select_email_jobs(
+        selected_jobs, selection_debug = select_email_jobs(
             jobs,
             email_target=target_count,
             email_min_match=email_min_match,
             include_seen=include_seen,
             max_seen_repeat=max_seen_repeat,
+            fallback_enabled=selection_fallback,
+            return_debug=True,
         )
+        stats["selection_debug"] = selection_debug
         selected_keys = {aggregator_dedup_key(job) for job in selected_jobs}
+        selected_jobs = [
+            {
+                **job,
+                "selection_rejection_reason": "selected",
+            }
+            for job in selected_jobs
+        ]
         stats["seen_skipped"] = sum(
             1
             for job in jobs
@@ -991,7 +1089,7 @@ def aggregate_jobs(
         )
     stats["email_jobs"] = len(jobs)
     if return_artifacts:
-        candidate_pool = build_candidate_pool(candidate_candidates, jobs, history)
+        candidate_pool = build_candidate_pool(candidate_candidates, jobs, history, email_min_match=email_min_match)
         collector_stats = build_collector_stats(collected_counts, candidate_candidates, jobs)
         collector_health = build_collector_health(collector_stats, candidate_pool)
         url_pattern_debug = build_url_pattern_debug_rows(raw_jobs, candidate_candidates, jobs)
@@ -1152,6 +1250,7 @@ def parse_args(argv=None):
     parser.add_argument("--email-target", type=int, default=DEFAULT_EMAIL_TARGET)
     parser.add_argument("--email-min-match", type=int, default=DEFAULT_EMAIL_MIN_MATCH)
     parser.add_argument("--rotation-days", type=int, default=DEFAULT_ROTATION_DAYS)
+    parser.add_argument("--selection-fallback", choices=["false", "true"], default="false")
     parser.add_argument("--campania-part-time-first", action="store_true")
     parser.add_argument("--clean-results", action="store_true")
     parser.add_argument("--email-clean-results", action="store_true")
@@ -1198,6 +1297,7 @@ def main():
         email_target=args.email_target,
         email_min_match=args.email_min_match,
         rotation_days=args.rotation_days,
+        selection_fallback=args.selection_fallback == "true",
     )
     export_jobs(jobs, output_path)
     export_candidate_pool(artifacts["candidate_pool"], candidate_pool_output)

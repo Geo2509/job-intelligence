@@ -51,6 +51,7 @@ POOL_FIELDS = [
     ("URL", "url"),
     ("History Status", "history_status"),
     ("Selection Reason", "selection_reason"),
+    ("Selection Rejection Reason", "selection_rejection_reason"),
     ("Rejection Reason", "rejection_reason"),
     ("First Seen", "first_seen"),
     ("Last Seen", "last_seen"),
@@ -165,7 +166,26 @@ def rejection_reason(job, email_job_ids):
     return "email_limit"
 
 
-def build_candidate_pool(candidates, email_jobs=None, history=None):
+def selection_rejection_reason(job, email_job_ids, email_min_match=50):
+    if score_value(job, "match_score") < email_min_match:
+        return "low_match"
+    if job.get("job_id") in email_job_ids:
+        return "selected"
+    status = str(job.get("history_status") or "").upper()
+    try:
+        sent_count = int(job.get("sent_count") or 0)
+    except (TypeError, ValueError):
+        sent_count = 0
+    last_sent = str(job.get("last_sent") or "").strip()
+    never_sent = sent_count == 0 or not last_sent
+    if status == "SEEN" and not never_sent:
+        return "seen_recently"
+    if not never_sent and status not in {"NEW", "UPDATED", "RESURFACED"}:
+        return "already_sent"
+    return "not_selected_due_to_limit"
+
+
+def build_candidate_pool(candidates, email_jobs=None, history=None, email_min_match=50):
     email_job_ids = {job.get("job_id") for job in email_jobs or [] if job.get("job_id")}
     selection_reasons = {
         job.get("job_id"): job.get("selection_reason", "")
@@ -179,6 +199,7 @@ def build_candidate_pool(candidates, email_jobs=None, history=None):
         item = apply_history_fields(job, history or {})
         item["collector"] = item.get("collector") or item.get("source", "")
         item["selection_reason"] = item.get("selection_reason") or selection_reasons.get(item.get("job_id"), "")
+        item["selection_rejection_reason"] = selection_rejection_reason(item, email_job_ids, email_min_match)
         item["rejection_reason"] = rejection_reason(item, email_job_ids)
         item.setdefault("action", "")
         pool.append(item)

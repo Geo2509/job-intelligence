@@ -17,6 +17,7 @@ from src.job_matching import (
     detect_part_time,
     detect_priority_bucket,
     detect_remote,
+    detect_remote_reason,
     is_bad_job,
     normalize_url,
     score_job,
@@ -57,15 +58,34 @@ OUTPUT_FIELDS = [
     "title",
     "company",
     "location",
+    "description",
+    "contract_type",
+    "employment_type",
+    "working_hours",
+    "salary",
+    "experience",
+    "skills",
+    "smart_working",
+    "full_time",
     "url",
     "source",
     "query",
     "remote",
+    "remote_reason",
     "part_time",
     "category",
     "priority_bucket",
     "score",
     "found_at",
+]
+DETAIL_FIELDS = [
+    "description",
+    "contract_type",
+    "employment_type",
+    "working_hours",
+    "salary",
+    "experience",
+    "skills",
 ]
 
 
@@ -109,6 +129,10 @@ def fetch_direct_search(url):
     return response.text
 
 
+def fetch_detail_page(url):
+    return fetch_direct_search(url)
+
+
 def clean_text(value):
     return " ".join(html.unescape(str(value or "")).split())
 
@@ -116,6 +140,97 @@ def clean_text(value):
 def anchor_text(anchor_html):
     text = re.sub(r"<[^>]+>", " ", anchor_html)
     return clean_text(text)
+
+
+def extract_first(pattern, text, flags=re.DOTALL | re.IGNORECASE):
+    match = re.search(pattern, text, flags)
+    if not match:
+        return ""
+    return clean_text(re.sub(r"<[^>]+>", " ", match.group(1)))
+
+
+def visible_text(page_html):
+    text = re.sub(r"<script\b.*?</script>", " ", page_html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style\b.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"</(?:p|div|li|section|article|h[1-6])>", ". ", text, flags=re.IGNORECASE)
+    return clean_text(re.sub(r"<[^>]+>", " ", text))
+
+
+def extract_meta_description(page_html):
+    return extract_first(
+        r'<meta[^>]+(?:name|property)=["\'](?:description|og:description)["\'][^>]+content=["\']([^"\']+)["\']',
+        page_html,
+    ) or extract_first(
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:name|property)=["\'](?:description|og:description)["\']',
+        page_html,
+    )
+
+
+def extract_label_value(text, labels):
+    labels_pattern = "|".join(re.escape(label) for label in sorted(labels, key=len, reverse=True))
+    pattern = rf"(?:{labels_pattern})\s*:?\s+(.+?)(?=\s+(?:{labels_pattern})\s*:|\s{{2,}}|$)"
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return ""
+    return clean_text(match.group(1).split(". ", 1)[0])
+
+
+def extract_skills(text):
+    terms = ["excel", "office", "data entry", "back office", "inglese", "customer service", "sap"]
+    lowered = text.lower()
+    return ", ".join(term for term in terms if term in lowered)
+
+
+def parse_randstad_detail_html(page_html):
+    text = visible_text(page_html)
+    description = (
+        extract_first(r'<section[^>]*class="[^"]*(?:job-description|description)[^"]*"[^>]*>(.*?)</section>', page_html)
+        or extract_first(r'<div[^>]*class="[^"]*(?:job-description|description|vacancy-detail)[^"]*"[^>]*>(.*?)</div>', page_html)
+        or extract_meta_description(page_html)
+        or text
+    )
+    contract_type = extract_label_value(text, ["Contratto", "Tipo di contratto", "Tipologia"])
+    employment_type = extract_label_value(text, ["Categoria", "Settore", "Funzione"])
+    working_hours = extract_label_value(text, ["Orario", "Orario di lavoro", "Tipo orario"])
+    salary = extract_label_value(text, ["Retribuzione", "Stipendio", "RAL", "Salary"])
+    experience = extract_label_value(text, ["Esperienza", "Livello di esperienza", "Requisiti"])
+    location = extract_label_value(text, ["Luogo di lavoro", "Sede di lavoro", "Location"])
+    company = extract_label_value(text, ["Azienda", "Company"])
+    skills = extract_label_value(text, ["Competenze", "Skills"]) or extract_skills(text)
+    smart_working = bool(re.search(r"\b(smart working|full remote|remoto|lavoro da casa|ibrid[oa])\b", text, re.IGNORECASE))
+    full_time = bool(re.search(r"\b(full time|tempo pieno)\b", text, re.IGNORECASE))
+    return {
+        "description": description,
+        "contract_type": contract_type,
+        "employment_type": employment_type,
+        "working_hours": working_hours,
+        "salary": salary,
+        "experience": experience,
+        "skills": skills,
+        "smart_working": smart_working,
+        "full_time": full_time,
+        "location": location,
+        "company": company,
+    }
+
+
+def detail_text(result):
+    return " ".join(str(result.get(field, "") or "") for field in DETAIL_FIELDS + ["snippet", "body", "source"])
+
+
+def enrich_randstad_job(job):
+    detail_html = fetch_detail_page(job.get("url", ""))
+    if not detail_html:
+        return job
+    details = parse_randstad_detail_html(detail_html)
+    enriched = dict(job)
+    for field, value in details.items():
+        if value not in ("", None, False) or field in {"smart_working", "full_time"}:
+            if field in {"location", "company"} and enriched.get(field):
+                continue
+            enriched[field] = value
+    return normalize_randstad_result(enriched, enriched.get("query", ""), enriched.get("found_at"))
 
 
 def is_randstad_job_detail_url(url):
@@ -160,24 +275,35 @@ def parse_randstad_html(page_html, query):
 
 def normalize_randstad_result(result, query, found_at=None):
     title = result.get("title") or ""
-    snippet = result.get("snippet") or result.get("body") or result.get("source") or ""
+    snippet = detail_text(result)
     company = result.get("company") or ""
     location = result.get("location") or ""
     searchable = combined_text(title, " ".join([snippet, company, location]), query)
-    remote = detect_remote(title, snippet, query)
-    part_time = detect_part_time(title, snippet, query)
+    url = normalize_url(result.get("url") or result.get("href") or result.get("link") or "")
+    remote = detect_remote(title, snippet, "", location=location, url=url, description=result.get("description", ""))
+    part_time = detect_part_time(title, snippet, "")
     return {
         "title": title,
         "company": company,
         "location": location,
-        "url": normalize_url(result.get("url") or result.get("href") or result.get("link") or ""),
+        "description": result.get("description", ""),
+        "contract_type": result.get("contract_type", ""),
+        "employment_type": result.get("employment_type", ""),
+        "working_hours": result.get("working_hours", ""),
+        "salary": result.get("salary", ""),
+        "experience": result.get("experience", ""),
+        "skills": result.get("skills", ""),
+        "smart_working": bool(result.get("smart_working")) or remote,
+        "full_time": bool(result.get("full_time")),
+        "url": url,
         "source": SOURCE_NAME,
         "query": query,
         "remote": remote,
+        "remote_reason": detect_remote_reason(title, snippet, "", location=location, url=url, description=result.get("description", "")),
         "part_time": part_time,
         "category": detect_category(title, snippet, query),
         "priority_bucket": detect_priority_bucket(searchable, part_time, remote),
-        "score": score_job(title, snippet, query),
+        "score": score_job(title, snippet, ""),
         "found_at": found_at or datetime.now(timezone.utc).isoformat(),
     }
 
@@ -192,7 +318,7 @@ def collect_direct_jobs(limit=DEFAULT_LIMIT, pause_seconds=3):
             for job in parse_randstad_html(page_html, query):
                 if is_bad_job(job["title"], ""):
                     continue
-                jobs.append(job)
+                jobs.append(enrich_randstad_job(job))
                 if len(jobs) >= limit * len(DIRECT_QUERIES):
                     break
         if pause_seconds:
@@ -235,7 +361,7 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                 }, query, found_at)
                 if "randstad.it" not in job["url"]:
                     continue
-                jobs.append(job)
+                jobs.append(enrich_randstad_job(job))
     return deduplicate_jobs(jobs)
 
 

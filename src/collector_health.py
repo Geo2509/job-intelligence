@@ -12,7 +12,9 @@ HEALTH_FIELDS = [
     "real_jobs",
     "candidate_pool",
     "new",
+    "updated",
     "seen",
+    "resurfaced",
     "email",
     "removed_by_cleaner",
     "removed_by_location",
@@ -70,6 +72,16 @@ def health_status(row):
     email_jobs = int_value(row, "email_jobs")
     history_seen = int_value(row, "history_seen")
     removed_cleaner = removed_by_cleaner(row)
+    candidate_pool = int_value(row, "candidate_pool")
+
+    after_cleaner = int_value(row, "after_cleaner")
+    if (
+        email_jobs > candidate_pool
+        or candidate_pool > real_jobs
+        or real_jobs > after_cleaner
+        or after_cleaner > collected
+    ):
+        return "inconsistent"
 
     if collected == 0:
         return "error"
@@ -90,6 +102,8 @@ def health_score(row, status):
     email_jobs = int_value(row, "email_jobs")
     location_removed = removed_by_location(row)
 
+    if status == "inconsistent":
+        return 0
     if status == "error":
         return 0
     if status == "needs_detail_extraction":
@@ -119,6 +133,8 @@ def recommendation_for(row, status):
     history_new = int_value(row, "history_new")
     location_removed = removed_by_location(row)
 
+    if status == "inconsistent":
+        return "Dashboard counts inconsistent: check source arrays"
     if status == "healthy":
         if history_new:
             return f"{collector}: Healthy, {history_new} NEW jobs"
@@ -147,23 +163,28 @@ def build_collector_health(collector_stats, candidate_pool=None):
     rows = []
     for row in collector_stats or []:
         collector = str(row.get("collector") or "unknown")
-        status = health_status(row)
+        pool_count = int_value(row, "candidate_pool") if candidate_pool is None else pool_counts.get(collector, 0)
+        status_row = dict(row)
+        status_row["candidate_pool"] = pool_count
+        status = health_status(status_row)
         health = {
             "collector": collector,
             "raw_collected": int_value(row, "collected"),
             "after_cleaner": int_value(row, "after_cleaner"),
             "real_jobs": int_value(row, "real_jobs"),
-            "candidate_pool": pool_counts.get(collector, 0),
+            "candidate_pool": pool_count,
             "new": int_value(row, "history_new"),
+            "updated": int_value(row, "history_updated"),
             "seen": int_value(row, "history_seen"),
+            "resurfaced": int_value(row, "history_resurfaced"),
             "email": int_value(row, "email_jobs"),
             "removed_by_cleaner": removed_by_cleaner(row),
             "removed_by_location": removed_by_location(row),
             "removed_by_history": int_value(row, "history_seen"),
             "collector_health_status": status,
-            "collector_health_score": health_score(row, status),
+            "collector_health_score": health_score(status_row, status),
         }
-        health["recommendation"] = recommendation_for(row, status)
+        health["recommendation"] = recommendation_for(status_row, status)
         rows.append(health)
     return sorted(rows, key=lambda item: item["collector"])
 

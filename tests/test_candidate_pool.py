@@ -121,18 +121,59 @@ def test_collector_health_statuses_and_recommendations():
             },
         ],
         [
-            {"collector": "gigroup"},
-            {"collector": "randstad"},
+            *[{"collector": "gigroup"} for _ in range(37)],
+            *[{"collector": "randstad"} for _ in range(50)],
         ],
     )
 
     by_collector = {row["collector"]: row for row in rows}
     assert by_collector["gigroup"]["collector_health_status"] == "healthy"
-    assert by_collector["gigroup"]["candidate_pool"] == 1
+    assert by_collector["gigroup"]["candidate_pool"] == 37
     assert by_collector["randstad"]["collector_health_status"] == "history_only"
     assert by_collector["randstad"]["removed_by_history"] == 50
     assert by_collector["indeed"]["collector_health_status"] == "needs_detail_extraction"
     assert "Detail Extraction" in by_collector["indeed"]["recommendation"]
+
+
+def test_collector_health_flags_inconsistent_counts():
+    rows = build_collector_health(
+        [
+            {
+                "collector": "randstad",
+                "collected": 50,
+                "after_cleaner": 40,
+                "real_jobs": 37,
+                "history_new": 0,
+                "history_seen": 37,
+                "email_jobs": 13,
+            },
+        ],
+        [{"collector": "randstad"} for _ in range(10)],
+    )
+
+    assert rows[0]["collector_health_status"] == "inconsistent"
+    assert rows[0]["recommendation"] == "Dashboard counts inconsistent: check source arrays"
+
+
+def test_collector_health_status_counts_share_one_source():
+    real = {**pool_candidate(job()), "history_status": "NEW"}
+    updated = {**pool_candidate(job("Updated", url="https://it.indeed.com/viewjob?jk=2")), "history_status": "UPDATED"}
+    seen = {**pool_candidate(job("Seen", url="https://it.indeed.com/viewjob?jk=3")), "history_status": "SEEN"}
+    resurfaced = {**pool_candidate(job("Old", url="https://it.indeed.com/viewjob?jk=4")), "history_status": "RESURFACED"}
+
+    stats = candidate_pool.build_collector_stats(
+        {"gigroup": 4},
+        [real, updated, seen, resurfaced],
+        email_jobs=[real, updated, resurfaced],
+    )
+    rows = build_collector_health(stats, [real, updated, seen, resurfaced])
+
+    row = rows[0]
+    assert row["email"] <= row["candidate_pool"]
+    assert row["new"] == 1
+    assert row["updated"] == 1
+    assert row["seen"] == 1
+    assert row["resurfaced"] == 1
 
 
 def test_rejection_reason_is_filled_for_location_and_low_match():

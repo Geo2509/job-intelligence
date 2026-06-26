@@ -39,6 +39,7 @@ def test_fallback_duckduckgo_works_with_mocks(monkeypatch):
             ]
 
     monkeypatch.setattr(randstad_jobs, "get_ddgs_class", lambda: FakeDDGS)
+    monkeypatch.setattr(randstad_jobs, "fetch_detail_page", lambda url: None)
 
     jobs = randstad_jobs.collect_fallback_duckduckgo_jobs(limit=1)
 
@@ -84,3 +85,21 @@ def test_normalize_randstad_result_output_schema():
     assert job["part_time"] is True
     assert job["found_at"] == "2026-06-23T00:00:00+00:00"
     assert "utm_source" not in job["url"]
+
+
+def test_randstad_detail_page_parsing_extracts_enrichment_fields():
+    page_html = """
+    <html><body>
+      <div class="job-description">
+        Mansione data entry back office. Contratto: tempo determinato.
+        Orario di lavoro: part time. Luogo di lavoro: Pozzuoli.
+      </div>
+    </body></html>
+    """
+
+    details = randstad_jobs.parse_randstad_detail_html(page_html)
+
+    assert "data entry back office" in details["description"]
+    assert details["contract_type"] == "tempo determinato"
+    assert details["working_hours"] == "part time"
+    assert details["location"] == "Pozzuoli"

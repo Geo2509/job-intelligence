@@ -68,6 +68,15 @@ OUTPUT_FIELDS = [
     "title",
     "company",
     "location",
+    "description",
+    "contract_type",
+    "employment_type",
+    "working_hours",
+    "salary",
+    "experience",
+    "skills",
+    "smart_working",
+    "full_time",
     "url",
     "source",
     "query",
@@ -219,7 +228,21 @@ def normalize_job(job, include_profile_scores=True, search_profile=LOCAL_STUDENT
     query = job.get("query", "")
     snippet = " ".join([
         str(job.get(field, "") or "")
-        for field in ("description", "snippet", "summary", "body", "company", "location", "url")
+        for field in (
+            "description",
+            "contract_type",
+            "employment_type",
+            "working_hours",
+            "salary",
+            "experience",
+            "skills",
+            "snippet",
+            "summary",
+            "body",
+            "company",
+            "location",
+            "url",
+        )
     ])
     searchable = combined_text(title, " ".join([snippet, str(job.get("category", "") or "")]), "")
 
@@ -242,10 +265,10 @@ def normalize_job(job, include_profile_scores=True, search_profile=LOCAL_STUDENT
         url=job["url"],
         description=job.get("description", ""),
     )
-    job["part_time"] = bool(job.get("part_time")) or detect_part_time(title, snippet, query)
+    job["part_time"] = detect_part_time(title, snippet, "")
     job["category"] = detect_category(title, snippet, query)
     job["normalized_category"] = job["category"]
-    job["score"] = int(job.get("score") or score_job(title, snippet, query))
+    job["score"] = int(score_job(title, snippet, ""))
     job["location_fit"] = detect_location_fit(job, load_student_profile())
     job["search_profile"] = search_profile
     job.setdefault("remote_score", 0)
@@ -389,7 +412,21 @@ def add_profile_scores(jobs):
         title = job.get("title", "")
         snippet = " ".join([
             str(job.get(field, "") or "")
-            for field in ("description", "snippet", "summary", "body", "company", "location", "url")
+            for field in (
+                "description",
+                "contract_type",
+                "employment_type",
+                "working_hours",
+                "salary",
+                "experience",
+                "skills",
+                "snippet",
+                "summary",
+                "body",
+                "company",
+                "location",
+                "url",
+            )
         ])
         job["remote"] = detect_remote(
             title,
@@ -409,6 +446,8 @@ def add_profile_scores(jobs):
         )
         job["category"] = detect_category(title, snippet, job.get("query", ""))
         job["normalized_category"] = job["category"]
+        job["part_time"] = detect_part_time(title, snippet, "")
+        job["score"] = int(score_job(title, snippet, ""))
         job["location_fit"] = detect_location_fit(job, load_student_profile())
         job["student_score"] = int(evaluate_student_score(job))
         job["candidate_score"] = int(evaluate_candidate_score(job))
@@ -447,7 +486,16 @@ def content_hash(job):
         job.get("company", ""),
         job.get("location", ""),
         job.get("category", ""),
-        job.get("match_score", ""),
+        job.get("description", ""),
+        job.get("contract_type", ""),
+        job.get("employment_type", ""),
+        job.get("working_hours", ""),
+        job.get("salary", ""),
+        job.get("experience", ""),
+        job.get("skills", ""),
+        bool(job.get("smart_working")),
+        bool(job.get("part_time")),
+        bool(job.get("full_time")),
         normalize_url(job.get("url", "")),
     ])
 
@@ -549,6 +597,7 @@ def history_status_counts(jobs):
     return {
         "new_jobs": sum(1 for job in jobs if job.get("history_status") == "NEW"),
         "updated_jobs": sum(1 for job in jobs if job.get("history_status") == "UPDATED"),
+        "seen_jobs": sum(1 for job in jobs if job.get("history_status") == "SEEN"),
         "resurfaced_jobs": sum(1 for job in jobs if job.get("history_status") == "RESURFACED"),
     }
 

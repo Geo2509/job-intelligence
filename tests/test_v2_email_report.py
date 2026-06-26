@@ -182,9 +182,12 @@ def test_email_body_contains_collector_health():
                     "collector": "gigroup",
                     "collector_health_status": "healthy",
                     "new": 37,
+                    "updated": 0,
                     "seen": 0,
+                    "resurfaced": 0,
                     "email": 37,
                     "real_jobs": 37,
+                    "candidate_pool": 37,
                 },
                 {
                     "collector": "indeed",
@@ -196,7 +199,7 @@ def test_email_body_contains_collector_health():
     )
 
     assert "Collector Health" in body
-    assert "<strong>gigroup</strong> (healthy) - NEW: 37 | HISTORY: 0 | EMAIL: 37" in body
+    assert "<strong>gigroup</strong> (healthy) - 37 email / 37 real jobs / 37 candidate pool" in body
     assert "<strong>indeed</strong> (needs_detail_extraction) - 0 real jobs" in body
 
 

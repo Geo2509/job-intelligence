@@ -57,6 +57,7 @@ def test_fallback_duckduckgo_works_with_mocks(monkeypatch):
             ]
 
     monkeypatch.setattr(gigroup_jobs, "get_ddgs_class", lambda: FakeDDGS)
+    monkeypatch.setattr(gigroup_jobs, "fetch_detail_page", lambda url: None)
 
     jobs = gigroup_jobs.collect_fallback_duckduckgo_jobs(limit=1)
 
@@ -92,6 +93,7 @@ def test_fallback_duckduckgo_skips_search_urls(monkeypatch):
             ]
 
     monkeypatch.setattr(gigroup_jobs, "get_ddgs_class", lambda: FakeDDGS)
+    monkeypatch.setattr(gigroup_jobs, "fetch_detail_page", lambda url: None)
 
     jobs = gigroup_jobs.collect_fallback_duckduckgo_jobs(limit=2)
 
@@ -179,6 +181,55 @@ def test_normalize_gigroup_result_output_schema():
     assert job["location_fit"] == "allowed_local"
     assert job["found_at"] == "2026-06-24T00:00:00+00:00"
     assert "utm_source" not in job["url"]
+
+
+def test_gigroup_detail_page_parsing_extracts_enrichment_fields():
+    page_html = """
+    <html><body>
+      <section class="job-description">
+        Back office data entry con Excel. Contratto: somministrazione.
+        Orario di lavoro: part time. Luogo di lavoro: Napoli.
+      </section>
+    </body></html>
+    """
+
+    details = gigroup_jobs.parse_gigroup_detail_html(page_html)
+
+    assert "Back office data entry" in details["description"]
+    assert details["contract_type"] == "somministrazione"
+    assert details["working_hours"] == "part time"
+    assert details["location"] == "Napoli"
+
+
+def test_gigroup_enriched_text_affects_category_remote_and_part_time(monkeypatch):
+    detail_html = """
+    <html><body>
+      <section class="job-description">
+        Inserimento dati e back office con Excel. Orario di lavoro: part time.
+        Possibilita di smart working due giorni a settimana. Luogo di lavoro: Napoli.
+      </section>
+    </body></html>
+    """
+    monkeypatch.setattr(gigroup_jobs, "fetch_detail_page", lambda url: detail_html)
+    base = gigroup_jobs.normalize_gigroup_result(
+        {
+            "title": "Addetto ufficio",
+            "company": "Gi Group",
+            "location": "",
+            "url": "https://www.gigroup.it/offerte-lavoro-dettaglio/addetto-ufficio/1323120/",
+            "snippet": "",
+        },
+        "part time Napoli",
+        found_at="2026-06-24T00:00:00+00:00",
+    )
+
+    enriched = gigroup_jobs.enrich_gigroup_job(base)
+
+    assert enriched["category"] == "data_entry"
+    assert enriched["remote"] is True
+    assert enriched["remote_reason"] == "description: smart working"
+    assert enriched["part_time"] is True
+    assert enriched["score"] > base["score"]
 
 
 def test_aggregator_accepts_gigroup_collector(monkeypatch):

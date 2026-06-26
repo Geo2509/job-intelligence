@@ -22,6 +22,15 @@ POOL_FIELDS = [
     ("Title", "title"),
     ("Company", "company"),
     ("Location", "location"),
+    ("Description", "description"),
+    ("Contract Type", "contract_type"),
+    ("Employment Type", "employment_type"),
+    ("Working Hours", "working_hours"),
+    ("Salary", "salary"),
+    ("Experience", "experience"),
+    ("Skills", "skills"),
+    ("Smart Working", "smart_working"),
+    ("Full Time", "full_time"),
     ("Location Fit", "location_fit"),
     ("Remote", "remote"),
     ("Remote Reason", "remote_reason"),
@@ -64,6 +73,8 @@ COLLECTOR_STAT_FIELDS = [
     "history_seen",
     "history_updated",
     "history_new",
+    "history_seen_status",
+    "history_resurfaced",
     "email_jobs",
 ]
 
@@ -186,10 +197,13 @@ def build_collector_stats(collected_counts, candidates, email_jobs=None):
             status = job.get("history_status")
             if status == "SEEN":
                 stats["history_seen"] += 1
+                stats["history_seen_status"] += 1
             elif status == "UPDATED":
                 stats["history_updated"] += 1
             elif status == "NEW":
                 stats["history_new"] += 1
+            elif status == "RESURFACED":
+                stats["history_resurfaced"] += 1
         elif result_type == "search_page":
             stats["search_pages"] += 1
         elif result_type == "category_page":

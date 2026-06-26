@@ -83,6 +83,15 @@ OUTPUT_FIELDS = [
     "title",
     "company",
     "location",
+    "description",
+    "contract_type",
+    "employment_type",
+    "working_hours",
+    "salary",
+    "experience",
+    "skills",
+    "smart_working",
+    "full_time",
     "url",
     "source",
     "query",
@@ -98,6 +107,15 @@ OUTPUT_FIELDS = [
     "match_score",
     "location_fit",
     "found_at",
+]
+DETAIL_FIELDS = [
+    "description",
+    "contract_type",
+    "employment_type",
+    "working_hours",
+    "salary",
+    "experience",
+    "skills",
 ]
 GIGROUP_DETAIL_PATH_RE = re.compile(
     r"^/offerte-lavoro-dettaglio/[^/]+/(?:\d+|a\d+)/?$",
@@ -153,6 +171,10 @@ def fetch_direct_search(url):
     return response.text
 
 
+def fetch_detail_page(url):
+    return fetch_direct_search(url)
+
+
 def clean_text(value):
     return " ".join(html.unescape(str(value or "")).split())
 
@@ -197,6 +219,108 @@ def extract_first(pattern, text, flags=re.DOTALL | re.IGNORECASE):
     if not match:
         return ""
     return clean_text(re.sub(r"<[^>]+>", " ", match.group(1)))
+
+
+def visible_text(page_html):
+    text = re.sub(r"<script\b.*?</script>", " ", page_html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style\b.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"</(?:p|div|li|section|article|h[1-6])>", ". ", text, flags=re.IGNORECASE)
+    return clean_text(re.sub(r"<[^>]+>", " ", text))
+
+
+def extract_meta_description(page_html):
+    return extract_first(
+        r'<meta[^>]+(?:name|property)=["\'](?:description|og:description)["\'][^>]+content=["\']([^"\']+)["\']',
+        page_html,
+    ) or extract_first(
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:name|property)=["\'](?:description|og:description)["\']',
+        page_html,
+    )
+
+
+def extract_label_value(text, labels):
+    labels_pattern = "|".join(re.escape(label) for label in sorted(labels, key=len, reverse=True))
+    pattern = rf"(?:{labels_pattern})\s*:?\s+(.+?)(?=\s+(?:{labels_pattern})\s*:|\s{{2,}}|$)"
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return ""
+    return clean_text(match.group(1).split(". ", 1)[0])
+
+
+def extract_skills(text):
+    terms = [
+        "excel",
+        "office",
+        "google sheets",
+        "data entry",
+        "back office",
+        "inglese",
+        "italiano",
+        "customer service",
+        "gestionale",
+        "sap",
+    ]
+    found = []
+    lowered = text.lower()
+    for term in terms:
+        if term in lowered:
+            found.append(term)
+    return ", ".join(found)
+
+
+def parse_gigroup_detail_html(page_html):
+    text = visible_text(page_html)
+    description = (
+        extract_first(r'<section[^>]*class="[^"]*(?:job-description|description)[^"]*"[^>]*>(.*?)</section>', page_html)
+        or extract_first(r'<div[^>]*class="[^"]*(?:job-description|description|content)[^"]*"[^>]*>(.*?)</div>', page_html)
+        or extract_meta_description(page_html)
+        or text
+    )
+    contract_type = extract_label_value(text, ["Contratto", "Tipologia contrattuale", "Tipo di contratto"])
+    employment_type = extract_label_value(text, ["Categoria professionale", "Area professionale", "Settore"])
+    working_hours = extract_label_value(text, ["Orario di lavoro", "Orario", "Disponibilita oraria", "Disponibilità oraria"])
+    salary = extract_label_value(text, ["Retribuzione", "RAL", "Stipendio", "Salary"])
+    experience = extract_label_value(text, ["Esperienza", "Anni di esperienza", "Requisiti"])
+    location = extract_label_value(text, ["Luogo di lavoro", "Sede di lavoro", "Location"])
+    company = extract_label_value(text, ["Azienda", "Company"]) or "Gi Group"
+    skills = extract_label_value(text, ["Competenze", "Skills"]) or extract_skills(text)
+    smart_working = bool(re.search(r"\b(smart working|full remote|remoto|lavoro da casa|ibrid[oa])\b", text, re.IGNORECASE))
+    full_time = bool(re.search(r"\b(full time|tempo pieno)\b", text, re.IGNORECASE))
+    return {
+        "description": description,
+        "contract_type": contract_type,
+        "employment_type": employment_type,
+        "working_hours": working_hours,
+        "salary": salary,
+        "experience": experience,
+        "skills": skills,
+        "smart_working": smart_working,
+        "full_time": full_time,
+        "location": location,
+        "company": company,
+    }
+
+
+def detail_text(result):
+    return " ".join(
+        str(result.get(field, "") or "")
+        for field in DETAIL_FIELDS + ["snippet", "body", "source"]
+    )
+
+
+def enrich_gigroup_job(job):
+    detail_html = fetch_detail_page(job.get("url", ""))
+    if not detail_html:
+        return job
+    details = parse_gigroup_detail_html(detail_html)
+    enriched = dict(job)
+    for field, value in details.items():
+        if value not in ("", None, False) or field in {"smart_working", "full_time"}:
+            if field in {"location", "company"} and enriched.get(field):
+                continue
+            enriched[field] = value
+    return normalize_gigroup_result(enriched, enriched.get("query", ""), enriched.get("found_at"))
 
 
 def parse_data_job(anchor_html):
@@ -294,28 +418,37 @@ def parse_gigroup_html(page_html, query):
 
 def normalize_gigroup_result(result, query, found_at=None):
     title = result.get("title") or ""
-    snippet = result.get("snippet") or result.get("body") or result.get("source") or ""
+    snippet = detail_text(result)
     company = result.get("company") or "Gi Group"
     location = result.get("location") or ""
     searchable = combined_text(title, " ".join([snippet, company, location]), query)
     url = normalize_url(result.get("url") or result.get("href") or result.get("link") or "")
-    remote = detect_remote(title, snippet, query, location=location, url=url)
+    remote = detect_remote(title, snippet, "", location=location, url=url, description=result.get("description", ""))
     category = detect_category(title, snippet, query)
-    part_time = detect_part_time(title, snippet, query)
+    part_time = detect_part_time(title, snippet, "")
     job = {
         "title": title,
         "company": company,
         "location": location,
+        "description": result.get("description", ""),
+        "contract_type": result.get("contract_type", ""),
+        "employment_type": result.get("employment_type", ""),
+        "working_hours": result.get("working_hours", ""),
+        "salary": result.get("salary", ""),
+        "experience": result.get("experience", ""),
+        "skills": result.get("skills", ""),
+        "smart_working": bool(result.get("smart_working")) or remote,
+        "full_time": bool(result.get("full_time")),
         "url": url,
         "source": SOURCE_NAME,
         "query": query,
         "category": category,
         "normalized_category": category,
         "remote": remote,
-        "remote_reason": detect_remote_reason(title, snippet, query, location=location, url=url),
+        "remote_reason": detect_remote_reason(title, snippet, "", location=location, url=url, description=result.get("description", "")),
         "part_time": part_time,
         "priority_bucket": detect_priority_bucket(searchable, part_time, remote),
-        "score": score_job(title, snippet, query),
+        "score": score_job(title, snippet, ""),
         "found_at": found_at or datetime.now(timezone.utc).isoformat(),
     }
     job["location_fit"] = detect_location_fit(job, load_student_profile())
@@ -342,7 +475,7 @@ def collect_direct_jobs(limit=DEFAULT_LIMIT, pause_seconds=3):
                 if job["url"] in seen_urls:
                     continue
                 seen_urls.add(job["url"])
-                jobs.append(job)
+                jobs.append(enrich_gigroup_job(job))
                 if len(jobs) >= target_count:
                     break
         if pause_seconds:
@@ -386,7 +519,7 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                     "url": url,
                     "snippet": snippet,
                 }, query, found_at)
-                jobs.append(job)
+                jobs.append(enrich_gigroup_job(job))
     return deduplicate_jobs(jobs)
 
 

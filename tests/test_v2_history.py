@@ -87,6 +87,17 @@ def test_changed_content_hash_gets_updated_status():
     assert annotated[0]["history_status"] == "UPDATED"
 
 
+def test_repeated_job_with_recalculated_score_stays_seen():
+    item = job(score=100, match_score=90)
+    previous_hash = job_aggregator.content_hash(item)
+    rescored = {**item, "score": 35, "match_score": 75, "student_score": 70, "candidate_score": 79}
+    history = {job_aggregator.job_id(item): history_for(item, content_hash=previous_hash)}
+
+    annotated = job_aggregator.annotate_history_status([rescored], history)
+
+    assert annotated[0]["history_status"] == "SEEN"
+
+
 def test_old_last_sent_gets_resurfaced_status():
     item = job()
     old_sent = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()

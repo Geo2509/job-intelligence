@@ -279,13 +279,19 @@ def render_collector_health(rows):
         collector = html.escape(str(row.get("collector", "") or "unknown"))
         status = html.escape(str(row.get("collector_health_status", "") or ""))
         new = int(row.get("new") or 0)
+        updated = int(row.get("updated") or 0)
         seen = int(row.get("seen") or row.get("removed_by_history") or 0)
+        resurfaced = int(row.get("resurfaced") or 0)
         email_jobs = int(row.get("email") or 0)
         real_jobs = int(row.get("real_jobs") or 0)
+        candidate_pool = int(row.get("candidate_pool") or 0)
         if real_jobs == 0:
             detail = "0 real jobs"
         else:
-            detail = f"NEW: {new} | HISTORY: {seen} | EMAIL: {email_jobs}"
+            detail = (
+                f"{email_jobs} email / {real_jobs} real jobs / {candidate_pool} candidate pool"
+                f" | NEW: {new} | UPDATED: {updated} | SEEN: {seen} | RESURFACED: {resurfaced}"
+            )
         items.append(f"<li><strong>{collector}</strong> ({status}) - {detail}</li>")
     return "<h2>Collector Health</h2><ul>" + "".join(items) + "</ul>"
 
@@ -302,8 +308,10 @@ def render_job(job):
     remote_score = html.escape(str(job.get("remote_score", "") or ""))
     remote = html.escape(str(job.get("remote", "")))
     remote_reason = html.escape(str(job.get("remote_reason", "") or "none"))
+    part_time = html.escape(str(job.get("part_time", "")))
     location_fit = html.escape(str(job.get("location_fit", "") or ""))
     category = html.escape(str(job.get("category", "") or ""))
+    rejection_reason = html.escape(str(job.get("rejection_reason", "") or ""))
     source = html.escape(str(job.get("source", "") or ""))
     url = html.escape(str(job.get("url", "") or ""), quote=True)
     match = html.escape(match_label(raw_match_score))
@@ -320,8 +328,10 @@ def render_job(job):
         f"<p><strong>Candidate:</strong> {candidate_score}</p>"
         f"<p><strong>Remote:</strong> {remote}</p>"
         f"<p><strong>Remote reason:</strong> {remote_reason}</p>"
+        f"<p><strong>Part time:</strong> {part_time}</p>"
         f"<p><strong>Remote score:</strong> {remote_score}</p>"
         f"<p><strong>Location fit:</strong> {location_fit}</p>"
+        f"<p><strong>Rejection reason:</strong> {rejection_reason}</p>"
         f"<p><strong>Source:</strong> {source}</p>"
         f"<p><strong>Category:</strong> {category}</p>"
         f'<p><strong>URL:</strong> <a href="{url}">{url}</a></p>'

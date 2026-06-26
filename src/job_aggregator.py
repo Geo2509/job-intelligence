@@ -17,6 +17,7 @@ from src.candidate_pool import (
     export_collector_stats,
 )
 from src.candidate_profile import calculate_match_score, evaluate_candidate_score
+from src.collector_health import build_collector_health, export_collector_health
 from src.job_collector_registry import enabled_collectors, get_collector
 from src.job_matching import (
     combined_text,
@@ -829,9 +830,11 @@ def aggregate_jobs(
     if return_artifacts:
         candidate_pool = build_candidate_pool(candidate_candidates, jobs, history)
         collector_stats = build_collector_stats(collected_counts, candidate_candidates, jobs)
+        collector_health = build_collector_health(collector_stats, candidate_pool)
         url_pattern_debug = build_url_pattern_debug_rows(raw_jobs, candidate_candidates, jobs)
         stats["candidate_pool_jobs"] = len(candidate_pool)
         stats["collector_stats"] = collector_stats
+        stats["collector_health"] = collector_health
         stats["collector_contribution"] = {
             row["collector"]: row["email_jobs"]
             for row in collector_stats
@@ -839,6 +842,7 @@ def aggregate_jobs(
         return jobs, stats, {
             "candidate_pool": candidate_pool,
             "collector_stats": collector_stats,
+            "collector_health": collector_health,
             "url_pattern_debug": url_pattern_debug,
         }
     if return_stats:
@@ -1029,6 +1033,7 @@ def main():
     export_jobs(jobs, output_path)
     export_candidate_pool(artifacts["candidate_pool"], candidate_pool_output)
     export_collector_stats(artifacts["collector_stats"], collector_stats_output)
+    export_collector_health(artifacts["collector_health"])
     export_url_pattern_debug(artifacts["url_pattern_debug"])
     history = load_sent_history(history_path)
     history = update_sent_history(history, jobs)

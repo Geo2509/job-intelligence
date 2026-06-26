@@ -267,7 +267,27 @@ def render_run_stats(stats):
         f"<p><strong>Seen jobs:</strong> {seen_jobs}</p>"
         "<h3>Collector contribution</h3>"
         f"<ul>{contribution}</ul>"
+        f"{render_collector_health(stats.get('collector_health') or [])}"
     )
+
+
+def render_collector_health(rows):
+    if not rows:
+        return ""
+    items = []
+    for row in rows:
+        collector = html.escape(str(row.get("collector", "") or "unknown"))
+        status = html.escape(str(row.get("collector_health_status", "") or ""))
+        new = int(row.get("new") or 0)
+        seen = int(row.get("seen") or row.get("removed_by_history") or 0)
+        email_jobs = int(row.get("email") or 0)
+        real_jobs = int(row.get("real_jobs") or 0)
+        if real_jobs == 0:
+            detail = "0 real jobs"
+        else:
+            detail = f"NEW: {new} | HISTORY: {seen} | EMAIL: {email_jobs}"
+        items.append(f"<li><strong>{collector}</strong> ({status}) - {detail}</li>")
+    return "<h2>Collector Health</h2><ul>" + "".join(items) + "</ul>"
 
 
 def render_job(job):

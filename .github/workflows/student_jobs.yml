@@ -44,6 +44,9 @@ jobs:
             output/v2_jobs.xlsx \
             output/v2_candidate_pool.xlsx \
             output/v2_run_stats.json \
+            output/collector_health.json \
+            output/collector_health.xlsx \
+            output/collector_recommendations.md \
             output/url_pattern_debug.json \
             output/url_pattern_debug.xlsx \
             output/unknown_urls.xlsx \
@@ -100,6 +103,9 @@ jobs:
             output/v2_collector_stats.xlsx
             output/v2_sent_jobs_history.json
             output/v2_run_stats.json
+            output/collector_health.json
+            output/collector_health.xlsx
+            output/collector_recommendations.md
             output/url_pattern_debug.json
             output/url_pattern_debug.xlsx
             output/unknown_urls.xlsx

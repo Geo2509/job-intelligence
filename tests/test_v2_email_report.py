@@ -173,6 +173,33 @@ def test_email_body_contains_summary_metrics():
     assert "⭐⭐⭐ Consider" in body
 
 
+def test_email_body_contains_collector_health():
+    body = v2_email_report.build_email_html(
+        [job("Data Entry Napoli")],
+        run_stats={
+            "collector_health": [
+                {
+                    "collector": "gigroup",
+                    "collector_health_status": "healthy",
+                    "new": 37,
+                    "seen": 0,
+                    "email": 37,
+                    "real_jobs": 37,
+                },
+                {
+                    "collector": "indeed",
+                    "collector_health_status": "needs_detail_extraction",
+                    "real_jobs": 0,
+                },
+            ]
+        },
+    )
+
+    assert "Collector Health" in body
+    assert "<strong>gigroup</strong> (healthy) - NEW: 37 | HISTORY: 0 | EMAIL: 37" in body
+    assert "<strong>indeed</strong> (needs_detail_extraction) - 0 real jobs" in body
+
+
 def test_email_body_contains_history_status_label():
     body = v2_email_report.build_email_html([
         job("Fresh job", history_status="NEW")

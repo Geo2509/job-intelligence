@@ -3,6 +3,7 @@ import zipfile
 from dataclasses import replace
 
 from src import candidate_pool, job_aggregator
+from src.collector_health import build_collector_health
 from src.job_collector_registry import get_collector
 
 
@@ -87,6 +88,51 @@ def test_collector_stats_are_counted():
     assert row["search_pages"] == 1
     assert row["history_new"] == 1
     assert row["email_jobs"] == 1
+
+
+def test_collector_health_statuses_and_recommendations():
+    rows = build_collector_health(
+        [
+            {
+                "collector": "gigroup",
+                "collected": 37,
+                "after_cleaner": 37,
+                "real_jobs": 37,
+                "history_new": 37,
+                "history_seen": 0,
+                "email_jobs": 37,
+            },
+            {
+                "collector": "randstad",
+                "collected": 50,
+                "after_cleaner": 50,
+                "real_jobs": 50,
+                "history_new": 0,
+                "history_seen": 50,
+                "email_jobs": 0,
+            },
+            {
+                "collector": "indeed",
+                "collected": 50,
+                "after_cleaner": 0,
+                "real_jobs": 0,
+                "search_pages": 50,
+                "email_jobs": 0,
+            },
+        ],
+        [
+            {"collector": "gigroup"},
+            {"collector": "randstad"},
+        ],
+    )
+
+    by_collector = {row["collector"]: row for row in rows}
+    assert by_collector["gigroup"]["collector_health_status"] == "healthy"
+    assert by_collector["gigroup"]["candidate_pool"] == 1
+    assert by_collector["randstad"]["collector_health_status"] == "history_only"
+    assert by_collector["randstad"]["removed_by_history"] == 50
+    assert by_collector["indeed"]["collector_health_status"] == "needs_detail_extraction"
+    assert "Detail Extraction" in by_collector["indeed"]["recommendation"]
 
 
 def test_rejection_reason_is_filled_for_location_and_low_match():
@@ -179,6 +225,9 @@ def test_job_aggregator_main_creates_candidate_pool_artifacts(monkeypatch, tmp_p
     assert pool_path.with_suffix(".xlsx").exists()
     assert stats_path.exists()
     assert stats_path.with_suffix(".xlsx").exists()
+    assert (tmp_path / "output/collector_health.json").exists()
+    assert (tmp_path / "output/collector_health.xlsx").exists()
+    assert (tmp_path / "output/collector_recommendations.md").exists()
     assert (tmp_path / "output/url_pattern_debug.json").exists()
     assert (tmp_path / "output/url_pattern_debug.xlsx").exists()
     assert (tmp_path / "output/unknown_urls.xlsx").exists()

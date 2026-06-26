@@ -43,7 +43,11 @@ jobs:
           for artifact in \
             output/v2_jobs.xlsx \
             output/v2_candidate_pool.xlsx \
-            output/v2_run_stats.json
+            output/v2_run_stats.json \
+            output/url_pattern_debug.json \
+            output/url_pattern_debug.xlsx \
+            output/unknown_urls.xlsx \
+            output/url_pattern_recommendations.md
           do
             test -f "$artifact"
             echo "Verified $artifact"

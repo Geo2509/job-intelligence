@@ -141,6 +141,7 @@ def test_action_is_preserved_between_exports(tmp_path):
 
 
 def test_job_aggregator_main_creates_candidate_pool_artifacts(monkeypatch, tmp_path, capsys):
+    monkeypatch.chdir(tmp_path)
     output_path = tmp_path / "v2_jobs.json"
     pool_path = tmp_path / "v2_candidate_pool.json"
     stats_path = tmp_path / "v2_collector_stats.json"
@@ -176,6 +177,10 @@ def test_job_aggregator_main_creates_candidate_pool_artifacts(monkeypatch, tmp_p
     assert pool_path.with_suffix(".xlsx").exists()
     assert stats_path.exists()
     assert stats_path.with_suffix(".xlsx").exists()
+    assert (tmp_path / "output/url_pattern_debug.json").exists()
+    assert (tmp_path / "output/url_pattern_debug.xlsx").exists()
+    assert (tmp_path / "output/unknown_urls.xlsx").exists()
+    assert (tmp_path / "output/url_pattern_recommendations.md").exists()
     output = capsys.readouterr().out
     assert f"Saved {pool_path}" in output
     assert f"Saved {pool_path.with_suffix('.xlsx')}" in output

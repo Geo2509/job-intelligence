@@ -139,6 +139,17 @@ def test_email_preserves_selection_priority_before_match_sort():
     assert "<strong>Selection:</strong> NEVER_SENT_FILL" in body
 
 
+def test_email_body_does_not_include_seen_status_when_seen_jobs_are_not_selected():
+    body = v2_email_report.build_email_html([
+        job("Fresh lower", match_score=70, history_status="NEW", selection_reason="NEW"),
+        job("Never sent higher", match_score=100, history_status="ARCHIVED", selection_reason="NEVER_SENT_FILL"),
+    ])
+
+    assert "<strong>Status:</strong> SEEN" not in body
+    assert "Fresh lower" in body
+    assert "Never sent higher" in body
+
+
 def test_email_body_contains_required_job_fields():
     body = v2_email_report.build_email_html(
         [

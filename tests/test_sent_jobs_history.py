@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from src.main import (
     job_history_key,
     load_sent_jobs_history,
+    remote_content_hash,
     save_sent_jobs_history,
     send_email_report,
     unsent_email_rows,
@@ -33,7 +34,12 @@ class SentJobsHistoryTest(unittest.TestCase):
     def test_same_url_is_skipped(self):
         sent_job = {"url": "https://example.com/jobs/123"}
         new_job = {"url": "https://example.com/jobs/123/"}
-        history = {job_history_key(sent_job): {"sent_at": "2026-06-21"}}
+        history = {
+            job_history_key(sent_job): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(new_job),
+            }
+        }
 
         found_rows, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([new_job]), history)
 
@@ -52,7 +58,12 @@ class SentJobsHistoryTest(unittest.TestCase):
             "job_url": "https://example.com/jobs/123/?ref=feed&utm_medium=email&utm_term=data",
             "title": "Operations Analyst",
         }
-        history = {job_history_key(sent_job): {"sent_at": "2026-06-21"}}
+        history = {
+            job_history_key(sent_job): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(new_job),
+            }
+        }
 
         found_rows, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([new_job]), history)
 
@@ -71,7 +82,12 @@ class SentJobsHistoryTest(unittest.TestCase):
             "company": "ACME",
             "location": "REMOTE",
         }
-        history = {job_history_key(sent_job): {"sent_at": "2026-06-21"}}
+        history = {
+            job_history_key(sent_job): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(new_job),
+            }
+        }
 
         _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([new_job]), history)
 
@@ -85,8 +101,8 @@ class SentJobsHistoryTest(unittest.TestCase):
             history_path.write_text(
                 json.dumps(
                     {
-                        "recent": {"sent_at": "2026-04-01"},
-                        "old": {"sent_at": "2026-03-01"},
+                        "recent": {"sent_at": "2026-04-01", "content_hash": "abc"},
+                        "old": {"sent_at": "2026-03-01", "content_hash": "def"},
                     }
                 ),
                 encoding="utf-8",
@@ -97,7 +113,86 @@ class SentJobsHistoryTest(unittest.TestCase):
             saved_history = json.loads(history_path.read_text(encoding="utf-8"))
 
         self.assertIn("recent", saved_history)
+        self.assertEqual("abc", saved_history["recent"]["content_hash"])
         self.assertNotIn("old", saved_history)
+
+    def test_all_seen_jobs_with_fallback_style_selection_send_zero_by_default(self):
+        rows = [
+            {"url": f"https://example.com/jobs/{index}", "title": f"Seen {index}", "job_score": 100 - index}
+            for index in range(50)
+        ]
+        history = {
+            job_history_key(row): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(row),
+            }
+            for row in rows
+        }
+
+        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs(rows), history, send_limit=20)
+
+        self.assertEqual([], rows_to_send)
+        self.assertEqual(50, skipped)
+
+    def test_seen_high_score_is_skipped_for_never_sent_lower_score(self):
+        seen_job = {"url": "https://example.com/jobs/seen", "title": "Seen high", "job_score": 100}
+        new_job = {"url": "https://example.com/jobs/new", "title": "Never sent lower", "job_score": 70}
+        history = {
+            job_history_key(seen_job): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(seen_job),
+            }
+        }
+
+        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([seen_job, new_job]), history)
+
+        self.assertEqual(1, skipped)
+        self.assertEqual(["Never sent lower"], [row["title"] for row in rows_to_send])
+        self.assertEqual("NEW", rows_to_send[0]["history_status"])
+
+    def test_seen_can_be_selected_only_when_include_seen_true(self):
+        seen_job = {"url": "https://example.com/jobs/seen", "title": "Seen high", "job_score": 100}
+        history = {
+            job_history_key(seen_job): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(seen_job),
+            }
+        }
+
+        _, rows_without_flag, _ = unsent_email_rows(FakeTopJobs([seen_job]), history)
+        _, rows_with_flag, _ = unsent_email_rows(
+            FakeTopJobs([seen_job]),
+            history,
+            include_seen=True,
+        )
+
+        self.assertEqual([], rows_without_flag)
+        self.assertEqual(["Seen high"], [row["title"] for row in rows_with_flag])
+        self.assertEqual("SEEN", rows_with_flag[0]["history_status"])
+
+    def test_changed_seen_job_is_selected_as_updated(self):
+        old_job = {
+            "url": "https://example.com/jobs/updated",
+            "title": "Remote Analyst",
+            "description": "Old description",
+        }
+        changed_job = {
+            "url": "https://example.com/jobs/updated",
+            "title": "Remote Analyst",
+            "description": "New description",
+        }
+        history = {
+            job_history_key(old_job): {
+                "sent_at": "2026-06-21",
+                "content_hash": remote_content_hash(old_job),
+            }
+        }
+
+        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([changed_job]), history)
+
+        self.assertEqual(0, skipped)
+        self.assertEqual(["Remote Analyst"], [row["title"] for row in rows_to_send])
+        self.assertEqual("UPDATED", rows_to_send[0]["history_status"])
 
     def test_email_is_not_sent_when_no_new_jobs(self):
         run_started = datetime(2026, 6, 21, tzinfo=ZoneInfo("Europe/Rome"))
@@ -113,7 +208,14 @@ class SentJobsHistoryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             history_path = Path(temp_dir) / "sent_jobs_history.json"
             history_path.write_text(
-                json.dumps({job_history_key(sent_job): {"sent_at": "2026-06-20"}}),
+                json.dumps(
+                    {
+                        job_history_key(sent_job): {
+                            "sent_at": "2026-06-20",
+                            "content_hash": remote_content_hash(sent_job),
+                        }
+                    }
+                ),
                 encoding="utf-8",
             )
             with patch("src.main.SENT_JOBS_HISTORY_PATH", history_path), patch.dict(

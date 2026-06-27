@@ -650,11 +650,11 @@ def is_never_sent(job):
         sent_count = int(job.get("sent_count") or 0)
     except (TypeError, ValueError):
         sent_count = 0
-    if sent_count == 0 or not last_sent:
+    never_sent_by_history = sent_count == 0 or not last_sent
+    if never_sent_by_history:
         return True
     status = str(job.get("history_status") or "").upper()
-    pool_status = str(job.get("selection_pool_status") or "").lower()
-    if status == "NEVER_SENT" or pool_status == "never_sent":
+    if status == "NEVER_SENT" and never_sent_by_history:
         return True
     return False
 
@@ -811,13 +811,18 @@ def select_email_jobs(
             [job for job in jobs if history_status(job) == "SEEN"][:max_seen_repeat],
             "SEEN",
         )
+    fallback_jobs = [
+        job
+        for job in eligible_jobs
+        if history_status(job) != "SEEN"
+    ]
     debug["eligible_fallback"] = sum(
         1
-        for job in eligible_jobs
+        for job in fallback_jobs
         if aggregator_dedup_key(job) not in selected_keys
     )
     if fallback_enabled and len(selected) < email_target:
-        add_bucket(eligible_jobs, "FALLBACK_FILL")
+        add_bucket(fallback_jobs, "FALLBACK_FILL")
 
     selected = selected[:email_target]
     selected_keys = {aggregator_dedup_key(job) for job in selected}

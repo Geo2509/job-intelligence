@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import html
 import json
 import os
@@ -163,6 +164,22 @@ def job_history_key(job):
     return "|".join(parts)
 
 
+def remote_content_hash(job):
+    fields = {
+        "title": str(job.get("title", "") or "").strip(),
+        "company": str(job.get("company", "") or "").strip(),
+        "location": str(job.get("location", "") or "").strip(),
+        "description": str(job.get("description", "") or "").strip(),
+        "score_reason": str(job.get("score_reason", "") or "").strip(),
+        "positive_reason": str(job.get("positive_reason", "") or "").strip(),
+        "negative_reason": str(job.get("negative_reason", "") or "").strip(),
+        "employment_type": str(job.get("employment_type", "") or "").strip(),
+        "salary_text": str(job.get("salary_text", "") or "").strip(),
+    }
+    payload = json.dumps(fields, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def load_sent_jobs_history(path=SENT_JOBS_HISTORY_PATH, now=None, ttl_days=SENT_JOBS_HISTORY_TTL_DAYS):
     history_path = Path(path)
     if not history_path.exists():
@@ -182,8 +199,10 @@ def load_sent_jobs_history(path=SENT_JOBS_HISTORY_PATH, now=None, ttl_days=SENT_
     cutoff_date = ((now or datetime.now(ZoneInfo("Europe/Rome"))) - timedelta(days=ttl_days)).date()
     history = {}
     for key, entry in raw_history.items():
+        content_hash = ""
         if isinstance(entry, dict):
             sent_at = entry.get("sent_at")
+            content_hash = str(entry.get("content_hash") or "")
         else:
             sent_at = entry
         try:
@@ -191,7 +210,10 @@ def load_sent_jobs_history(path=SENT_JOBS_HISTORY_PATH, now=None, ttl_days=SENT_
         except (TypeError, ValueError):
             continue
         if sent_at_date >= cutoff_date:
-            history[key] = {"sent_at": sent_at_date.isoformat()}
+            history[key] = {
+                "sent_at": sent_at_date.isoformat(),
+                "content_hash": content_hash,
+            }
     print(f"Sent jobs history path: {history_path}")
     return history
 
@@ -205,21 +227,42 @@ def save_sent_jobs_history(history, path=SENT_JOBS_HISTORY_PATH):
     )
 
 
-def unsent_email_rows(top_jobs, history, send_limit=20):
+def unsent_email_rows(top_jobs, history, send_limit=20, include_seen=False):
     rows = top_jobs_rows(top_jobs, None)
     unsent_rows = []
     skipped = 0
     seen_keys = set()
     for row in rows:
         key = job_history_key(row)
-        if key in history or key in seen_keys:
+        if key in seen_keys:
             skipped += 1
             continue
         seen_keys.add(key)
+        history_entry = history.get(key)
+        row_hash = remote_content_hash(row)
+        history_hash = ""
+        if isinstance(history_entry, dict):
+            history_hash = str(history_entry.get("content_hash") or "")
+        if history_entry and history_hash == row_hash:
+            if not include_seen:
+                skipped += 1
+                continue
+            history_status = "SEEN"
+        elif history_entry and not history_hash:
+            if not include_seen:
+                skipped += 1
+                continue
+            history_status = "SEEN"
+        elif history_entry:
+            history_status = "UPDATED"
+        else:
+            history_status = "NEW"
         if len(unsent_rows) >= send_limit:
             continue
         row = dict(row)
         row["_history_key"] = key
+        row["_content_hash"] = row_hash
+        row["history_status"] = history_status
         unsent_rows.append(row)
     return rows, unsent_rows, skipped
 
@@ -227,7 +270,10 @@ def unsent_email_rows(top_jobs, history, send_limit=20):
 def record_sent_jobs(history, rows, sent_at):
     sent_at_text = sent_at.date().isoformat()
     for row in rows:
-        history[row["_history_key"]] = {"sent_at": sent_at_text}
+        history[row["_history_key"]] = {
+            "sent_at": sent_at_text,
+            "content_hash": row.get("_content_hash") or remote_content_hash(row),
+        }
     return history
 
 
@@ -384,14 +430,19 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
     """
 
 
-def send_email_report(run_started, collector_counts, scoring_result):
+def send_email_report(run_started, collector_counts, scoring_result, include_seen=False):
     if not email_enabled():
         print("Email disabled: EMAIL_ENABLED is not true")
         return False
 
     require_email_settings()
     history = load_sent_jobs_history(SENT_JOBS_HISTORY_PATH, now=run_started)
-    found_rows, rows_to_send, skipped = unsent_email_rows(scoring_result["top_jobs"], history, 20)
+    found_rows, rows_to_send, skipped = unsent_email_rows(
+        scoring_result["top_jobs"],
+        history,
+        20,
+        include_seen=include_seen,
+    )
     email_stats = {
         "found_total": len(found_rows),
         "skipped_already_sent": skipped,
@@ -448,6 +499,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--queries", required=True, help="Path to queries YAML config")
     parser.add_argument("--scoring", required=True, help="Path to scoring YAML config")
+    parser.add_argument("--include-seen", choices=["false", "true"], default="false")
     return parser.parse_args()
 
 
@@ -487,7 +539,12 @@ def main():
             [csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, OUTPUT_DIR / "run_summary.md"],
         )
         validate_output_files([csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, summary_path])
-        email_was_sent = send_email_report(run_started, collector_counts, scoring_result)
+        email_was_sent = send_email_report(
+            run_started,
+            collector_counts,
+            scoring_result,
+            include_seen=args.include_seen == "true",
+        )
         print(f"Email sent: {email_was_sent}")
         print(f"Output files saved in: {OUTPUT_DIR}")
         print(f"Summary: {summary_path}")

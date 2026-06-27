@@ -180,8 +180,8 @@ def test_candidate_rotation_seen_recent_selects_zero_without_fallback():
     assert debug["rejected_seen"] == 3
 
 
-def test_candidate_rotation_fallback_can_fill_seen_recent_jobs():
-    selected = job_aggregator.select_email_jobs(
+def test_candidate_rotation_fallback_does_not_fill_seen_recent_jobs():
+    selected, debug = job_aggregator.select_email_jobs(
         [
             rotation_job("Seen high", "SEEN", 90, sent_count=1),
             rotation_job("Seen lower", "SEEN", 80, sent_count=1),
@@ -189,9 +189,49 @@ def test_candidate_rotation_fallback_can_fill_seen_recent_jobs():
         email_target=1,
         email_min_match=50,
         fallback_enabled=True,
+        return_debug=True,
     )
 
-    assert [item["selection_reason"] for item in selected] == ["FALLBACK_FILL"]
+    assert selected == []
+    assert debug["selected_total"] == 0
+    assert debug["eligible_fallback"] == 0
+    assert debug["rejected_seen_recently"] == 2
+
+
+def test_candidate_rotation_fallback_skips_seen_high_score_for_never_sent_lower_score():
+    selected = job_aggregator.select_email_jobs(
+        [
+            rotation_job("Seen high", "SEEN", 100, sent_count=1),
+            rotation_job("Never lower", "ARCHIVED", 70, sent_count=0, last_sent=""),
+        ],
+        email_target=1,
+        email_min_match=50,
+        fallback_enabled=True,
+    )
+
+    assert [item["title"] for item in selected] == ["Never lower"]
+    assert selected[0]["selection_reason"] == "NEVER_SENT_FILL"
+
+
+def test_candidate_rotation_seen_can_be_selected_only_with_include_seen_true():
+    jobs = [rotation_job("Seen high", "SEEN", 100, sent_count=1)]
+
+    selected_without_flag = job_aggregator.select_email_jobs(
+        jobs,
+        email_target=1,
+        email_min_match=50,
+        fallback_enabled=True,
+    )
+    selected_with_flag = job_aggregator.select_email_jobs(
+        jobs,
+        email_target=1,
+        email_min_match=50,
+        include_seen=True,
+        fallback_enabled=True,
+    )
+
+    assert selected_without_flag == []
+    assert [item["selection_reason"] for item in selected_with_flag] == ["SEEN"]
 
 
 def test_candidate_rotation_does_not_collapse_large_candidate_pool_to_one():
@@ -275,7 +315,7 @@ def test_aggregate_selects_from_full_randstad_candidate_pool(monkeypatch, tmp_pa
     assert {item["source"] for item in jobs} == {"randstad"}
 
 
-def test_aggregate_fallback_selects_seen_gigroup_candidate_pool(monkeypatch, tmp_path):
+def test_aggregate_fallback_does_not_select_seen_gigroup_candidate_pool(monkeypatch, tmp_path):
     collector_jobs = [
         job(
             f"GiGroup back office {i}",
@@ -327,11 +367,11 @@ def test_aggregate_fallback_selects_seen_gigroup_candidate_pool(monkeypatch, tmp
     )
 
     assert len(artifacts["candidate_pool"]) == 37
-    assert len(jobs) == 10
-    assert {item["selection_reason"] for item in jobs} == {"FALLBACK_FILL"}
+    assert jobs == []
     assert stats["selection_debug"]["candidate_pool_total"] == 37
-    assert stats["selection_debug"]["eligible_fallback"] == 37
-    assert stats["selection_debug"]["selected_total"] == 10
+    assert stats["selection_debug"]["eligible_fallback"] == 0
+    assert stats["selection_debug"]["selected_total"] == 0
+    assert stats["selection_debug"]["rejected_seen_recently"] == 37
 
 
 def test_candidate_rotation_target_and_min_match_are_enforced():

@@ -1,5 +1,29 @@
 [
   {
+    "job_id": "272bce0161d76f2988ff6e83fc08b0d8160ad86c52fa50bb6bb10c87fe4260c9",
+    "url": "https://www.subito.it/offerte-lavoro/addetto-addetta-alle-pulizie-napoli-652119765.htm",
+    "title": "Addetto/addetta alle pulizie - Offerte di lavoro In vendita a Napoli - Subito",
+    "source": "subito",
+    "first_seen": "2026-06-27T06:56:57.884371+00:00",
+    "last_seen": "2026-06-27T07:01:16.126225+00:00",
+    "last_sent": "2026-06-27T07:01:16.126225+00:00",
+    "sent_count": 1,
+    "content_hash": "4aa93ac7c8a9358265795485be8e2fa666b61513e357033d928ec513cb85a77e",
+    "match_score": 69
+  },
+  {
+    "job_id": "706d5e0657f382e8d42cc21e40bbef212c2d48aa05d7e5f2d5a80c70db9de341",
+    "url": "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-manutentori-elettrici-ed-elettronici-responsabili-di-manutenzione-per-ferrero-in-belgio/1310275",
+    "title": "MANUTENTORI ELETTRICI ED ELETTRONICI / RESPONSABILI DI MANUTENZIONE PER FERRERO IN BELGIO",
+    "source": "gigroup",
+    "first_seen": "2026-06-26T11:33:20.649066+00:00",
+    "last_seen": "2026-06-27T07:01:16.126225+00:00",
+    "last_sent": "2026-06-27T07:01:16.126225+00:00",
+    "sent_count": 3,
+    "content_hash": "85670ebdb3596a1d7628f9e3af919cce7ff113badd8e31f4145a2c7dc31cebb7",
+    "match_score": 64
+  },
+  {
     "job_id": "c9c0bb05c7a69481d8a1ced72749bc52f68ad9102e58774b3957b8761d82f44e",
     "url": "https://www.randstad.it/offerte-lavoro/venditore-interior-designer-napoli_napoli_bedcdd3c-3159-4a93-9b39-9f040cf3923f",
     "title": "venditore interior designer - napoli",
@@ -646,18 +670,6 @@
     "sent_count": 3,
     "content_hash": "3413d6b112a00cb8449d845d6c13987b6e8609a66141d4dc65053caaaaeac3e9",
     "match_score": 56
-  },
-  {
-    "job_id": "706d5e0657f382e8d42cc21e40bbef212c2d48aa05d7e5f2d5a80c70db9de341",
-    "url": "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-manutentori-elettrici-ed-elettronici-responsabili-di-manutenzione-per-ferrero-in-belgio/1310275",
-    "title": "MANUTENTORI ELETTRICI ED ELETTRONICI / RESPONSABILI DI MANUTENZIONE PER FERRERO IN BELGIO",
-    "source": "gigroup",
-    "first_seen": "2026-06-26T11:33:20.649066+00:00",
-    "last_seen": "2026-06-26T13:40:30.861444+00:00",
-    "last_sent": "2026-06-26T13:40:30.861444+00:00",
-    "sent_count": 2,
-    "content_hash": "1c403c65a39a4af5ecc5c958e2f6e7f3b211280420be83f1805665b318ecfa9e",
-    "match_score": 64
   },
   {
     "job_id": "7b1477b39dec3b654154f061f332eeef2aec6a4ffd3f30f5f4628129e2bfe1b7",

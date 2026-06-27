@@ -2,6 +2,7 @@ import argparse
 import json
 import zipfile
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree
 from xml.sax.saxutils import escape
@@ -12,6 +13,7 @@ from src.job_result_cleaner import clean_job
 DEFAULT_POOL_PATH = "output/v2_candidate_pool.json"
 DEFAULT_COLLECTOR_STATS_PATH = "output/v2_collector_stats.json"
 MATCH_THRESHOLD = 70
+DEFAULT_ROTATION_DAYS = 7
 POOL_FIELDS = [
     ("Match Score", "match_score"),
     ("Student Score", "student_score"),
@@ -57,6 +59,8 @@ POOL_FIELDS = [
     ("Last Seen", "last_seen"),
     ("Last Sent", "last_sent"),
     ("Sent Count", "sent_count"),
+    ("Days Since Last Sent", "days_since_last_sent"),
+    ("Rotation Eligible", "rotation_eligible"),
     ("Job ID", "job_id"),
     ("Content Hash", "content_hash"),
     ("Action", "action"),
@@ -123,6 +127,32 @@ def classify_candidates(jobs):
     return [clean_job(job) for job in jobs]
 
 
+def parse_timestamp(value):
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def days_since_last_sent(last_sent, now=None):
+    sent_at = parse_timestamp(last_sent)
+    if not sent_at:
+        return ""
+    if sent_at.tzinfo is None:
+        sent_at = sent_at.replace(tzinfo=timezone.utc)
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return max(0, (now - sent_at).days)
+
+
 def apply_history_fields(job, history):
     job = dict(job)
     record = history.get(job.get("job_id"), {}) if history else {}
@@ -131,6 +161,15 @@ def apply_history_fields(job, history):
     job["last_seen"] = record.get("last_seen") or found_at
     job["last_sent"] = record.get("last_sent") or ""
     job["sent_count"] = int(record.get("sent_count") or 0)
+    if "days_since_last_sent" not in job:
+        job["days_since_last_sent"] = days_since_last_sent(job.get("last_sent"))
+    if "rotation_eligible" not in job:
+        days_since = job.get("days_since_last_sent")
+        job["rotation_eligible"] = (
+            isinstance(days_since, int)
+            and job["sent_count"] > 0
+            and days_since >= DEFAULT_ROTATION_DAYS
+        )
     return job
 
 
@@ -493,7 +532,7 @@ def export_candidate_pool(pool, output_path=DEFAULT_POOL_PATH):
     headers = [label for label, _ in POOL_FIELDS]
     rows = [
         [
-            score_value(job, field) if field in {"match_score", "student_score", "candidate_score", "remote_score", "score", "sent_count"} else job.get(field, "")
+            score_value(job, field) if field in {"match_score", "student_score", "candidate_score", "remote_score", "score", "sent_count", "days_since_last_sent"} else job.get(field, "")
             for _, field in POOL_FIELDS
         ]
         for job in pool

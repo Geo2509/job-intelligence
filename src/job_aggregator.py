@@ -106,6 +106,10 @@ OUTPUT_FIELDS = [
     "match_score",
     "search_profile",
     "history_status",
+    "last_sent",
+    "sent_count",
+    "days_since_last_sent",
+    "rotation_eligible",
     "selection_reason",
     "selection_rejection_reason",
     "score",
@@ -435,7 +439,7 @@ def selection_reason_order(job):
         "UPDATED": 1,
         "NEVER_SENT_FILL": 2,
         "RESURFACED": 3,
-        "FALLBACK_FILL": 4,
+        "FALLBACK_ROTATION": 4,
         "SEEN": 5,
     }.get(str(job.get("selection_reason") or ""), 6)
 
@@ -598,8 +602,21 @@ def classify_history_status(job, history_record, now=None, skip_seen_days=DEFAUL
     return "SEEN"
 
 
+def days_since_last_sent(last_sent, now=None):
+    sent_at = parse_timestamp(last_sent)
+    if not sent_at:
+        return ""
+    if sent_at.tzinfo is None:
+        sent_at = sent_at.replace(tzinfo=timezone.utc)
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return max(0, (now - sent_at).days)
+
+
 def annotate_history_status(jobs, history, now=None, skip_seen_days=DEFAULT_SKIP_SEEN_DAYS):
     annotated = []
+    now = now or datetime.now(timezone.utc)
     for job in jobs:
         job = dict(job)
         current_job_id = job_id(job)
@@ -621,6 +638,13 @@ def annotate_history_status(jobs, history, now=None, skip_seen_days=DEFAULT_SKIP
             history_record,
             now=now,
             skip_seen_days=skip_seen_days,
+        )
+        days_since = days_since_last_sent(job.get("last_sent"), now=now)
+        job["days_since_last_sent"] = days_since
+        job["rotation_eligible"] = (
+            isinstance(days_since, int)
+            and int(job.get("sent_count") or 0) > 0
+            and days_since >= skip_seen_days
         )
         annotated.append(job)
     return annotated
@@ -675,6 +699,7 @@ def empty_selection_debug():
         "eligible_never_sent": 0,
         "eligible_resurfaced": 0,
         "eligible_fallback": 0,
+        "eligible_fallback_rotation": 0,
         "rejected_low_match": 0,
         "rejected_profile": 0,
         "rejected_location": 0,
@@ -730,6 +755,21 @@ def is_never_sent_fill_bucket(job):
 
 def is_resurfaced_bucket(job):
     return history_status(job) == "RESURFACED"
+
+
+def is_rotation_eligible(job):
+    value = job.get("rotation_eligible")
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return bool(value)
+
+
+def is_fallback_rotation_bucket(job):
+    return (
+        is_rotation_eligible(job)
+        and not is_never_sent(job)
+        and history_status(job) in {"SEEN", "RESURFACED"}
+    )
 
 
 def has_selection_bucket(job):
@@ -814,15 +854,16 @@ def select_email_jobs(
     fallback_jobs = [
         job
         for job in eligible_jobs
-        if history_status(job) != "SEEN"
+        if is_fallback_rotation_bucket(job)
     ]
-    debug["eligible_fallback"] = sum(
+    debug["eligible_fallback_rotation"] = sum(
         1
         for job in fallback_jobs
         if aggregator_dedup_key(job) not in selected_keys
     )
+    debug["eligible_fallback"] = debug["eligible_fallback_rotation"]
     if fallback_enabled and len(selected) < email_target:
-        add_bucket(fallback_jobs, "FALLBACK_FILL")
+        add_bucket(fallback_jobs, "FALLBACK_ROTATION")
 
     selected = selected[:email_target]
     selected_keys = {aggregator_dedup_key(job) for job in selected}

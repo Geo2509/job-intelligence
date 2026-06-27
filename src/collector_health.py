@@ -15,6 +15,9 @@ HEALTH_FIELDS = [
     "updated",
     "seen",
     "resurfaced",
+    "rotation_eligible",
+    "seen_recently",
+    "fallback_rotation",
     "email",
     "removed_by_cleaner",
     "removed_by_location",
@@ -53,6 +56,27 @@ def candidate_pool_counts(candidate_pool):
     for job in candidate_pool or []:
         name = collector_name(job)
         counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
+def candidate_pool_rotation_counts(candidate_pool):
+    counts = {}
+    for job in candidate_pool or []:
+        name = collector_name(job)
+        row = counts.setdefault(
+            name,
+            {
+                "rotation_eligible": 0,
+                "seen_recently": 0,
+                "fallback_rotation": 0,
+            },
+        )
+        if job.get("rotation_eligible") is True or str(job.get("rotation_eligible")).lower() == "true":
+            row["rotation_eligible"] += 1
+        if job.get("selection_rejection_reason") == "seen_recently":
+            row["seen_recently"] += 1
+        if job.get("selection_reason") == "FALLBACK_ROTATION":
+            row["fallback_rotation"] += 1
     return counts
 
 
@@ -137,11 +161,23 @@ def recommendation_for(row, status):
     email_jobs = int_value(row, "email_jobs")
     history_seen = int_value(row, "history_seen")
     history_new = int_value(row, "history_new")
+    history_resurfaced = int_value(row, "history_resurfaced")
+    rotation_eligible = int_value(row, "rotation_eligible")
+    seen_recently = int_value(row, "seen_recently")
+    fallback_rotation = int_value(row, "fallback_rotation")
     location_removed = removed_by_location(row)
 
     if status == "inconsistent":
         return "Dashboard counts inconsistent: check source arrays"
     if status == "healthy":
+        if fallback_rotation:
+            return f"{collector}: Healthy, {fallback_rotation} jobs selected by FALLBACK_ROTATION"
+        if history_resurfaced:
+            return f"{collector}: Healthy, {history_resurfaced} RESURFACED jobs"
+        if rotation_eligible:
+            return f"{collector}: Healthy, {rotation_eligible} rotation_eligible jobs available"
+        if seen_recently:
+            return f"{collector}: Healthy, {seen_recently} jobs skipped as seen_recently"
         if history_new:
             return f"{collector}: Healthy, {history_new} NEW jobs"
         if history_seen:
@@ -166,12 +202,14 @@ def recommendation_for(row, status):
 
 def build_collector_health(collector_stats, candidate_pool=None):
     pool_counts = candidate_pool_counts(candidate_pool)
+    rotation_counts = candidate_pool_rotation_counts(candidate_pool)
     rows = []
     for row in collector_stats or []:
         collector = str(row.get("collector") or "unknown")
         pool_count = int_value(row, "candidate_pool") if candidate_pool is None else pool_counts.get(collector, 0)
         status_row = dict(row)
         status_row["candidate_pool"] = pool_count
+        status_row.update(rotation_counts.get(collector, {}))
         status = health_status(status_row)
         health = {
             "collector": collector,
@@ -183,6 +221,9 @@ def build_collector_health(collector_stats, candidate_pool=None):
             "updated": int_value(row, "history_updated"),
             "seen": int_value(row, "history_seen"),
             "resurfaced": int_value(row, "history_resurfaced"),
+            "rotation_eligible": int_value(status_row, "rotation_eligible"),
+            "seen_recently": int_value(status_row, "seen_recently"),
+            "fallback_rotation": int_value(status_row, "fallback_rotation"),
             "email": int_value(row, "email_jobs"),
             "removed_by_cleaner": removed_by_cleaner(row),
             "removed_by_location": removed_by_location(row),

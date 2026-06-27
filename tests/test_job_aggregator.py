@@ -180,6 +180,29 @@ def test_candidate_rotation_seen_recent_selects_zero_without_fallback():
     assert debug["rejected_seen"] == 3
 
 
+def test_history_annotation_marks_rotation_fields():
+    item = rotation_job("Old seen", "SEEN")
+    history = {
+        job_aggregator.job_id(item): {
+            "job_id": job_aggregator.job_id(item),
+            "last_sent": "2026-06-20T00:00:00+00:00",
+            "sent_count": 1,
+            "content_hash": job_aggregator.content_hash(item),
+        }
+    }
+
+    annotated = job_aggregator.annotate_history_status(
+        [item],
+        history,
+        now=job_aggregator.datetime(2026, 6, 27, tzinfo=job_aggregator.timezone.utc),
+        skip_seen_days=7,
+    )
+
+    assert annotated[0]["history_status"] == "RESURFACED"
+    assert annotated[0]["days_since_last_sent"] == 7
+    assert annotated[0]["rotation_eligible"] is True
+
+
 def test_candidate_rotation_fallback_does_not_fill_seen_recent_jobs():
     selected, debug = job_aggregator.select_email_jobs(
         [
@@ -196,6 +219,22 @@ def test_candidate_rotation_fallback_does_not_fill_seen_recent_jobs():
     assert debug["selected_total"] == 0
     assert debug["eligible_fallback"] == 0
     assert debug["rejected_seen_recently"] == 2
+
+
+def test_candidate_rotation_fallback_uses_fallback_rotation_reason_for_old_seen():
+    selected, debug = job_aggregator.select_email_jobs(
+        [
+            rotation_job("Old seen", "SEEN", 90, sent_count=1, rotation_eligible=True),
+        ],
+        email_target=1,
+        email_min_match=50,
+        fallback_enabled=True,
+        return_debug=True,
+    )
+
+    assert [item["selection_reason"] for item in selected] == ["FALLBACK_ROTATION"]
+    assert debug["eligible_fallback"] == 1
+    assert debug["eligible_fallback_rotation"] == 1
 
 
 def test_candidate_rotation_fallback_skips_seen_high_score_for_never_sent_lower_score():

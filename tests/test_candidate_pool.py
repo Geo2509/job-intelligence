@@ -64,6 +64,8 @@ def test_candidate_pool_excel_is_created_with_action_column(tmp_path):
     with zipfile.ZipFile(output_path.with_suffix(".xlsx")) as xlsx:
         sheet = xlsx.read("xl/worksheets/sheet1.xml").decode("utf-8")
     assert "Action" in sheet
+    assert "Days Since Last Sent" in sheet
+    assert "Rotation Eligible" in sheet
     assert "Remote Reason" in sheet
     assert "Normalized Category" in sheet
     assert "autoFilter" in sheet
@@ -174,6 +176,33 @@ def test_collector_health_status_counts_share_one_source():
     assert row["updated"] == 1
     assert row["seen"] == 1
     assert row["resurfaced"] == 1
+
+
+def test_collector_health_includes_rotation_diagnostics():
+    old = {
+        **pool_candidate(job("Old", url="https://it.indeed.com/viewjob?jk=5")),
+        "history_status": "RESURFACED",
+        "rotation_eligible": True,
+        "selection_reason": "FALLBACK_ROTATION",
+    }
+    recent = {
+        **pool_candidate(job("Recent", url="https://it.indeed.com/viewjob?jk=6")),
+        "history_status": "SEEN",
+        "selection_rejection_reason": "seen_recently",
+    }
+
+    stats = candidate_pool.build_collector_stats(
+        {"gigroup": 2},
+        [old, recent],
+        email_jobs=[old],
+    )
+    rows = build_collector_health(stats, [old, recent])
+
+    row = rows[0]
+    assert row["rotation_eligible"] == 1
+    assert row["seen_recently"] == 1
+    assert row["fallback_rotation"] == 1
+    assert "FALLBACK_ROTATION" in row["recommendation"]
 
 
 def test_rejection_reason_is_filled_for_location_and_low_match():

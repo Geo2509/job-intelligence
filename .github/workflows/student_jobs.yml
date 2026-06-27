@@ -33,6 +33,9 @@ jobs:
             --run-stats-path output/v2_run_stats.json \
             --limit 5 \
             --top 100 \
+            --email-target 50 \
+            --email-min-match 50 \
+            --rotation-days 7 \
             --campania-part-time-first \
             --email-clean-results \
             --drop-far-locations \

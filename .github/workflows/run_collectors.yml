@@ -102,6 +102,9 @@ jobs:
             --run-stats-path output/v2_run_stats.json \
             --limit "${{ inputs.v2_limit }}" \
             --top "${{ inputs.v2_top }}" \
+            --email-target 50 \
+            --email-min-match 50 \
+            --rotation-days 7 \
             --campania-part-time-first \
             $CLEAN_ARGS \
             $DROP_FAR_ARGS \

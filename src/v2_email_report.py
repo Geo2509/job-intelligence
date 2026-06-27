@@ -236,7 +236,7 @@ def selection_reason_order(job):
         "UPDATED": 1,
         "NEVER_SENT_FILL": 2,
         "RESURFACED": 3,
-        "FALLBACK_FILL": 4,
+        "FALLBACK_ROTATION": 4,
         "SEEN": 5,
     }.get(str(job.get("selection_reason") or ""), 6)
 
@@ -363,14 +363,21 @@ def render_job(job):
     match = html.escape(match_label(raw_match_score))
     history_status = html.escape(history_status_label(job.get("history_status")))
     selection_reason = html.escape(str(job.get("selection_reason", "") or ""))
+    days_since_last_sent = html.escape(str(job.get("days_since_last_sent", "") or ""))
     status_line = f"<p><strong>Status:</strong> {history_status}</p>" if history_status else ""
     selection_line = f"<p><strong>Selection:</strong> {selection_reason}</p>" if selection_reason else ""
+    days_since_line = (
+        f"<p><strong>Days since last sent:</strong> {days_since_last_sent}</p>"
+        if days_since_last_sent
+        else ""
+    )
 
     return (
         "<li>"
         f"<h3>{title}</h3>"
         f"{status_line}"
         f"{selection_line}"
+        f"{days_since_line}"
         f"<p><strong>{match}</strong></p>"
         f"<p><strong>Match:</strong> {match_score}</p>"
         f"<p><strong>Student:</strong> {student_score}</p>"

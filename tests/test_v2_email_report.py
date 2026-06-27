@@ -150,6 +150,21 @@ def test_email_body_does_not_include_seen_status_when_seen_jobs_are_not_selected
     assert "Never sent higher" in body
 
 
+def test_email_body_shows_days_since_last_sent():
+    body = v2_email_report.build_email_html([
+        job(
+            "Old resurfaced",
+            history_status="RESURFACED",
+            selection_reason="RESURFACED",
+            days_since_last_sent=7,
+        ),
+    ])
+
+    assert "<strong>Status:</strong> ↩️ RESURFACED" in body
+    assert "<strong>Selection:</strong> RESURFACED" in body
+    assert "<strong>Days since last sent:</strong> 7" in body
+
+
 def test_email_body_contains_required_job_fields():
     body = v2_email_report.build_email_html(
         [

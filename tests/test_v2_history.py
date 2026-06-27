@@ -113,9 +113,16 @@ def test_seen_is_skipped_by_default(monkeypatch, tmp_path):
     history_path = write_history(tmp_path, [history_for(job_aggregator.normalize_job(item))])
     install_collector(monkeypatch, [item])
 
-    jobs = job_aggregator.aggregate_jobs(["duckduckgo"], history_path=history_path)
+    jobs, stats = job_aggregator.aggregate_jobs(
+        ["duckduckgo"],
+        history_path=history_path,
+        return_stats=True,
+    )
 
-    assert jobs == []
+    assert len(jobs) == 1
+    assert jobs[0]["history_status"] == "SEEN"
+    assert jobs[0]["selection_rejection_reason"] == "seen_recently"
+    assert stats["email_jobs"] == 0
 
 
 def test_include_seen_true_includes_seen(monkeypatch, tmp_path):

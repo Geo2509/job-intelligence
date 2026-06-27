@@ -36,9 +36,9 @@ on:
         required: true
         default: "2"
       v2_top:
-        description: V2 top jobs to export and email
+        description: V2 top jobs to export
         required: true
-        default: "100"
+        default: "500"
       v2_clean_results:
         description: Clean V2 search-result pages before export
         required: true
@@ -143,7 +143,7 @@ jobs:
             --search-profile local_student \
             --input output/v2_jobs.json \
             --stats output/v2_run_stats.json \
-            --top "${{ inputs.v2_top }}"
+            --top 50
 
       - name: Commit Student V2 sent jobs history
         if: ${{ success() && inputs.email_enabled == 'true' }}

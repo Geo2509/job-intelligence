@@ -45,7 +45,7 @@ REMOTE_RUN_STATS_PATH = "output/v2_remote_run_stats.json"
 LOCAL_STUDENT_PROFILE = "local_student"
 REMOTE_PROFILE = "remote"
 DEFAULT_LIMIT = 5
-DEFAULT_TOP = 50
+DEFAULT_TOP = 500
 DEFAULT_SKIP_SEEN_DAYS = 7
 DEFAULT_MAX_SEEN_REPEAT = 1
 DEFAULT_EMAIL_TARGET = 50
@@ -1076,7 +1076,9 @@ def aggregate_jobs(
     jobs = []
     stats = empty_run_stats()
     stats["search_profile"] = search_profile
-    target_count = email_target or top
+    export_limit = top
+    target_count = email_target if email_target is not None else DEFAULT_EMAIL_TARGET
+    stats["export_top"] = export_limit
     stats["email_target"] = target_count
     stats["email_min_match"] = email_min_match
     stats["rotation_days"] = rotation_days
@@ -1175,36 +1177,98 @@ def aggregate_jobs(
             }
             for job in selected_jobs
         ]
+        selected_by_key = {
+            aggregator_dedup_key(job): job
+            for job in selected_jobs
+        }
+        jobs = [
+            {
+                **job,
+                "selection_reason": selected_by_key.get(aggregator_dedup_key(job), {}).get(
+                    "selection_reason",
+                    job.get("selection_reason", ""),
+                ),
+                "selection_rejection_reason": selected_by_key.get(aggregator_dedup_key(job), {}).get(
+                    "selection_rejection_reason",
+                    selection_rejection_reason(
+                        job,
+                        selected_keys,
+                        email_min_match,
+                        include_seen=include_seen,
+                    ),
+                ),
+            }
+            for job in jobs
+        ]
         stats["seen_skipped"] = sum(
             1
             for job in jobs
             if job.get("history_status") == "SEEN" and aggregator_dedup_key(job) not in selected_keys
         )
-        jobs = selected_jobs
     else:
-        jobs = [
-            with_selection_reason(job, job.get("selection_reason") or "NEW")
+        jobs = annotate_history_status(
+            jobs,
+            {},
+            skip_seen_days=effective_rotation_days,
+        )
+        selectable_jobs = [
+            job
             for job in jobs
             if int(job.get("match_score") or 0) >= email_min_match
+        ]
+        selected_jobs, selection_debug = select_email_jobs(
+            selectable_jobs,
+            email_target=target_count,
+            email_min_match=email_min_match,
+            include_seen=include_seen,
+            max_seen_repeat=max_seen_repeat,
+            fallback_enabled=selection_fallback,
+            return_debug=True,
+        )
+        stats["selection_debug"] = selection_debug
+        selected_keys = {aggregator_dedup_key(job) for job in selected_jobs}
+        selected_by_key = {
+            aggregator_dedup_key(job): {
+                **job,
+                "selection_rejection_reason": "selected",
+            }
+            for job in selected_jobs
+        }
+        selected_jobs = list(selected_by_key.values())
+        jobs = [
+            {
+                **with_selection_reason(job, selected_by_key.get(aggregator_dedup_key(job), {}).get("selection_reason", "")),
+                "selection_rejection_reason": selected_by_key.get(aggregator_dedup_key(job), {}).get(
+                    "selection_rejection_reason",
+                    selection_rejection_reason(
+                        job,
+                        selected_keys,
+                        email_min_match,
+                        include_seen=include_seen,
+                    ),
+                ),
+            }
+            for job in selectable_jobs
         ]
 
     jobs = sort_jobs(jobs)
     if search_profile == REMOTE_PROFILE:
-        jobs = jobs[:target_count]
+        jobs = jobs[:export_limit]
     else:
         jobs = balanced_top(
             jobs,
-            top=target_count,
+            top=export_limit,
             min_remote=min_remote,
             min_hospitality=min_hospitality,
             min_cleaning=min_cleaning,
             min_maintenance=min_maintenance,
             min_data_office=min_data_office,
         )
-    stats["email_jobs"] = len(jobs)
+    stats["export_jobs"] = len(jobs)
+    stats["email_jobs"] = len(selected_jobs)
     if return_artifacts:
-        candidate_pool = build_candidate_pool(candidate_candidates, jobs, history, email_min_match=email_min_match)
-        collector_stats = build_collector_stats(collected_counts, candidate_candidates, jobs)
+        candidate_pool = build_candidate_pool(candidate_candidates, selected_jobs, history, email_min_match=email_min_match)
+        collector_stats = build_collector_stats(collected_counts, candidate_candidates, selected_jobs)
         collector_health = build_collector_health(collector_stats, candidate_pool)
         url_pattern_debug = build_url_pattern_debug_rows(raw_jobs, candidate_candidates, jobs)
         stats["candidate_pool_jobs"] = len(candidate_pool)
@@ -1219,6 +1283,7 @@ def aggregate_jobs(
             "collector_stats": collector_stats,
             "collector_health": collector_health,
             "url_pattern_debug": url_pattern_debug,
+            "email_jobs": selected_jobs,
         }
     if return_stats:
         return jobs, stats
@@ -1419,7 +1484,7 @@ def main():
     export_collector_health(artifacts["collector_health"])
     export_url_pattern_debug(artifacts["url_pattern_debug"])
     history = load_sent_history(history_path)
-    history = update_sent_history(history, jobs)
+    history = update_sent_history(history, artifacts["email_jobs"])
     write_sent_history(history, history_path)
     write_run_stats(stats, run_stats_path)
 

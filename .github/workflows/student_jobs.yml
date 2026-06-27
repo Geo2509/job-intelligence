@@ -32,7 +32,7 @@ jobs:
             --history-path output/v2_sent_jobs_history.json \
             --run-stats-path output/v2_run_stats.json \
             --limit 5 \
-            --top 100 \
+            --top 500 \
             --email-target 50 \
             --email-min-match 50 \
             --rotation-days 7 \
@@ -74,7 +74,7 @@ jobs:
             --search-profile local_student \
             --input output/v2_jobs.json \
             --stats output/v2_run_stats.json \
-            --top 100
+            --top 50
 
       - name: Commit Student V2 sent jobs history
         if: ${{ success() }}

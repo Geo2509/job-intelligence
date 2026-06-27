@@ -165,6 +165,25 @@ def test_email_body_shows_days_since_last_sent():
     assert "<strong>Days since last sent:</strong> 7" in body
 
 
+def test_email_report_loads_only_selected_jobs_from_wide_export(tmp_path, monkeypatch):
+    input_path = tmp_path / "v2_jobs.json"
+    input_path.write_text(
+        json.dumps(
+            [
+                job("Selected", selection_rejection_reason="selected"),
+                job("Export only", selection_rejection_reason="not_selected_due_to_limit"),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("EMAIL_ENABLED", "false")
+
+    jobs = v2_email_report.email_selected_jobs(v2_email_report.load_jobs(input_path))
+
+    assert [item["title"] for item in jobs] == ["Selected"]
+
+
 def test_email_body_contains_required_job_fields():
     body = v2_email_report.build_email_html(
         [

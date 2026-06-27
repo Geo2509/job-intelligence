@@ -111,6 +111,17 @@ def load_jobs(input_path):
     return jobs
 
 
+def email_selected_jobs(jobs):
+    selected = [
+        job
+        for job in jobs
+        if str(job.get("selection_rejection_reason") or "").lower() == "selected"
+    ]
+    if selected:
+        return selected
+    return jobs
+
+
 def load_run_stats(stats_path=DEFAULT_RUN_STATS_PATH):
     path = Path(stats_path)
     if not path.exists():
@@ -466,7 +477,7 @@ def send_v2_email_report(
     stats_path=DEFAULT_RUN_STATS_PATH,
     search_profile=LOCAL_STUDENT_PROFILE,
 ):
-    jobs = sorted_jobs(load_jobs(input_path))[:top]
+    jobs = sorted_jobs(email_selected_jobs(load_jobs(input_path)))[:top]
     if not jobs:
         print("No V2 jobs to email")
         return False

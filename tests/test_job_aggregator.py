@@ -347,10 +347,13 @@ def test_aggregate_selects_from_full_randstad_candidate_pool(monkeypatch, tmp_pa
     )
 
     assert len(artifacts["candidate_pool"]) == 50
-    assert len(jobs) == 20
+    assert len(jobs) == 50
+    assert stats["email_jobs"] == 20
+    assert stats["export_jobs"] == 50
     assert stats["selection_debug"]["candidate_pool_total"] == 50
     assert stats["selection_debug"]["eligible_new"] == 50
     assert stats["selection_debug"]["selected_total"] == 20
+    assert sum(1 for item in jobs if item["selection_rejection_reason"] == "selected") == 20
     assert {item["source"] for item in jobs} == {"randstad"}
 
 
@@ -406,11 +409,122 @@ def test_aggregate_fallback_does_not_select_seen_gigroup_candidate_pool(monkeypa
     )
 
     assert len(artifacts["candidate_pool"]) == 37
-    assert jobs == []
+    assert len(jobs) == 37
+    assert stats["email_jobs"] == 0
+    assert stats["export_jobs"] == 37
+    assert all(item["selection_rejection_reason"] == "seen_recently" for item in jobs)
     assert stats["selection_debug"]["candidate_pool_total"] == 37
     assert stats["selection_debug"]["eligible_fallback"] == 0
     assert stats["selection_debug"]["selected_total"] == 0
     assert stats["selection_debug"]["rejected_seen_recently"] == 37
+
+
+def test_aggregate_export_top_is_separate_from_email_target(monkeypatch, tmp_path):
+    collector_jobs = [
+        job(
+            f"Export coverage {i}",
+            f"https://it.indeed.com/viewjob?jk=coverage{i}",
+            source="randstad",
+            location="Napoli",
+            query="back office Napoli",
+        )
+        for i in range(80)
+    ]
+    plugin = replace(
+        get_collector("randstad"),
+        callable=lambda **kwargs: collector_jobs,
+    )
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugin if name == "randstad" else None)
+
+    jobs, stats, artifacts = job_aggregator.aggregate_jobs(
+        ["randstad"],
+        top=60,
+        email_target=20,
+        email_clean_results=True,
+        history_path=tmp_path / "history.json",
+        return_stats=True,
+        return_artifacts=True,
+    )
+
+    assert len(jobs) == 60
+    assert len(artifacts["candidate_pool"]) == 80
+    assert len(artifacts["email_jobs"]) == 20
+    assert stats["export_top"] == 60
+    assert stats["export_jobs"] == 60
+    assert stats["email_target"] == 20
+    assert stats["email_jobs"] == 20
+
+
+def test_aggregate_without_history_marks_jobs_new(monkeypatch):
+    plugin = replace(
+        get_collector("randstad"),
+        callable=lambda **kwargs: [
+            job(
+                "No history",
+                "https://it.indeed.com/viewjob?jk=no-history",
+                source="randstad",
+                location="Napoli",
+                query="back office Napoli",
+            )
+        ],
+    )
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugin if name == "randstad" else None)
+
+    jobs = job_aggregator.aggregate_jobs(["randstad"], email_clean_results=True)
+
+    assert jobs[0]["history_status"] == "NEW"
+    assert jobs[0]["selection_reason"] == "NEW"
+
+
+def test_main_updates_history_only_for_email_selected_jobs(monkeypatch, tmp_path):
+    output_path = tmp_path / "v2_jobs.json"
+    pool_path = tmp_path / "v2_candidate_pool.json"
+    stats_path = tmp_path / "v2_run_stats.json"
+    history_path = tmp_path / "v2_sent_jobs_history.json"
+    collector_jobs = [
+        job(
+            f"History selected {i}",
+            f"https://it.indeed.com/viewjob?jk=history-selected-{i}",
+            source="randstad",
+            location="Napoli",
+            query="back office Napoli",
+        )
+        for i in range(3)
+    ]
+    plugin = replace(
+        get_collector("randstad"),
+        callable=lambda **kwargs: collector_jobs,
+    )
+    monkeypatch.setattr(job_aggregator, "get_collector", lambda name: plugin if name == "randstad" else None)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "job_aggregator",
+            "--collectors",
+            "randstad",
+            "--output",
+            str(output_path),
+            "--candidate-pool-output",
+            str(pool_path),
+            "--history-path",
+            str(history_path),
+            "--run-stats-path",
+            str(stats_path),
+            "--top",
+            "3",
+            "--email-target",
+            "1",
+            "--email-clean-results",
+        ],
+    )
+
+    job_aggregator.main()
+
+    exported = json.loads(output_path.read_text(encoding="utf-8"))
+    history = json.loads(history_path.read_text(encoding="utf-8"))
+    assert len(exported) == 3
+    assert sum(1 for item in exported if item["selection_rejection_reason"] == "selected") == 1
+    assert len(history) == 1
 
 
 def test_candidate_rotation_target_and_min_match_are_enforced():

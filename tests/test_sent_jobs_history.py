@@ -7,6 +7,7 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from src.main import (
+    build_email_html,
     job_history_key,
     load_sent_jobs_history,
     remote_content_hash,
@@ -41,7 +42,11 @@ class SentJobsHistoryTest(unittest.TestCase):
             }
         }
 
-        found_rows, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([new_job]), history)
+        found_rows, rows_to_send, skipped = unsent_email_rows(
+            FakeTopJobs([new_job]),
+            history,
+            now=datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome")),
+        )
 
         self.assertEqual(1, len(found_rows))
         self.assertEqual(1, skipped)
@@ -65,7 +70,11 @@ class SentJobsHistoryTest(unittest.TestCase):
             }
         }
 
-        found_rows, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([new_job]), history)
+        found_rows, rows_to_send, skipped = unsent_email_rows(
+            FakeTopJobs([new_job]),
+            history,
+            now=datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome")),
+        )
 
         self.assertEqual(1, len(found_rows))
         self.assertEqual(1, skipped)
@@ -89,7 +98,11 @@ class SentJobsHistoryTest(unittest.TestCase):
             }
         }
 
-        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([new_job]), history)
+        _, rows_to_send, skipped = unsent_email_rows(
+            FakeTopJobs([new_job]),
+            history,
+            now=datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome")),
+        )
 
         self.assertEqual(1, skipped)
         self.assertEqual([], rows_to_send)
@@ -117,6 +130,7 @@ class SentJobsHistoryTest(unittest.TestCase):
         self.assertNotIn("old", saved_history)
 
     def test_all_seen_jobs_with_fallback_style_selection_send_zero_by_default(self):
+        now = datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome"))
         rows = [
             {"url": f"https://example.com/jobs/{index}", "title": f"Seen {index}", "job_score": 100 - index}
             for index in range(50)
@@ -129,7 +143,7 @@ class SentJobsHistoryTest(unittest.TestCase):
             for row in rows
         }
 
-        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs(rows), history, send_limit=20)
+        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs(rows), history, send_limit=20, now=now)
 
         self.assertEqual([], rows_to_send)
         self.assertEqual(50, skipped)
@@ -144,7 +158,11 @@ class SentJobsHistoryTest(unittest.TestCase):
             }
         }
 
-        _, rows_to_send, skipped = unsent_email_rows(FakeTopJobs([seen_job, new_job]), history)
+        _, rows_to_send, skipped = unsent_email_rows(
+            FakeTopJobs([seen_job, new_job]),
+            history,
+            now=datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome")),
+        )
 
         self.assertEqual(1, skipped)
         self.assertEqual(["Never sent lower"], [row["title"] for row in rows_to_send])
@@ -159,16 +177,45 @@ class SentJobsHistoryTest(unittest.TestCase):
             }
         }
 
-        _, rows_without_flag, _ = unsent_email_rows(FakeTopJobs([seen_job]), history)
+        _, rows_without_flag, _ = unsent_email_rows(
+            FakeTopJobs([seen_job]),
+            history,
+            now=datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome")),
+        )
         _, rows_with_flag, _ = unsent_email_rows(
             FakeTopJobs([seen_job]),
             history,
             include_seen=True,
+            now=datetime(2026, 6, 22, tzinfo=ZoneInfo("Europe/Rome")),
         )
 
         self.assertEqual([], rows_without_flag)
         self.assertEqual(["Seen high"], [row["title"] for row in rows_with_flag])
         self.assertEqual("SEEN", rows_with_flag[0]["history_status"])
+
+    def test_seen_resurfaces_after_rotation_days(self):
+        seen_job = {"url": "https://example.com/jobs/seen", "title": "Seen old", "job_score": 100}
+        history = {
+            job_history_key(seen_job): {
+                "sent_at": "2026-06-20",
+                "content_hash": remote_content_hash(seen_job),
+            }
+        }
+
+        _, rows_to_send, skipped = unsent_email_rows(
+            FakeTopJobs([seen_job]),
+            history,
+            rotation_days=7,
+            now=datetime(2026, 6, 27, tzinfo=ZoneInfo("Europe/Rome")),
+        )
+
+        self.assertEqual(0, skipped)
+        self.assertEqual(["Seen old"], [row["title"] for row in rows_to_send])
+        self.assertEqual("RESURFACED", rows_to_send[0]["history_status"])
+        self.assertEqual("RESURFACED", rows_to_send[0]["selection_reason"])
+        self.assertEqual("selected", rows_to_send[0]["selection_rejection_reason"])
+        self.assertEqual(7, rows_to_send[0]["days_since_last_sent"])
+        self.assertTrue(rows_to_send[0]["rotation_eligible"])
 
     def test_changed_seen_job_is_selected_as_updated(self):
         old_job = {
@@ -193,6 +240,38 @@ class SentJobsHistoryTest(unittest.TestCase):
         self.assertEqual(0, skipped)
         self.assertEqual(["Remote Analyst"], [row["title"] for row in rows_to_send])
         self.assertEqual("UPDATED", rows_to_send[0]["history_status"])
+
+    def test_remote_email_body_shows_rotation_fields(self):
+        run_started = datetime(2026, 6, 27, tzinfo=ZoneInfo("Europe/Rome"))
+        body = build_email_html(
+            run_started,
+            {},
+            {
+                "collected": 1,
+                "after_deduplication": 1,
+                "after_filtering": 1,
+                "after_scoring_threshold": 1,
+                "top_jobs_emailed": 1,
+                "priority_counts": {"HIGH": 1, "MEDIUM": 0, "LOW": 0},
+                "top_jobs_score_stats": {"min": 500, "max": 500, "average": 500},
+            },
+            email_rows=[
+                {
+                    "title": "Remote Analyst",
+                    "job_score": 500,
+                    "source": "remote",
+                    "apply_priority": "HIGH",
+                    "history_status": "RESURFACED",
+                    "selection_reason": "RESURFACED",
+                    "days_since_last_sent": 7,
+                    "url": "https://example.com/jobs/remote",
+                }
+            ],
+        )
+
+        self.assertIn("<strong>Status:</strong> RESURFACED", body)
+        self.assertIn("<strong>Selection:</strong> RESURFACED", body)
+        self.assertIn("<strong>Days since last sent:</strong> 7", body)
 
     def test_email_is_not_sent_when_no_new_jobs(self):
         run_started = datetime(2026, 6, 21, tzinfo=ZoneInfo("Europe/Rome"))

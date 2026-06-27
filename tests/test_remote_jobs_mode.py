@@ -204,6 +204,9 @@ def test_github_workflow_splits_student_v2_and_remote_legacy():
     assert "--drop-far-locations" in workflow
     assert "--selection-fallback true" in workflow
     assert "--selection-fallback true" in student_workflow
+    remote_workflow = Path(".github/workflows/remote_jobs.yml").read_text(encoding="utf-8")
+    assert "rotation_days=7" in remote_workflow
+    assert "send_limit=20" in remote_workflow
 
 
 def test_remote_discovery_queries_are_configured():

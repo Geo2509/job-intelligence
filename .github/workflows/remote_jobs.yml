@@ -88,7 +88,13 @@ jobs:
               [csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, OUTPUT_DIR / "run_summary.md"],
           )
           validate_output_files([csv_path, xlsx_path, top_csv_path, top_jobs_xlsx_path, summary_path])
-          email_was_sent = send_email_report(run_started, collector_counts, scoring_result)
+          email_was_sent = send_email_report(
+              run_started,
+              collector_counts,
+              scoring_result,
+              send_limit=20,
+              rotation_days=7,
+          )
           print(f"Remote legacy email sent: {email_was_sent}")
           PY
 

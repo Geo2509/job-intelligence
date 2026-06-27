@@ -21,6 +21,8 @@ from scoring_jobs import score_jobs
 OUTPUT_DIR = Path("output/latest")
 SENT_JOBS_HISTORY_PATH = Path("output/sent_jobs_history.json")
 SENT_JOBS_HISTORY_TTL_DAYS = 90
+DEFAULT_REMOTE_EMAIL_TARGET = 20
+DEFAULT_REMOTE_ROTATION_DAYS = 7
 TRACKING_QUERY_PARAMS = {
     "utm_source",
     "utm_medium",
@@ -118,6 +120,24 @@ def top_jobs_rows(top_jobs, limit=20):
     if limit is None:
         return list(top_jobs.to_dict("records"))
     return list(top_jobs.head(limit).to_dict("records"))
+
+
+def history_sent_date(history_entry):
+    if not history_entry:
+        return None
+    sent_at = history_entry.get("sent_at") if isinstance(history_entry, dict) else history_entry
+    try:
+        return datetime.fromisoformat(str(sent_at)).date()
+    except (TypeError, ValueError):
+        return None
+
+
+def days_since_history_sent(history_entry, now=None):
+    sent_date = history_sent_date(history_entry)
+    if sent_date is None:
+        return ""
+    now = now or datetime.now(ZoneInfo("Europe/Rome"))
+    return max(0, (now.date() - sent_date).days)
 
 
 def has_value(value):
@@ -227,15 +247,25 @@ def save_sent_jobs_history(history, path=SENT_JOBS_HISTORY_PATH):
     )
 
 
-def unsent_email_rows(top_jobs, history, send_limit=20, include_seen=False):
+def unsent_email_rows(
+    top_jobs,
+    history,
+    send_limit=DEFAULT_REMOTE_EMAIL_TARGET,
+    include_seen=False,
+    rotation_days=DEFAULT_REMOTE_ROTATION_DAYS,
+    now=None,
+):
     rows = top_jobs_rows(top_jobs, None)
-    unsent_rows = []
+    selected_rows = []
+    candidates = []
     skipped = 0
     seen_keys = set()
     for row in rows:
+        row = dict(row)
         key = job_history_key(row)
         if key in seen_keys:
             skipped += 1
+            row["selection_rejection_reason"] = "duplicate"
             continue
         seen_keys.add(key)
         history_entry = history.get(key)
@@ -243,28 +273,71 @@ def unsent_email_rows(top_jobs, history, send_limit=20, include_seen=False):
         history_hash = ""
         if isinstance(history_entry, dict):
             history_hash = str(history_entry.get("content_hash") or "")
-        if history_entry and history_hash == row_hash:
-            if not include_seen:
-                skipped += 1
-                continue
-            history_status = "SEEN"
-        elif history_entry and not history_hash:
-            if not include_seen:
-                skipped += 1
-                continue
-            history_status = "SEEN"
-        elif history_entry:
-            history_status = "UPDATED"
-        else:
-            history_status = "NEW"
-        if len(unsent_rows) >= send_limit:
-            continue
-        row = dict(row)
+        days_since = days_since_history_sent(history_entry, now=now)
+        rotation_eligible = (
+            isinstance(days_since, int)
+            and days_since >= rotation_days
+        )
         row["_history_key"] = key
         row["_content_hash"] = row_hash
+        row["days_since_last_sent"] = days_since
+        row["rotation_eligible"] = rotation_eligible
+        if history_entry and history_hash == row_hash:
+            if include_seen:
+                history_status = "SEEN"
+                selection_reason = "SEEN"
+            elif rotation_eligible:
+                history_status = "RESURFACED"
+                selection_reason = "RESURFACED"
+            else:
+                row["history_status"] = "SEEN"
+                row["selection_reason"] = ""
+                row["selection_rejection_reason"] = "not_rotation_eligible"
+                skipped += 1
+                continue
+        elif history_entry and not history_hash:
+            if include_seen:
+                history_status = "SEEN"
+                selection_reason = "SEEN"
+            elif rotation_eligible:
+                history_status = "RESURFACED"
+                selection_reason = "RESURFACED"
+            else:
+                row["history_status"] = "SEEN"
+                row["selection_reason"] = ""
+                row["selection_rejection_reason"] = "not_rotation_eligible"
+                skipped += 1
+                continue
+        elif history_entry:
+            history_status = "UPDATED"
+            selection_reason = "UPDATED"
+        else:
+            history_status = "NEW"
+            selection_reason = "NEW"
         row["history_status"] = history_status
-        unsent_rows.append(row)
-    return rows, unsent_rows, skipped
+        row["selection_reason"] = selection_reason
+        candidates.append(row)
+
+    selection_order = {
+        "NEW": 0,
+        "UPDATED": 1,
+        "RESURFACED": 2,
+        "SEEN": 3,
+    }
+    candidates = sorted(
+        candidates,
+        key=lambda item: (
+            selection_order.get(str(item.get("selection_reason") or ""), 9),
+            -int(float(item.get("job_score") or 0)),
+        ),
+    )
+    for row in candidates:
+        if len(selected_rows) >= send_limit:
+            row["selection_rejection_reason"] = "not_selected_due_to_limit"
+            continue
+        row["selection_rejection_reason"] = "selected"
+        selected_rows.append(row)
+    return rows, selected_rows, skipped
 
 
 def record_sent_jobs(history, rows, sent_at):
@@ -386,12 +459,25 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
         source = html.escape(str(row.get("source", "")))
         score = html.escape(str(row.get("job_score", "")))
         priority = html.escape(str(row.get("apply_priority", "")))
+        history_status = html.escape(str(row.get("history_status", "") or ""))
+        selection_reason = html.escape(str(row.get("selection_reason", "") or ""))
+        days_since_last_sent = html.escape(str(row.get("days_since_last_sent", "") or ""))
         description = html.escape(short_description(row.get("description", ""), 500))
         reasons = html.escape(str(row.get("score_reason", "")))
         url = html.escape(str(row.get("url", "")), quote=True)
+        status_line = f"<p><strong>Status:</strong> {history_status}</p>" if history_status else ""
+        selection_line = f"<p><strong>Selection:</strong> {selection_reason}</p>" if selection_reason else ""
+        days_line = (
+            f"<p><strong>Days since last sent:</strong> {days_since_last_sent}</p>"
+            if days_since_last_sent
+            else ""
+        )
         job_items.append(
             "<li>"
             f"<h3>{title}</h3>"
+            f"{status_line}"
+            f"{selection_line}"
+            f"{days_line}"
             f"<p><strong>Priority:</strong> {priority} | <strong>Score:</strong> {score} | <strong>Source:</strong> {source}</p>"
             f"<p>{description}</p>"
             f"<p><strong>Reasons:</strong> {reasons}</p>"
@@ -430,7 +516,14 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
     """
 
 
-def send_email_report(run_started, collector_counts, scoring_result, include_seen=False):
+def send_email_report(
+    run_started,
+    collector_counts,
+    scoring_result,
+    include_seen=False,
+    send_limit=DEFAULT_REMOTE_EMAIL_TARGET,
+    rotation_days=DEFAULT_REMOTE_ROTATION_DAYS,
+):
     if not email_enabled():
         print("Email disabled: EMAIL_ENABLED is not true")
         return False
@@ -440,8 +533,10 @@ def send_email_report(run_started, collector_counts, scoring_result, include_see
     found_rows, rows_to_send, skipped = unsent_email_rows(
         scoring_result["top_jobs"],
         history,
-        20,
+        send_limit,
         include_seen=include_seen,
+        rotation_days=rotation_days,
+        now=run_started,
     )
     email_stats = {
         "found_total": len(found_rows),
@@ -500,6 +595,8 @@ def parse_args():
     parser.add_argument("--queries", required=True, help="Path to queries YAML config")
     parser.add_argument("--scoring", required=True, help="Path to scoring YAML config")
     parser.add_argument("--include-seen", choices=["false", "true"], default="false")
+    parser.add_argument("--email-target", type=int, default=DEFAULT_REMOTE_EMAIL_TARGET)
+    parser.add_argument("--rotation-days", type=int, default=DEFAULT_REMOTE_ROTATION_DAYS)
     return parser.parse_args()
 
 
@@ -544,6 +641,8 @@ def main():
             collector_counts,
             scoring_result,
             include_seen=args.include_seen == "true",
+            send_limit=args.email_target,
+            rotation_days=args.rotation_days,
         )
         print(f"Email sent: {email_was_sent}")
         print(f"Output files saved in: {OUTPUT_DIR}")

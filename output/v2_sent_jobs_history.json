@@ -1,5 +1,113 @@
 [
   {
+    "job_id": "a2f24aedeb2e094b937fcb184a2bb9aac2722ded779457b3a3b46ff5aed51f75",
+    "url": "https://www.subito.it/offerte-lavoro/addetto-ricevitoria-lotto-bacoli-napoli-649427838.htm",
+    "title": "Addetto Ricevitoria Lotto Bacoli - Offerte di lavoro In vendita a Napoli",
+    "source": "subito",
+    "first_seen": "2026-06-28T12:45:37.029545+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "de26cd4540c70c0c34e4854440bb2031780ed47e6b4088424a6b376a0b884a9d",
+    "match_score": 68
+  },
+  {
+    "job_id": "5699b0ef64c227c0fdc94377157fe05191e4b666d47f90bf3237f82d81a8160e",
+    "url": "https://www.randstad.it/offerte-lavoro/addetto-sicurezza_pozzuoli_3c5f4b56-bb80-4824-9def-a15cd9e8ca05",
+    "title": "addetto sicurezza",
+    "source": "randstad",
+    "first_seen": "2026-06-28T12:46:57.094595+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "fdd5dc447789377ca6cbdcc2ecf22c1569b2aa896a69762ae69b33543b74490f",
+    "match_score": 62
+  },
+  {
+    "job_id": "7b1477b39dec3b654154f061f332eeef2aec6a4ffd3f30f5f4628129e2bfe1b7",
+    "url": "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-manutentori-elettrici-ed-elettronici-responsabili-di-manutenzione-per-ferrero-in-belgio/1310269",
+    "title": "MANUTENTORI ELETTRICI ED ELETTRONICI / RESPONSABILI DI MANUTENZIONE PER FERRERO IN BELGIO",
+    "source": "gigroup",
+    "first_seen": "2026-06-26T11:33:20.659367+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 3,
+    "content_hash": "2d490290d8caaddc2147b387e7fbe69ce2566a10b41f10b3f15ce7c376f2427b",
+    "match_score": 64
+  },
+  {
+    "job_id": "149638d82595e055967209425d72094cc2cadbb850fa9e7f396621ef42da86d1",
+    "url": "https://www.subito.it/offerte-lavoro/ricerchiamo-operatori-telefonici-napoli-650893910.htm",
+    "title": "Ricerchiamo operatori telefonici - Offerte di lavoro In vendita a Napoli",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-28T12:42:44.793651+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "c8454eb25f004777421f3c8005703356715b40a4076a238b49cd0b9af124e908",
+    "match_score": 59
+  },
+  {
+    "job_id": "2e3b3036a6e4d5c06ffa0d010c3e7b0252cb62132380efb1d5048fcbeb8f646a",
+    "url": "https://it.jooble.org/jdp/-3714268841520717580",
+    "title": "Remote Italian Language Data Annotator For Ai Training",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-28T12:42:44.793651+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "2a4fbb02e061acbcfc23cbde120071486576eb201fdb6608aba6a266413c1477",
+    "match_score": 77
+  },
+  {
+    "job_id": "1f3ab6e68b26c2fb9ef8a24c1e9cf57b91ad00f0b7559fe9f6c728c5795a6f40",
+    "url": "https://it.jooble.org/jdp/-4364306468014703146",
+    "title": "Remote AI Annotator & Trainer — Part-Time - Altro - Smart working",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-28T12:42:44.793651+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "ea3643af285704921af075f1cef67d83181727ef0e7b9f9b81a2caa67ff762a1",
+    "match_score": 100
+  },
+  {
+    "job_id": "7e7960b3d98178bca02a11e4e3e33de00d6608b215b96cba13b1968cf311a63b",
+    "url": "https://it.linkedin.com/jobs/view/italian-english-bilingual-ai-data-annotator-evaluator-remote-hourly-contractor-at-cntxt-ai-4426215264",
+    "title": "Italian/English Bilingual AI Data Annotator & Evaluator (Remote ...",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-28T12:42:44.793651+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "c0fb575f84c1a365c40d808142460fa15475194c7f752afafa519c7a0336f9c4",
+    "match_score": 77
+  },
+  {
+    "job_id": "8c586a9a67aa9d29b6a25847f4c054f72307ea3ce864dedd5319811a8d05af88",
+    "url": "https://it.linkedin.com/jobs/view/addetto-a-all-accoglienza-in-stand-napoli-at-amnesty-international-italia-4433823915",
+    "title": "Amnesty International Italia sta assumendo Addetto/a all ...",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-28T12:42:44.793651+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "fe93302d32d9d9b931e86a703907296715cea264bf9a40f08fe08e21dffa8eda",
+    "match_score": 88
+  },
+  {
+    "job_id": "0b860f6069de3c03533de1ee8942a18da05fac10f04a5cd06fc53114a655d9a0",
+    "url": "https://it.linkedin.com/jobs/view/data-annotator-remote-at-ai-jobs-4409567778",
+    "title": "AI Jobs sta assumendo Data Annotator (Remote) in Italia | LinkedIn",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-28T12:42:44.793651+00:00",
+    "last_seen": "2026-06-28T12:50:23.009807+00:00",
+    "last_sent": "2026-06-28T12:50:23.009807+00:00",
+    "sent_count": 1,
+    "content_hash": "c569bae2203897aa9507902ca5072dc8b769e5a3b6f0e08c8af1394e9a289572",
+    "match_score": 77
+  },
+  {
     "job_id": "c67984273d71e4b12eb9d7a70a24bbf632436125d48d7c64aa25031119bcbfc2",
     "url": "https://it.jooble.org/jdp/6795154612857687326",
     "title": "dipendente data entry e front office - DI.MA. Informatica srls - Napoli",
@@ -718,18 +826,6 @@
     "sent_count": 3,
     "content_hash": "3413d6b112a00cb8449d845d6c13987b6e8609a66141d4dc65053caaaaeac3e9",
     "match_score": 56
-  },
-  {
-    "job_id": "7b1477b39dec3b654154f061f332eeef2aec6a4ffd3f30f5f4628129e2bfe1b7",
-    "url": "https://www.gigroup.it/offerte-lavoro-dettaglio/napoli-manutentori-elettrici-ed-elettronici-responsabili-di-manutenzione-per-ferrero-in-belgio/1310269",
-    "title": "MANUTENTORI ELETTRICI ED ELETTRONICI / RESPONSABILI DI MANUTENZIONE PER FERRERO IN BELGIO",
-    "source": "gigroup",
-    "first_seen": "2026-06-26T11:33:20.659367+00:00",
-    "last_seen": "2026-06-26T13:40:30.861444+00:00",
-    "last_sent": "2026-06-26T13:40:30.861444+00:00",
-    "sent_count": 2,
-    "content_hash": "04855eceaa16fdae33b7e1f569de29be2f154fb5706b274697eda82470cb97ef",
-    "match_score": 64
   },
   {
     "job_id": "b59612105258e9b33ed1bde386c1f47e7d1bcef5fe1a63e1de89170c6cb6b3b8",

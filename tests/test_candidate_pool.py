@@ -157,6 +157,24 @@ def test_collector_health_flags_inconsistent_counts():
     assert rows[0]["recommendation"] == "Dashboard counts inconsistent: check source arrays"
 
 
+def test_collector_health_zero_collected_is_no_results():
+    rows = build_collector_health(
+        [
+            {
+                "collector": "subito",
+                "collected": 0,
+                "after_cleaner": 0,
+                "real_jobs": 0,
+                "email_jobs": 0,
+            },
+        ],
+        [],
+    )
+
+    assert rows[0]["collector_health_status"] == "no_results"
+    assert "returned no jobs" in rows[0]["recommendation"]
+
+
 def test_collector_health_status_counts_share_one_source():
     real = {**pool_candidate(job()), "history_status": "NEW"}
     updated = {**pool_candidate(job("Updated", url="https://it.indeed.com/viewjob?jk=2")), "history_status": "UPDATED"}

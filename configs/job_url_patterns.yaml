@@ -20,7 +20,6 @@ jooble:
     - jooble.org
   job:
     - "/jdp/"
-    - "/rjdp/"
   search:
     - "/lavoro-"
     - "/SearchResult"

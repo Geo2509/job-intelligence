@@ -114,7 +114,7 @@ def health_status(row):
         return "inconsistent"
 
     if collected == 0:
-        return "error"
+        return "no_results"
     if needs_detail_extraction(row):
         return "needs_detail_extraction"
     if real_jobs == 0 and removed_cleaner > 0:
@@ -138,6 +138,8 @@ def health_score(row, status):
         return 0
     if status == "needs_detail_extraction":
         return 20
+    if status == "no_results":
+        return 5
     if status == "no_real_jobs":
         return 10
     if status == "cleaner_removed":
@@ -191,6 +193,8 @@ def recommendation_for(row, status):
         return f"{collector}: 0 real jobs; Recommendation: Detail Extraction"
     if status == "cleaner_removed":
         return f"{collector}: Cleaner removed all jobs; inspect URL patterns and result cleaning"
+    if status == "no_results":
+        return f"{collector}: collector returned no jobs; source may be blocked or temporarily unavailable"
     if status == "no_real_jobs":
         return f"{collector}: 0 real jobs; Recommendation: Detail Extraction"
     if status == "error":

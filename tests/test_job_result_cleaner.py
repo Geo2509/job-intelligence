@@ -265,16 +265,28 @@ def test_jobbydoo_lavoro_page_is_filtered():
     assert clean_job(job)["result_type"] == "search_page"
 
 
-def test_jooble_rjdp_is_kept():
+def test_jooble_jdp_is_kept():
     job = {
         "title": "Back Office Napoli",
-        "url": "https://it.jooble.org/rjdp/123456789",
+        "url": "https://it.jooble.org/jdp/123456789",
     }
 
     cleaned = clean_results([job])
 
     assert len(cleaned) == 1
     assert cleaned[0]["url_result_type"] == "real_job"
+
+
+def test_jooble_rjdp_is_not_real_job():
+    job = {
+        "title": "Back Office Napoli",
+        "url": "https://it.jooble.org/rjdp/123456789",
+    }
+
+    assert clean_results([job]) == []
+    cleaned = clean_job(job)
+    assert cleaned["url_result_type"] == "unknown"
+    assert cleaned["result_type"] == "unknown"
 
 
 def test_subito_category_is_filtered():
@@ -323,7 +335,7 @@ def test_blacklisted_news_school_sport_terms_are_filtered():
         },
         {
             "title": "Motocross campionato",
-            "url": "https://it.jooble.org/rjdp/sport",
+            "url": "https://it.jooble.org/jdp/sport",
         },
         {
             "title": "Circolare istituto liceo",
@@ -338,7 +350,7 @@ def test_blacklisted_news_school_sport_terms_are_filtered():
 def test_clean_output_contains_only_real_jobs():
     jobs = [
         {"title": "Data Entry", "url": "https://it.indeed.com/viewjob?jk=1"},
-        {"title": "Back Office", "url": "https://it.jooble.org/rjdp/2"},
+        {"title": "Back Office", "url": "https://it.jooble.org/jdp/2"},
         {"title": "Unknown", "url": "https://example.com/job/1"},
         {"title": "Search", "url": "https://www.jobbydoo.it/lavoro-data-entry"},
     ]
@@ -427,7 +439,7 @@ def test_email_clean_keeps_specific_eurospin_role():
     assert cleaned[0]["result_type"] == "career_page"
 
 
-def test_email_clean_keeps_jooble_jdp_and_rjdp():
+def test_email_clean_keeps_jooble_jdp_only():
     jobs = [
         {"title": "Back Office Napoli", "url": "https://it.jooble.org/jdp/123456"},
         {"title": "Receptionist Napoli", "url": "https://it.jooble.org/rjdp/789012"},
@@ -435,7 +447,8 @@ def test_email_clean_keeps_jooble_jdp_and_rjdp():
 
     cleaned = clean_results(jobs, email_clean_results=True)
 
-    assert [job["url_result_type"] for job in cleaned] == ["real_job", "real_job"]
+    assert [job["url"] for job in cleaned] == ["https://it.jooble.org/jdp/123456"]
+    assert [job["url_result_type"] for job in cleaned] == ["real_job"]
 
 
 def test_email_clean_keeps_linkedin_jobs_view():

@@ -271,7 +271,7 @@ Email показывает только лучшие вакансии текущ
 
 `src/collector_health.py` строит диагностический слой поверх collector stats и Candidate Pool. Он сохраняет `output/collector_health.json`, `output/collector_health.xlsx` и `output/collector_recommendations.md`, где для каждого collector видны `raw_collected`, `after_cleaner`, `real_jobs`, `candidate_pool`, history-состояния, удаление cleaner/location/history и итоговый `collector_health_status`.
 
-Статусы помогают быстро понять причину слабой выдачи: `healthy`, `history_only`, `needs_detail_extraction`, `cleaner_removed`, `no_real_jobs`, `error` или `inconsistent`.
+Статусы помогают быстро понять причину слабой выдачи: `healthy`, `history_only`, `needs_detail_extraction`, `cleaner_removed`, `no_results`, `no_real_jobs`, `error` или `inconsistent`. Если collector корректно вернул пустой список из-за блокировки, недоступности источника или отсутствия результатов, это отображается как `no_results`, а не как crash/error.
 
 ### Collector Recovery / Source Diversification
 
@@ -285,6 +285,10 @@ Student V2 не должен зависеть только от DuckDuckGo ка�
 - Gi Group direct collector обычно даёт detail pages; fallback также проверяет `is_gigroup_job_detail_url`;
 - Talent fallback ищет `site:it.talent.com/view` и оставляет только `view?id=...` detail pages;
 - Jooble fallback ищет `site:it.jooble.org/jdp` и оставляет только `/jdp/` detail pages.
+
+Jooble URL classification intentionally strict: only `it.jooble.org` URLs with `/jdp/` are treated as `real_job`. Generic Jooble search/listing pages and redirect-like `/rjdp/` URLs are not accepted into Candidate Pool.
+
+Subito collector is fail-soft: direct Subito failures fall back to DuckDuckGo, fallback failures are logged, and if both paths are unavailable the collector returns `[]` without breaking Student V2. Fallback still accepts only Subito detail URLs like `/offerte-lavoro/...-napoli-<id>.htm`; search/category pages remain rejected.
 
 Диагностика collectors:
 
@@ -303,7 +307,7 @@ python -m src.collector_debug --collector jooble --limit 10 --output-dir output/
 - Randstad: `10 collected`, `10 real_job`, `0 search_page`;
 - Indeed: `10 collected`, `10 real_job`, `0 search_page`;
 - Subito: `10 collected`, `10 real_job`, `0 search_page`;
-- Adecco: `0 collected` при текущем запуске, потому что direct запросы блокируются/anti-bot, а fallback не нашёл detail URLs. Это считается честным `no/error source` состоянием, а не cleaner regression: Adecco больше не протаскивает search pages и статьи в Candidate Pool.
+- Adecco: `0 collected` при текущем запуске, потому что direct запросы блокируются/anti-bot, а fallback не нашёл detail URLs. Это считается честным `no_results` состоянием, а не cleaner regression: Adecco больше не протаскивает search pages и статьи в Candidate Pool.
 - Talent и Jooble подключены как самостоятельные Student V2 collectors через `src/job_collector_registry.py`; они не подключаются к legacy remote pipeline.
 
 Минимальная цель recovery — чтобы Candidate Pool получал реальные вакансии минимум из 2-3 non-DuckDuckGo sources. После текущей правки реальные detail jobs подтверждены для Gi Group, Randstad, Indeed и Subito; Talent и Jooble расширяют Student V2 source diversification; Adecco остаётся источником для отдельной доработки direct/detail extraction.
@@ -443,6 +447,8 @@ Cleaner не собирает вакансии и не меняет collectors. 
 `src/job_url_patterns.py` использует правила из `configs/job_url_patterns.yaml`, чтобы отличать реальные страницы вакансий от search/category/blog/profile страниц по URL. Result Cleaner сначала классифицирует URL и добавляет `url_result_type`, а только затем применяет fallback-правила по title/snippet для неизвестных URL.
 
 Поддерживаемые URL-типы: `real_job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `company_page`, `career_page`, `excluded_domain`, `unknown`. В discovery clean export попадают реальные вакансии и trusted discovery pages; в email clean export попадают реальные вакансии и только ограниченные trusted career pages; в strict clean export попадают только `real_job`.
+
+Для Jooble real job pattern сейчас только `/jdp/`; `/rjdp/`, `/lavoro-`, `SearchResult` и generic listing/search pages не считаются реальными вакансиями. Для Subito real job pattern требует `/offerte-lavoro/` и `.htm`, поэтому category/search pages вида `/annunci-.../offerte-lavoro/` остаются search pages.
 
 `src/url_pattern_debug.py` дополнительно экспортирует общий URL diagnostics dashboard: `output/url_pattern_debug.json`, `output/url_pattern_debug.xlsx`, `output/unknown_urls.xlsx` и `output/url_pattern_recommendations.md`. Эти файлы показывают, какой pattern сработал, какой тип URL был определён, попал ли результат в email/Candidate Pool или был отклонён, и какие unknown URL стоит добавить в `configs/job_url_patterns.yaml`.
 

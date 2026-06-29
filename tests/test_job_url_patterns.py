@@ -36,8 +36,8 @@ def test_jooble_jdp_is_real_job():
     assert classify_url("https://it.jooble.org/jdp/123456", patterns()) == "real_job"
 
 
-def test_jooble_rjdp_is_real_job():
-    assert classify_url("https://it.jooble.org/rjdp/123456", patterns()) == "real_job"
+def test_jooble_rjdp_is_not_real_job():
+    assert classify_url("https://it.jooble.org/rjdp/123456", patterns()) == "unknown"
 
 
 def test_jooble_lavoro_is_search_page():

@@ -182,35 +182,39 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
 
     jobs = []
     found_at = datetime.now(timezone.utc).isoformat()
-    with DDGS() as ddgs:
-        for query in FALLBACK_DUCKDUCKGO_QUERIES:
-            print(f"Subito fallback DuckDuckGo search: {query}")
-            try:
-                results = ddgs.text(
-                    query,
-                    region="it-it",
-                    safesearch="moderate",
-                    max_results=limit,
-                ) or []
-            except Exception as exc:
-                print(f"Subito fallback DuckDuckGo failed: {query} | {exc}")
-                continue
+    try:
+        with DDGS() as ddgs:
+            for query in FALLBACK_DUCKDUCKGO_QUERIES:
+                print(f"Subito fallback DuckDuckGo search: {query}")
+                try:
+                    results = ddgs.text(
+                        query,
+                        region="it-it",
+                        safesearch="moderate",
+                        max_results=limit,
+                    ) or []
+                except Exception as exc:
+                    print(f"Subito fallback DuckDuckGo failed: {query} | {exc}")
+                    continue
 
-            for result in results:
-                title = result.get("title") or ""
-                snippet = result.get("body") or result.get("snippet") or ""
-                if is_bad_job(title, snippet):
-                    continue
-                job = normalize_subito_result({
-                    "title": title,
-                    "company": "",
-                    "location": "",
-                    "url": result.get("href") or result.get("url") or result.get("link") or "",
-                    "snippet": snippet,
-                }, query, found_at)
-                if not is_subito_job_detail_url(job["url"]):
-                    continue
-                jobs.append(job)
+                for result in results:
+                    title = result.get("title") or ""
+                    snippet = result.get("body") or result.get("snippet") or ""
+                    if is_bad_job(title, snippet):
+                        continue
+                    job = normalize_subito_result({
+                        "title": title,
+                        "company": "",
+                        "location": "",
+                        "url": result.get("href") or result.get("url") or result.get("link") or "",
+                        "snippet": snippet,
+                    }, query, found_at)
+                    if not is_subito_job_detail_url(job["url"]):
+                        continue
+                    jobs.append(job)
+    except Exception as exc:
+        print(f"Subito fallback DuckDuckGo unavailable: {exc}")
+        return []
     return deduplicate_jobs(jobs)
 
 
@@ -228,10 +232,18 @@ def sort_jobs(jobs, campania_part_time_first=False):
 
 
 def collect_jobs(limit=DEFAULT_LIMIT, top=DEFAULT_TOP, campania_part_time_first=False, direct_pause_seconds=3):
-    jobs = collect_direct_jobs(limit, direct_pause_seconds)
+    try:
+        jobs = collect_direct_jobs(limit, direct_pause_seconds)
+    except Exception as exc:
+        print(f"Subito direct collector failed unexpectedly: {exc}")
+        jobs = []
     if not jobs:
         print("Subito direct search produced no jobs; using DuckDuckGo fallback.")
-        jobs = collect_fallback_duckduckgo_jobs(limit)
+        try:
+            jobs = collect_fallback_duckduckgo_jobs(limit)
+        except Exception as exc:
+            print(f"Subito fallback collector failed unexpectedly: {exc}")
+            jobs = []
     jobs = deduplicate_jobs(jobs)
     return sort_jobs(jobs, campania_part_time_first)[:top]
 

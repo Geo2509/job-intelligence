@@ -1,5 +1,53 @@
 [
   {
+    "job_id": "1b1538cc41564d56b162e0d0d612addf1100d36b46918d34bd22855bc6b7dd93",
+    "url": "https://it.indeed.com/viewjob?jk=a7acf889208acc2f",
+    "title": "Part time €600 - CASALNUOVO DI NAPOLI - 80013... - Indeed.com",
+    "source": "indeed",
+    "first_seen": "2026-06-29T22:09:49.100727+00:00",
+    "last_seen": "2026-06-29T22:14:16.516577+00:00",
+    "last_sent": "2026-06-29T22:14:16.516577+00:00",
+    "sent_count": 1,
+    "content_hash": "06ef29cebd8290a47b97ace3ac55f21de25c2979a0afe274b7641365d2690afc",
+    "match_score": 76
+  },
+  {
+    "job_id": "b9a3bca1023a2ec258d0c704fe31897befcee03b11ecca4e0156e1136b2018b8",
+    "url": "https://it.indeed.com/viewjob?jk=ae2f971fae8280df&tk=1ipjivkqd2hn2001&from=serp&vjs=3&advn=7528829024809827&adid=381092758&ad=-6NYlbfkN0BnrGlSDnen0QF3oGdbTpIwpSTLOTcqkZZKInyhNwmcgVQ0f_8wE1DpvTswVyHFG6iUpZzZ--FSSihBRmgbN9qDNu6wZNH-wvOMWEtguG8yF1w7DZ_zaNur8YKg2RMwgdXAIhL5I8niU7sWuww0MJH83so8sEeeood4k8FcWmFbKJ1E87bbJDeGm36uzO7XbzlhgKXaoisu1w5NNy1eQ0__nfqnBmRVtgd8kyFHvKbHDLJhw3XDsdUGubVEQd7J925Xt9tV0Sem_NqwnYB3vFGdRZIsJ-fxeMbjF5-hFFdbFiD_aL-P2RsAllQHNaX7kwlehRmKC2ev8vLqI-_UokeoiZAGA7cO43R9EzoZygNaOhMC7rnPRZzske56-vzphouxb6I4pecq9dtnW2DP6Mpc5DgSpzFsQwFGMli05AQMqjOv5D0679Rh_1V_SABcb6_ohgvl_KzrSqFD_Oh4OsG-AeFWRnFoGfjLjD5y6EsZb2GQ-yh5r779rIqYnDTJDsBFhrckadTZbSRgwt56gtaV_2Ark0epar0%3D&xkcb=SoDl6_M3zzsmMb2XXZ1CbzkdCdPP&xpse=SoCc6_I3zztxQTg2y70IbzkdCdPP&sjdu=g8llGtve-BFYxtm4yylLQ_luJ9ChWBR-g_yR3N1sEoF9t0nQxhgREYNC4Ni4k8u19KZ9eRuCAoDMtWHSCI9ENpjB_rBKSSJ1ZuOgSaNqw00lsIjuujTJlU509Ah5JhhLo-pADUtXeOEUIIPMIx33fw",
+    "title": "LAVORO PART TIME ARZANO_NAPOLI - 80022 Arzano - Indeed.com",
+    "source": "indeed",
+    "first_seen": "2026-06-29T22:09:49.100727+00:00",
+    "last_seen": "2026-06-29T22:14:16.516577+00:00",
+    "last_sent": "2026-06-29T22:14:16.516577+00:00",
+    "sent_count": 1,
+    "content_hash": "eb89789a0d2b602611e59e8eb9b5342d031bdeab189b2fcfd7150aa03faabd52",
+    "match_score": 78
+  },
+  {
+    "job_id": "70f31cc94baac773bf2bb411b1fde8c2fe2dad3e4baccae98bae028cafc6533f",
+    "url": "https://www.subito.it/offerte-lavoro/receptionist-part-time-per-boutique-hotel-a-napoli-napoli-650551437.htm",
+    "title": "Receptionist part-time per boutique hotel a Napoli | Subito",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-25T12:40:19.843704+00:00",
+    "last_seen": "2026-06-29T22:14:16.516577+00:00",
+    "last_sent": "2026-06-29T22:14:16.516577+00:00",
+    "sent_count": 2,
+    "content_hash": "3072ee0da77314772f80b09a1d6d7c8bb2f072e0a5a9e56bf6bccecf1cbf9755",
+    "match_score": 100
+  },
+  {
+    "job_id": "0e316bf46f4da1ed5aa39336aa5e5661dce9b5ae38e435b4b5d6b39508bc9433",
+    "url": "https://www.randstad.it/offerte-lavoro/impiegato-contabile_napoli_3c007e24-10b3-44c8-9a8b-e253062f6222",
+    "title": "Offerte di lavoro Impiegato contabile a Napoli | Randstad",
+    "source": "duckduckgo",
+    "first_seen": "2026-06-29T22:03:12.620533+00:00",
+    "last_seen": "2026-06-29T22:14:16.516577+00:00",
+    "last_sent": "2026-06-29T22:14:16.516577+00:00",
+    "sent_count": 1,
+    "content_hash": "f44f0335e0fe466b81cdd7087120df16a98d72a979c5a7c6ea6894c45e4217d5",
+    "match_score": 82
+  },
+  {
     "job_id": "4062c91b948ff20e93ddbf90fab1a2e187b2d650a313053ff50418b4f26e2e39",
     "url": "https://it.talent.com/view?id=545976606487159155",
     "title": "napoli 25",
@@ -1726,17 +1774,5 @@
     "sent_count": 1,
     "content_hash": "914a5f54e12fa8928bb0634c36b8d65567a22a601ffa81e9cb46c60bdae113d7",
     "match_score": 78
-  },
-  {
-    "job_id": "70f31cc94baac773bf2bb411b1fde8c2fe2dad3e4baccae98bae028cafc6533f",
-    "url": "https://www.subito.it/offerte-lavoro/receptionist-part-time-per-boutique-hotel-a-napoli-napoli-650551437.htm",
-    "title": "Receptionist part-time per boutique hotel a Napoli | Subito",
-    "source": "duckduckgo",
-    "first_seen": "2026-06-25T12:40:19.843704+00:00",
-    "last_seen": "2026-06-25T12:44:36.915692+00:00",
-    "last_sent": "2026-06-25T12:44:36.915692+00:00",
-    "sent_count": 1,
-    "content_hash": "aaa70fb9e34ea46ec8feab61471988cbf1df575cdf229e644045ca1c97ef86de",
-    "match_score": 92
   }
 ]

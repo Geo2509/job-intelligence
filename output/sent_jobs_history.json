@@ -223,6 +223,10 @@
     "content_hash": "",
     "sent_at": "2026-06-26"
   },
+  "https://www.indeed.com/jobs?q=data+annotation+remote&sc=0kf%3Aattr%28DSQF7%29%3B": {
+    "content_hash": "ed69fe1cb038f4a85d69a01ec3eee2fb632d467bf1de64b977ad6464d937488e",
+    "sent_at": "2026-06-29"
+  },
   "https://www.linkedin.com/jobs/view/data-annotator-russian-language-at-experis-4320737427": {
     "content_hash": "",
     "sent_at": "2026-06-25"
@@ -230,6 +234,10 @@
   "https://www.linkedin.com/jobs/view/data-annotator-russian-language-at-experis-4326351256?pageNum=0": {
     "content_hash": "",
     "sent_at": "2026-06-25"
+  },
+  "https://www.linkedin.com/jobs/view/ukrainian-gen-ai-data-annotation-analyst-at-imerit-technology-4236233326": {
+    "content_hash": "6f5172ccfea4db6f9ff53b34fbc18d734d4e4429daac754d9e7f6d291ac89092",
+    "sent_at": "2026-06-29"
   },
   "https://www.remotefront.com/remote-jobs/boson-ai-data-annotation-qc-and-crawling-russian-language-irp4q": {
     "content_hash": "",
@@ -242,6 +250,10 @@
   "https://www.upwork.com/freelancers/~01eba78a5d181aeb91": {
     "content_hash": "64ac6345723a6da6bf8d13217fbbe416aee72bca08c9f18827b6b46c924aeaf5",
     "sent_at": "2026-06-28"
+  },
+  "https://www.virtualvocations.com/job/data-annotator-korean-language-2843209-i.html": {
+    "content_hash": "a2567b58c25a542510bbfa82f2d8b55b57f5356e0ac1dfa425525ccaea691436",
+    "sent_at": "2026-06-29"
   },
   "https://www.virtualvocations.com/job/spanish-language-data-annotator-2838810-i.html": {
     "content_hash": "",

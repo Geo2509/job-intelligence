@@ -24,23 +24,27 @@ Job Intelligence V2 начинается с каталога источнико�
 - `public_employment` — зарезервированная группа для публичных employment-сервисов;
 - `duckduckgo_discovery_queries` — стартовые discovery-запросы для поиска локальных part-time и remote data/AI возможностей.
 
-Это первый этап V2: только source catalog, без реализации парсеров и без подключения новых источников к pipeline.
+V2 уже включает Student Jobs workflow, registry-based collectors, Candidate Pool, V2 cleaner/history и отдельный Student V2 email. `configs/job_sources.yaml` остаётся source catalog и местом, где сейчас живут `duckduckgo_discovery_queries` для Student V2 DuckDuckGo discovery.
 
 ### Search Coverage Expansion
 
-`duckduckgo_discovery_queries` в `configs/job_sources.yaml` расширен примерно до 100+ запросов и сгруппирован комментариями по категориям. Фокус поиска: Campania, Napoli, Pozzuoli, Bacoli, Monte di Procida, Quarto, Fuorigrotta и Campi Flegrei, с приоритетом на `part time`, `tempo parziale`, weekend, turni, mattina и sera.
+`duckduckgo_discovery_queries` в `configs/job_sources.yaml` расширен примерно до 300+ уникальных запросов и сгруппирован комментариями по категориям. Фокус поиска: Campania, Napoli, Pozzuoli, Bacoli, Monte di Procida, Italia и Remote, с дополнительными вариантами `part time` для реалистичных итальянских job titles и synonyms.
 
 Категории поиска:
-- Data / Office — data entry, inserimento dati, back office, segreteria, front office, Excel и Google Sheets;
-- Hotel — reception, receptionist, housekeeping, camere и portiere notturno;
-- Ristorante / Bar — cameriere, barista, aiuto cucina, lavapiatti, pizzeria, banconista и gastronomia;
-- Pulizie — pulizie domestiche/uffici/hotel, imprese di pulizie и sanificazione;
-- Manutenzione — manutentore, tuttofare, tecnico e operaio manutenzione;
-- Magazzino — magazziniere, scaffalista, picking, carico/scarico e logistica;
-- GDO — Lidl, Eurospin, Conad, MD, Deco, Esselunga, Carrefour, cassiere e addetto vendita;
-- Turismo — villaggi turistici, resort, stabilimenti balneari, porto turistico e marina;
-- Weekend / Turni — weekend, sabato/domenica, mattina, sera e turni;
-- Remote — customer service, virtual assistant, AI trainer/annotator, transcription, data labeling, moderation e content reviewer.
+- Data Entry / Administrative — data entry, inserimento dati, operatore data entry и local Campania/Napoli variants;
+- Administration / Office — impiegato amministrativo, assistente amministrativo, segreteria, office assistant, ufficio acquisti и ufficio commerciale;
+- Back Office — back office, back office commerciale/amministrativo и impiegato back office;
+- Reception / Front Office — receptionist, reception, front office, accoglienza, hostess accoglienza и segreteria reception;
+- Accounting — contabilità, impiegato contabile, addetto contabilità и contabilità junior;
+- Logistics / Warehouse — logistica, magazzino, magazziniere, gestione ordini и operatore logistico;
+- Customer Service — customer service, assistenza clienti, call center, customer care и supporto clienti;
+- Retail / GDO — addetto vendita, commesso, sales assistant, GDO, banconista и scaffalista;
+- Hospitality — hotel reception, barista, cameriere, lavapiatti и aiuto cuoco;
+- Cleaning — pulizie, addetto/addetta pulizie и pulizie part time;
+- Remote Office — smart working, lavoro da casa, back office remoto, data entry remoto и assistente virtuale;
+- AI / Annotation — AI trainer, AI annotator, data annotator, data labeling, AI content reviewer, prompt writer, RLHF и generative AI trainer.
+
+Важно: этот список реально использует только `src/collectors/duckduckgo_jobs.py` для Student V2 `local_student` search profile. Talent, Jooble, Indeed, Subito, Randstad, Adecco и Gi Group используют собственные `DIRECT_QUERIES` и/или `FALLBACK_DUCKDUCKGO_QUERIES` внутри своих collector-файлов.
 
 ### Job Site Profiler
 
@@ -739,7 +743,7 @@ configs/queries.yaml
 - `reddit`;
 - `workanywhere`.
 
-Чтобы изменить запросы, отредактируйте только `configs/queries.yaml`. Не нужно менять Python-код collectors.
+Чтобы изменить legacy remote queries, отредактируйте `configs/queries.yaml`. Для Student V2 DuckDuckGo discovery используется отдельный список `duckduckgo_discovery_queries` в `configs/job_sources.yaml`. Talent, Jooble, Indeed, Subito, Randstad, Adecco и Gi Group не читают этот список автоматически: их direct/fallback query lists находятся внутри соответствующих V2 collector-файлов.
 
 ### Конфигурация scoring
 

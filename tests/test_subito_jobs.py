@@ -50,6 +50,37 @@ def test_fallback_duckduckgo_works_with_mocks(monkeypatch):
     assert jobs[0]["priority_bucket"] == "campania_part_time"
 
 
+def test_fallback_duckduckgo_keeps_only_detail_urls(monkeypatch):
+    class FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def text(self, query, region, safesearch, max_results):
+            return [
+                {
+                    "title": "Lavoro Campania - Offerte e annunci",
+                    "href": "https://www.subito.it/annunci-campania/vendita/offerte-lavoro",
+                    "body": "Search results",
+                },
+                {
+                    "title": "Pulizie part time Napoli",
+                    "href": "https://www.subito.it/offerte-lavoro/pulizie-part-time-napoli-123456.htm",
+                    "body": "Tempo parziale",
+                },
+            ]
+
+    monkeypatch.setattr(subito_jobs, "get_ddgs_class", lambda: FakeDDGS)
+
+    jobs = subito_jobs.collect_fallback_duckduckgo_jobs(limit=2)
+
+    assert [job["url"] for job in jobs] == [
+        "https://www.subito.it/offerte-lavoro/pulizie-part-time-napoli-123456.htm"
+    ]
+
+
 def test_parse_subito_html_extracts_job_detail_links():
     page_html = """
     <html><body>

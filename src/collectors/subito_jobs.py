@@ -43,13 +43,13 @@ DIRECT_QUERIES = [
     "lavoro Monte di Procida",
 ]
 FALLBACK_DUCKDUCKGO_QUERIES = [
-    "site:subito.it lavoro part time Napoli",
-    "site:subito.it cameriere part time Napoli",
-    "site:subito.it pulizie part time Napoli",
-    "site:subito.it magazziniere part time Napoli",
-    "site:subito.it lavoro Pozzuoli",
-    "site:subito.it lavoro Bacoli",
-    "site:subito.it lavoro Monte di Procida",
+    "site:subito.it/offerte-lavoro/ part time Napoli",
+    "site:subito.it/offerte-lavoro/ cameriere part time Napoli",
+    "site:subito.it/offerte-lavoro/ pulizie part time Napoli",
+    "site:subito.it/offerte-lavoro/ magazziniere part time Napoli",
+    "site:subito.it/offerte-lavoro/ lavoro Pozzuoli",
+    "site:subito.it/offerte-lavoro/ lavoro Bacoli",
+    "site:subito.it/offerte-lavoro/ lavoro Monte di Procida",
 ]
 
 
@@ -208,7 +208,7 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                     "url": result.get("href") or result.get("url") or result.get("link") or "",
                     "snippet": snippet,
                 }, query, found_at)
-                if "subito.it" not in job["url"]:
+                if not is_subito_job_detail_url(job["url"]):
                     continue
                 jobs.append(job)
     return deduplicate_jobs(jobs)

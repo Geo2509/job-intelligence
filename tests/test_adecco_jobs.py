@@ -51,6 +51,37 @@ def test_fallback_duckduckgo_works_with_mocks(monkeypatch):
     assert jobs[0]["priority_bucket"] == "campania_part_time"
 
 
+def test_fallback_duckduckgo_keeps_only_detail_urls(monkeypatch):
+    class FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def text(self, query, region, safesearch, max_results):
+            return [
+                {
+                    "title": "Consulta le offerte di lavoro Adecco",
+                    "href": "https://www.adecco.it/offerte-lavoro?l=napoli",
+                    "body": "Search results",
+                },
+                {
+                    "title": "Back office part time Napoli",
+                    "href": "https://www.adecco.it/lavoro/back-office-part-time_napoli_123456/",
+                    "body": "Tempo parziale",
+                },
+            ]
+
+    monkeypatch.setattr(adecco_jobs, "get_ddgs_class", lambda: FakeDDGS)
+
+    jobs = adecco_jobs.collect_fallback_duckduckgo_jobs(limit=2)
+
+    assert [job["url"] for job in jobs] == [
+        "https://www.adecco.it/lavoro/back-office-part-time_napoli_123456"
+    ]
+
+
 def test_parse_adecco_html_extracts_job_detail_links():
     page_html = """
     <html><body>

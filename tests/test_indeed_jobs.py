@@ -25,6 +25,35 @@ def test_fallback_duckduckgo_does_not_crash_without_ddgs(monkeypatch):
     assert jobs == []
 
 
+def test_fallback_duckduckgo_keeps_only_detail_urls(monkeypatch):
+    class FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def text(self, query, region, safesearch, max_results):
+            return [
+                {
+                    "title": "Offerte di lavoro Data Entry - Napoli",
+                    "href": "https://it.indeed.com/q-data-entry-l-napoli-offerte-lavoro.html",
+                    "body": "Search results",
+                },
+                {
+                    "title": "Data Entry Part Time",
+                    "href": "https://it.indeed.com/viewjob?jk=123",
+                    "body": "Tempo parziale",
+                },
+            ]
+
+    monkeypatch.setattr(indeed_jobs, "get_ddgs_class", lambda: FakeDDGS)
+
+    jobs = indeed_jobs.collect_fallback_duckduckgo_jobs(limit=2)
+
+    assert [job["url"] for job in jobs] == ["https://it.indeed.com/viewjob?jk=123"]
+
+
 def test_normalize_indeed_result():
     job = indeed_jobs.normalize_indeed_result(
         {

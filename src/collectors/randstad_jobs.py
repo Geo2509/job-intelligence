@@ -359,7 +359,7 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                     "url": result.get("href") or result.get("url") or result.get("link") or "",
                     "snippet": snippet,
                 }, query, found_at)
-                if "randstad.it" not in job["url"]:
+                if not is_randstad_job_detail_url(job["url"]):
                     continue
                 jobs.append(enrich_randstad_job(job))
     return deduplicate_jobs(jobs)

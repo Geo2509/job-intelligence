@@ -49,6 +49,38 @@ def test_fallback_duckduckgo_works_with_mocks(monkeypatch):
     assert jobs[0]["priority_bucket"] == "campania_part_time"
 
 
+def test_fallback_duckduckgo_keeps_only_detail_urls(monkeypatch):
+    class FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def text(self, query, region, safesearch, max_results):
+            return [
+                {
+                    "title": "Offerte di lavoro Randstad",
+                    "href": "https://www.randstad.it/offerte-lavoro/q-data-entry-napoli/",
+                    "body": "Search results",
+                },
+                {
+                    "title": "Back office part time Napoli",
+                    "href": "https://www.randstad.it/offerte-lavoro/back-office-part-time_napoli_123456/",
+                    "body": "Tempo parziale",
+                },
+            ]
+
+    monkeypatch.setattr(randstad_jobs, "get_ddgs_class", lambda: FakeDDGS)
+    monkeypatch.setattr(randstad_jobs, "fetch_detail_page", lambda url: None)
+
+    jobs = randstad_jobs.collect_fallback_duckduckgo_jobs(limit=2)
+
+    assert [job["url"] for job in jobs] == [
+        "https://www.randstad.it/offerte-lavoro/back-office-part-time_napoli_123456"
+    ]
+
+
 def test_parse_randstad_html_extracts_job_detail_links():
     page_html = """
     <html><body>

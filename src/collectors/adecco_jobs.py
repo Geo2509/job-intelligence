@@ -48,7 +48,7 @@ DIRECT_QUERIES = [
     "Monte di Procida",
 ]
 FALLBACK_DUCKDUCKGO_QUERIES = [
-    f"site:adecco.it/lavoro {query}"
+    f"site:adecco.it/lavoro/ {query}"
     for query in DIRECT_QUERIES
 ]
 OUTPUT_FIELDS = [
@@ -234,7 +234,7 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                     "url": result.get("href") or result.get("url") or result.get("link") or "",
                     "snippet": snippet,
                 }, query, found_at)
-                if "adecco.it" not in job["url"]:
+                if not is_adecco_job_detail_url(job["url"]):
                     continue
                 jobs.append(job)
     return deduplicate_jobs(jobs)

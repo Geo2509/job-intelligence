@@ -44,11 +44,11 @@ DIRECT_QUERIES = [
     ("smart working data entry", "Italia"),
 ]
 FALLBACK_DUCKDUCKGO_QUERIES = [
-    "site:it.indeed.com data entry Napoli part time",
-    "site:it.indeed.com inserimento dati Napoli part time",
-    "site:it.indeed.com back office Pozzuoli part time",
-    "site:it.indeed.com lavoro da casa data entry Italia",
-    "site:it.indeed.com smart working data entry Italia",
+    "site:it.indeed.com/viewjob data entry Napoli part time",
+    "site:it.indeed.com/viewjob inserimento dati Napoli part time",
+    "site:it.indeed.com/viewjob back office Pozzuoli part time",
+    "site:it.indeed.com/viewjob lavoro da casa data entry Italia",
+    "site:it.indeed.com/viewjob smart working data entry Italia",
 ]
 OUTPUT_FIELDS = [
     "title",
@@ -138,7 +138,14 @@ def parse_indeed_html(page_html, query):
             "url": url,
             "snippet": "",
         }, query))
-    return jobs
+    return deduplicate_jobs(jobs)
+
+
+def is_indeed_job_detail_url(url):
+    normalized = normalize_url(url)
+    if "it.indeed.com" not in normalized:
+        return False
+    return "/viewjob" in normalized or "/rc/clk" in normalized or "jk=" in normalized
 
 
 def normalize_indeed_result(result, query, found_at=None):
@@ -180,7 +187,7 @@ def collect_direct_jobs(limit=DEFAULT_LIMIT, pause_seconds=3):
                     break
         if pause_seconds:
             time.sleep(pause_seconds)
-    return jobs
+    return deduplicate_jobs(jobs)
 
 
 def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
@@ -216,10 +223,10 @@ def collect_fallback_duckduckgo_jobs(limit=DEFAULT_LIMIT):
                     "url": result.get("href") or result.get("url") or result.get("link") or "",
                     "snippet": snippet,
                 }, query, found_at)
-                if "it.indeed.com" not in job["url"]:
+                if not is_indeed_job_detail_url(job["url"]):
                     continue
                 jobs.append(job)
-    return jobs
+    return deduplicate_jobs(jobs)
 
 
 def sort_jobs(jobs, campania_part_time_first=False):

@@ -53,11 +53,14 @@ HOSPITALITY_TERMS = [
     "albergo",
     "restaurant",
     "ristorante",
+    "accoglienza",
+    "front office",
     "barista",
     "cameriere",
     "cameriera",
     "cuoco",
     "receptionist",
+    "reception",
     "sala",
     "turismo",
 ]
@@ -103,9 +106,24 @@ DATA_ENTRY_CATEGORIES = {"data_entry", "data_office", "campania_part_time_data"}
 BACK_OFFICE_CATEGORIES = {"back_office", "administration", "accounting", "admin", "office"}
 AI_CATEGORIES = {"remote_data", "ai_data", "ai_annotation", "ai training", "ai annotation"}
 LOGISTICS_CATEGORIES = {"logistics", "warehouse"}
-HOSPITALITY_CATEGORIES = {"hospitality", "hotel", "restaurant", "reception"}
+RECEPTION_CATEGORIES = {"reception", "front_office", "receptionist", "accoglienza"}
+HOSPITALITY_CATEGORIES = {"hospitality", "hotel", "restaurant", "barista"} | RECEPTION_CATEGORIES
 RETAIL_CATEGORIES = {"gdo", "retail", "vendita", "sales"}
 HARD_RISK_TERMS = ["italian c1", "italiano c1", "c1 italiano", "night shift", "notturno", "turno notte"]
+HISTORY_REJECTION_REASONS = {"history_seen", "seen_recently"}
+PROFILE_REJECTION_REASONS = {"profile_rejected", "rejected_by_profile", "rejected_by_country", "rejected_by_seniority", "low_match"}
+CLEANER_LOCATION_REJECTION_REASONS = {
+    "location_rejected",
+    "excluded_far",
+    "unknown_location",
+    "matched_search_page",
+    "matched_category_page",
+    "matched_company_page",
+    "matched_profile",
+    "matched_article",
+    "matched_excluded_domain",
+    "unknown_pattern",
+}
 
 
 def load_jobs(input_path):
@@ -136,6 +154,16 @@ def load_run_stats(stats_path=DEFAULT_RUN_STATS_PATH):
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"Expected a JSON object in {path}")
+    return data
+
+
+def load_candidate_pool(path):
+    pool_path = Path(path)
+    if not pool_path.exists():
+        return []
+    data = json.loads(pool_path.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"Expected a JSON list in {pool_path}")
     return data
 
 
@@ -197,7 +225,7 @@ def classify_job(job, search_profile=LOCAL_STUDENT_PROFILE):
 
     if is_campania_part_time(job, text):
         return "Campania part-time"
-    if category in {"hospitality", "hotel", "restaurant"} or has_any(text, HOSPITALITY_TERMS):
+    if category in HOSPITALITY_CATEGORIES or has_any(text, HOSPITALITY_TERMS):
         return "Hospitality / Hotel / Restaurant"
     if category in {"cleaning", "pulizie"} or has_any(text, CLEANING_TERMS):
         return "Cleaning / Pulizie"
@@ -379,6 +407,8 @@ def recommended_cv(job):
         return "AI / Data Annotation CV"
     if category in DATA_ENTRY_CATEGORIES or has_any(text, ["data entry", "inserimento dati", "excel", "google sheets"]):
         return "Data Entry CV"
+    if category in RECEPTION_CATEGORIES or has_any(text, ["reception", "receptionist", "front office", "accoglienza"]):
+        return "Back Office / Reception CV"
     if category in BACK_OFFICE_CATEGORIES or has_any(text, ["back office", "amministrazione", "amministrativo", "segreteria"]):
         return "Back Office CV"
     if category in LOGISTICS_CATEGORIES or has_any(text, ["logistics", "logistica", "warehouse", "magazzino", "spedizioni"]):
@@ -395,6 +425,7 @@ def recommended_cover_letter(job):
     return {
         "AI / Data Annotation CV": "AI Trainer / Annotator cover letter",
         "Data Entry CV": "Data Processing cover letter",
+        "Back Office / Reception CV": "Back Office / Administration cover letter",
         "Back Office CV": "Back Office / Administration cover letter",
         "Logistics CV": "Logistics cover letter",
         "Hospitality CV": "Hospitality short message",
@@ -723,22 +754,58 @@ def render_job(job):
     )
 
 
-def empty_block_diagnostics(block, run_stats=None):
+def diagnostic_jobs_for_block(block, run_stats=None, search_profile=LOCAL_STUDENT_PROFILE):
     stats = run_stats or {}
-    collector_rows = stats.get("collector_stats") or []
-    found = int(stats.get("candidate_pool_jobs") or 0)
-    already_seen = sum(int(row.get("history_seen") or row.get("seen") or 0) for row in collector_rows)
-    rejected_history = int(stats.get("seen_skipped") or 0) + already_seen
-    rejected_profile = sum(int(row.get("rejected_by_profile") or 0) for row in stats.get("collector_health") or [])
-    rejected_cleaner_location = (
-        int(stats.get("removed_far") or 0)
-        + int(stats.get("removed_unknown") or 0)
-        + sum(max(0, int(row.get("collected") or 0) - int(row.get("after_cleaner") or 0)) for row in collector_rows)
+    candidate_pool = stats.get("candidate_pool") or stats.get("candidate_pool_jobs_data") or []
+    if not isinstance(candidate_pool, list):
+        return []
+    return [
+        job
+        for job in candidate_pool
+        if classify_job(job, search_profile) == block
+    ]
+
+
+def rejection_reason_for_stats(job):
+    return str(
+        job.get("selection_rejection_reason")
+        or job.get("rejection_reason")
+        or ""
+    ).lower()
+
+
+def empty_block_diagnostics(block, run_stats=None, search_profile=LOCAL_STUDENT_PROFILE):
+    block_jobs = diagnostic_jobs_for_block(block, run_stats, search_profile)
+    found = len(block_jobs)
+    already_seen = sum(
+        1
+        for job in block_jobs
+        if str(job.get("history_status") or "").upper() == "SEEN"
+        or rejection_reason_for_stats(job) in {"history_seen", "seen_recently"}
+    )
+    rejected_history = sum(
+        1
+        for job in block_jobs
+        if rejection_reason_for_stats(job) in HISTORY_REJECTION_REASONS
+    )
+    rejected_profile = sum(
+        1
+        for job in block_jobs
+        if rejection_reason_for_stats(job) in PROFILE_REJECTION_REASONS
+    )
+    rejected_cleaner_location = sum(
+        1
+        for job in block_jobs
+        if rejection_reason_for_stats(job) in CLEANER_LOCATION_REJECTION_REASONS
+        or (
+            str(job.get("location_fit") or "") in {"excluded_far", "unknown"}
+            and not bool(job.get("remote"))
+        )
     )
     return (
         "<li>"
         "<strong>No new jobs selected.</strong>"
-        f"<br>Found in candidate pool: {found}"
+        f"<br>Found in this block: {found}"
         f"<br>Already seen: {already_seen}"
         f"<br>Rejected by history: {rejected_history}"
         f"<br>Rejected by profile: {rejected_profile}"
@@ -757,7 +824,7 @@ def build_email_html(jobs, run_stats=None, search_profile=LOCAL_STUDENT_PROFILE)
         if block_jobs:
             items = "".join(render_job(job) for job in block_jobs)
         else:
-            items = empty_block_diagnostics(block, run_stats)
+            items = empty_block_diagnostics(block, run_stats, search_profile)
         blocks.append(f"<h2>{html.escape(block)}</h2><ol>{items}</ol>")
 
     return (
@@ -804,6 +871,19 @@ def default_stats_for_profile(search_profile):
     return DEFAULT_RUN_STATS_PATH
 
 
+def default_candidate_pool_for_profile(search_profile):
+    if search_profile == REMOTE_PROFILE:
+        return "output/v2_remote_candidate_pool.json"
+    return "output/v2_candidate_pool.json"
+
+
+def run_stats_with_candidate_pool(stats, search_profile=LOCAL_STUDENT_PROFILE):
+    stats = dict(stats or {})
+    if "candidate_pool" not in stats:
+        stats["candidate_pool"] = load_candidate_pool(default_candidate_pool_for_profile(search_profile))
+    return stats
+
+
 def send_v2_email_report(
     input_path=DEFAULT_INPUT_PATH,
     top=DEFAULT_TOP,
@@ -822,7 +902,11 @@ def send_v2_email_report(
     require_email_settings()
     send_html_email(
         subject_for_profile(search_profile),
-        build_email_html(jobs, load_run_stats(stats_path), search_profile=search_profile),
+        build_email_html(
+            jobs,
+            run_stats_with_candidate_pool(load_run_stats(stats_path), search_profile),
+            search_profile=search_profile,
+        ),
     )
     print(f"V2 email report sent: {len(jobs)} jobs")
     return True

@@ -57,6 +57,15 @@ def test_grouping_by_blocks():
     assert groups["Other"][0]["title"] == "Generic role"
 
 
+def test_reception_job_goes_to_hospitality_section():
+    groups = v2_email_report.grouped_jobs([
+        job("Addetto all' accoglienza", category="reception"),
+    ])
+
+    assert groups["Hospitality / Hotel / Restaurant"][0]["title"] == "Addetto all' accoglienza"
+    assert groups["Other"] == []
+
+
 def test_empty_list_is_not_sent(tmp_path, capsys):
     input_path = write_jobs(tmp_path, [])
 
@@ -309,6 +318,14 @@ def test_recommended_cv_ai():
     assert cv == "AI / Data Annotation CV"
 
 
+def test_recommended_cv_reception():
+    cv = v2_email_report.recommended_cv(
+        job("Addetto all' accoglienza", category="reception")
+    )
+
+    assert cv == "Back Office / Reception CV"
+
+
 def test_empty_block_explains_reason():
     body = v2_email_report.build_email_html(
         [job("Remote AI data annotator", remote=True)],
@@ -329,8 +346,49 @@ def test_empty_block_explains_reason():
 
     assert "No jobs in this block." not in body
     assert "No new jobs selected." in body
-    assert "Found in candidate pool: 12" in body
+    assert "Found in this block: 0" in body
     assert "Rejected by history:" in body
+
+
+def test_empty_hospitality_block_uses_only_hospitality_stats():
+    body = v2_email_report.build_email_html(
+        [job("Remote AI data annotator", remote=True)],
+        run_stats={
+            "candidate_pool": [
+                job(
+                    "Reception seen",
+                    category="reception",
+                    history_status="SEEN",
+                    selection_rejection_reason="history_seen",
+                ),
+                job(
+                    "Hotel low profile",
+                    category="hotel",
+                    selection_rejection_reason="profile_rejected",
+                ),
+                job(
+                    "Warehouse seen",
+                    category="warehouse",
+                    history_status="SEEN",
+                    selection_rejection_reason="history_seen",
+                ),
+                job(
+                    "Warehouse profile",
+                    category="warehouse",
+                    selection_rejection_reason="profile_rejected",
+                ),
+            ],
+        },
+    )
+
+    hospitality_start = body.index("<h2>Hospitality / Hotel / Restaurant</h2>")
+    cleaning_start = body.index("<h2>Cleaning / Pulizie</h2>")
+    hospitality_block = body[hospitality_start:cleaning_start]
+
+    assert "Found in this block: 2" in hospitality_block
+    assert "Already seen: 1" in hospitality_block
+    assert "Rejected by profile: 1" in hospitality_block
+    assert "Found in this block: 4" not in hospitality_block
 
 
 def test_email_body_contains_history_status_label():

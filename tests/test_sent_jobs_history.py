@@ -273,6 +273,47 @@ class SentJobsHistoryTest(unittest.TestCase):
         self.assertIn("<strong>Selection:</strong> RESURFACED", body)
         self.assertIn("<strong>Days since last sent:</strong> 7", body)
 
+    def test_remote_email_uses_dynamic_jobs_sent_heading(self):
+        run_started = datetime(2026, 6, 27, tzinfo=ZoneInfo("Europe/Rome"))
+        body = build_email_html(
+            run_started,
+            {},
+            {
+                "collected": 3,
+                "after_deduplication": 3,
+                "after_filtering": 3,
+                "after_scoring_threshold": 3,
+                "top_jobs_emailed": 3,
+                "priority_counts": {"HIGH": 3, "MEDIUM": 0, "LOW": 0},
+                "top_jobs_score_stats": {"min": 500, "max": 590, "average": 550},
+            },
+            email_rows=[
+                {
+                    "title": f"Remote Ukrainian Specialist {index}",
+                    "job_score": 500 + index,
+                    "source": "duckduckgo",
+                    "apply_priority": "HIGH",
+                    "url": f"https://example.com/jobs/{index}",
+                    "remote_match_summary": ["Remote", "Ukrainian language"],
+                }
+                for index in range(3)
+            ],
+            email_stats={
+                "found_total": 50,
+                "skipped_already_sent": 47,
+                "quality_rejected": 0,
+                "rejected_search_pages": 0,
+                "rejected_language_mismatch": 0,
+                "rejected_low_quality": 0,
+                "sent_total": 3,
+            },
+        )
+
+        self.assertIn("Jobs sent today: 3", body)
+        self.assertNotIn("Top 20 jobs", body)
+        self.assertIn("Matched because:", body)
+        self.assertNotIn("<strong>Reasons:</strong>", body)
+
     def test_email_is_not_sent_when_no_new_jobs(self):
         run_started = datetime(2026, 6, 21, tzinfo=ZoneInfo("Europe/Rome"))
         sent_job = {
@@ -314,6 +355,58 @@ class SentJobsHistoryTest(unittest.TestCase):
 
         self.assertFalse(was_sent)
         smtp.assert_not_called()
+
+    def test_rejected_remote_email_jobs_are_not_added_to_history(self):
+        run_started = datetime(2026, 6, 21, tzinfo=ZoneInfo("Europe/Rome"))
+        rejected_job = {
+            "url": "https://www.indeed.com/jobs?q=data+annotation+remote",
+            "title": "Top 97 Data Annotation Remote Jobs (Hiring Now) | Indeed.com",
+            "description": "Remote jobs found.",
+            "job_score": 700,
+            "apply_priority": "HIGH",
+            "source": "duckduckgo",
+        }
+        accepted_job = {
+            "url": "https://example.com/jobs/ukrainian-specialist",
+            "title": "Ukrainian Language Specialist",
+            "description": "Remote data annotation role.",
+            "job_score": 690,
+            "apply_priority": "HIGH",
+            "source": "duckduckgo",
+        }
+        scoring_result = {
+            "top_jobs": FakeTopJobs([rejected_job, accepted_job]),
+            "collected": 2,
+            "after_deduplication": 2,
+            "after_filtering": 2,
+            "after_scoring_threshold": 2,
+            "top_jobs_emailed": 2,
+            "priority_counts": {"HIGH": 2, "MEDIUM": 0, "LOW": 0},
+            "top_jobs_score_stats": {"min": 690, "max": 700, "average": 695},
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            history_path = Path(temp_dir) / "sent_jobs_history.json"
+            with patch("src.main.SENT_JOBS_HISTORY_PATH", history_path), patch.dict(
+                "os.environ",
+                {
+                    "EMAIL_ENABLED": "true",
+                    "EMAIL_SMTP_HOST": "smtp.example.com",
+                    "EMAIL_SMTP_PORT": "587",
+                    "EMAIL_SMTP_USER": "user",
+                    "EMAIL_SMTP_PASSWORD": "password",
+                    "EMAIL_FROM": "from@example.com",
+                    "EMAIL_TO": "to@example.com",
+                },
+                clear=False,
+            ), patch("src.main.smtplib.SMTP"):
+                was_sent = send_email_report(run_started, {}, scoring_result)
+
+            saved_history = json.loads(history_path.read_text(encoding="utf-8"))
+
+        self.assertTrue(was_sent)
+        self.assertIn(job_history_key(accepted_job), saved_history)
+        self.assertNotIn(job_history_key(rejected_job), saved_history)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from config_loader import QUERIES_ENV, SCORING_ENV, load_queries_config, load_scoring_config
 from src.csv_utils import set_csv_field_limit
+from src.remote_email_cleaner import classify_remote_email_candidate, remote_email_cleaning_stats
 from scoring_jobs import score_jobs
 
 
@@ -350,6 +351,16 @@ def record_sent_jobs(history, rows, sent_at):
     return history
 
 
+def clean_selected_remote_email_rows(rows):
+    classified_rows = [classify_remote_email_candidate(row) for row in rows]
+    cleaned_rows = [
+        row
+        for row in classified_rows
+        if not row.get("remote_email_rejection_reason")
+    ]
+    return cleaned_rows, remote_email_cleaning_stats(classified_rows)
+
+
 def priority_counts_text(scoring_result):
     counts = scoring_result.get("priority_counts", {})
     return [
@@ -445,6 +456,10 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
     email_stats = email_stats or {
         "found_total": len(rows),
         "skipped_already_sent": 0,
+        "quality_rejected": 0,
+        "rejected_search_pages": 0,
+        "rejected_language_mismatch": 0,
+        "rejected_low_quality": 0,
         "sent_total": len(rows),
     }
     priority_counts = scoring_result.get("priority_counts", {})
@@ -463,7 +478,13 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
         selection_reason = html.escape(str(row.get("selection_reason", "") or ""))
         days_since_last_sent = html.escape(str(row.get("days_since_last_sent", "") or ""))
         description = html.escape(short_description(row.get("description", ""), 500))
-        reasons = html.escape(str(row.get("score_reason", "")))
+        match_summary = row.get("remote_match_summary") or []
+        if not match_summary:
+            match_summary = ["High remote match score"]
+        match_items = "".join(
+            f"<li>{html.escape(str(item))}</li>"
+            for item in match_summary
+        )
         url = html.escape(str(row.get("url", "")), quote=True)
         status_line = f"<p><strong>Status:</strong> {history_status}</p>" if history_status else ""
         selection_line = f"<p><strong>Selection:</strong> {selection_reason}</p>" if selection_reason else ""
@@ -480,7 +501,7 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
             f"{days_line}"
             f"<p><strong>Priority:</strong> {priority} | <strong>Score:</strong> {score} | <strong>Source:</strong> {source}</p>"
             f"<p>{description}</p>"
-            f"<p><strong>Reasons:</strong> {reasons}</p>"
+            f"<p><strong>Matched because:</strong></p><ul>{match_items}</ul>"
             f'<p><a href="{url}">Open job</a></p>'
             "</li>"
         )
@@ -502,6 +523,10 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
           <li>Top jobs emailed: {scoring_result['top_jobs_emailed']}</li>
           <li>Email candidates found: {email_stats['found_total']}</li>
           <li>Email candidates skipped as already sent: {email_stats['skipped_already_sent']}</li>
+          <li>Email candidates rejected by quality cleaner: {email_stats['quality_rejected']}</li>
+          <li>Rejected search/listing pages: {email_stats['rejected_search_pages']}</li>
+          <li>Rejected language mismatch: {email_stats['rejected_language_mismatch']}</li>
+          <li>Rejected low quality: {email_stats['rejected_low_quality']}</li>
           <li>Email candidates sent now: {email_stats['sent_total']}</li>
           <li>Top jobs min score: {score_stats['min']}</li>
           <li>Top jobs max score: {score_stats['max']}</li>
@@ -509,7 +534,7 @@ def build_email_html(run_started, collector_counts, scoring_result, email_rows=N
         </ul>
         <h2>Apply priority</h2>
         <ul>{priority_items}</ul>
-        <h2>Top 20 jobs</h2>
+        <h2>Jobs sent today: {email_stats['sent_total']}</h2>
         <ol>{jobs_html}</ol>
       </body>
     </html>
@@ -538,13 +563,19 @@ def send_email_report(
         rotation_days=rotation_days,
         now=run_started,
     )
+    rows_to_send, quality_stats = clean_selected_remote_email_rows(rows_to_send)
     email_stats = {
         "found_total": len(found_rows),
         "skipped_already_sent": skipped,
+        **quality_stats,
         "sent_total": len(rows_to_send),
     }
     print(f"Email jobs found total: {email_stats['found_total']}")
     print(f"Email jobs skipped as already sent: {email_stats['skipped_already_sent']}")
+    print(f"Email jobs rejected by quality cleaner: {email_stats['quality_rejected']}")
+    print(f"Email jobs rejected as search/listing pages: {email_stats['rejected_search_pages']}")
+    print(f"Email jobs rejected as language mismatch: {email_stats['rejected_language_mismatch']}")
+    print(f"Email jobs rejected as low quality: {email_stats['rejected_low_quality']}")
     print(f"Email jobs sent now: {email_stats['sent_total']}")
 
     if not rows_to_send:

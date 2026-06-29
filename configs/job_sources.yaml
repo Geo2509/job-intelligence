@@ -255,6 +255,17 @@ remote_discovery_queries:
 duckduckgo_discovery_queries:
   # DATA / OFFICE
   - data entry Campania part time
+  - impiegato data entry Napoli
+  - impiegato data entry Campania
+  - impiegato data entry part time Napoli
+  - impiegato/a data entry Napoli
+  - addetto data entry Napoli
+  - addetto data entry part time Napoli
+  - addetta data entry Napoli
+  - addetta data entry part time Napoli
+  - operatore data entry Napoli
+  - operatore data entry Campania
+  - operatore data entry part time Napoli
   - data entry Napoli
   - data entry Napoli part time
   - data entry Napoli tempo parziale
@@ -262,7 +273,15 @@ duckduckgo_discovery_queries:
   - data entry Napoli sera
   - data entry Pozzuoli
   - data entry Pozzuoli part time
+  - data entry Campania
   - inserimento dati Napoli part time
+  - inserimento dati Campania
+  - addetto inserimento dati Napoli
+  - addetto inserimento dati part time Napoli
+  - addetto inserimento dati Campania
+  - operatore inserimento dati Napoli
+  - operatore inserimento dati part time Napoli
+  - operatore inserimento dati Campania
   - data entry Bacoli
   - data entry Bacoli part time
   - data entry Monte di Procida
@@ -283,7 +302,38 @@ duckduckgo_discovery_queries:
   - segreteria Napoli part time
   - assistente amministrativo Napoli
   - assistente amministrativo Napoli part time
+  - assistente amministrativa Napoli
+  - assistente amministrativa part time Napoli
+  - assistente amministrativo Campania
   - impiegato amministrativo Napoli
+  - impiegata amministrativa Napoli
+  - impiegato amministrativo part time Napoli
+  - impiegata amministrativa part time Napoli
+  - impiegato amministrativo Campania
+  - segretario amministrativo Napoli
+  - segretaria amministrativa Napoli
+  - segretaria amministrativa part time Napoli
+  - office assistant Napoli
+  - office assistant part time Napoli
+  - amministrazione Napoli
+  - amministrazione Campania
+  - amministrazione e contabilità Napoli
+  - impiegato ufficio Napoli
+  - impiegato ufficio part time Napoli
+  - impiegato ufficio acquisti Napoli
+  - impiegato ufficio commerciale Napoli
+  - impiegato ufficio commerciale Campania
+  - addetto back office Napoli
+  - addetto back office part time Napoli
+  - operatore back office Napoli
+  - operatore back office part time Napoli
+  - back office Campania
+  - back office commerciale Napoli
+  - back office commerciale Campania
+  - back office amministrativo Napoli
+  - back office amministrativo Campania
+  - impiegato back office Napoli
+  - impiegato back office part time Napoli
   - front office Napoli
   - front office Napoli part time
   - centralinista Napoli
@@ -292,10 +342,31 @@ duckduckgo_discovery_queries:
   - Excel Napoli
 
   # HOTEL
+  - receptionist Napoli
+  - receptionist Napoli part time
+  - receptionist Pozzuoli
+  - receptionist Pozzuoli part time
+  - receptionist Bacoli
+  - receptionist Campania
+  - reception Campania
+  - front office Campania
+  - addetto accoglienza Napoli
+  - addetto accoglienza part time Napoli
+  - addetta accoglienza Napoli
+  - addetta accoglienza part time Napoli
+  - hostess accoglienza Napoli
+  - hostess accoglienza part time Napoli
+  - segreteria reception Napoli
+  - segreteria reception part time Napoli
   - receptionist hotel Napoli
+  - receptionist hotel Napoli part time
   - reception hotel part time Napoli
+  - reception hotel Napoli
   - hotel part time Napoli
+  - hotel reception Napoli
   - front office hotel Napoli
+  - accoglienza hotel Napoli
+  - accoglienza hotel part time Napoli
   - hotel receptionist Campania
   - receptionist hotel Pozzuoli
   - receptionist hotel Bacoli
@@ -310,14 +381,19 @@ duckduckgo_discovery_queries:
   # RISTORANTE / BAR
   - cameriere Napoli
   - cameriere part time Napoli
+  - cameriera Napoli
+  - cameriera part time Napoli
   - cameriere Pozzuoli part time
   - cameriere Bacoli part time
   - barista Napoli
   - barista part time Napoli
   - barista Pozzuoli
+  - barista Bacoli
+  - barista Campania part time
   - aiuto cucina Napoli
   - aiuto cucina part time Napoli
   - aiuto cuoco Napoli
+  - aiuto cuoco part time Napoli
   - lavapiatti Napoli
   - lavapiatti part time Napoli
   - ristorante Pozzuoli
@@ -331,10 +407,14 @@ duckduckgo_discovery_queries:
   # PULIZIE
   - pulizie Napoli
   - pulizie part time Napoli
+  - pulizie Campania
+  - pulizie part time Campania
   - pulizie Napoli mattina
   - pulizie Napoli sera
   - addetto pulizie Napoli
+  - addetto pulizie part time Napoli
   - addetta pulizie Napoli
+  - addetta pulizie part time Napoli
   - pulizie hotel Napoli
   - pulizie uffici Napoli
   - impresa pulizie Napoli
@@ -357,9 +437,19 @@ duckduckgo_discovery_queries:
   - manutentore Campania hotel
 
   # MAGAZZINO
+  - logistica Campania
+  - impiegato logistica Napoli
+  - impiegato logistica Campania
+  - back office logistica Napoli
+  - back office logistica Campania
+  - magazzino Napoli
+  - magazzino Campania
   - magazziniere Napoli
   - magazziniere part time Napoli
   - magazziniere Pozzuoli
+  - magazziniere Pozzuoli part time
+  - magazziniere Bacoli
+  - magazziniere Campania
   - scaffalista Napoli
   - scaffalista part time Napoli
   - carico scarico Napoli
@@ -367,6 +457,29 @@ duckduckgo_discovery_queries:
   - logistica Napoli
   - addetto magazzino Napoli
   - addetto magazzino part time Napoli
+  - addetto magazzino Campania
+  - gestione ordini Napoli
+  - gestione ordini Campania
+  - operatore logistico Napoli
+  - operatore logistico Campania
+
+  # CUSTOMER SERVICE
+  - customer service Napoli
+  - customer service part time Napoli
+  - customer service Campania
+  - assistenza clienti Napoli
+  - assistenza clienti part time Napoli
+  - assistenza clienti Campania
+  - operatore telefonico Napoli
+  - operatore telefonico part time Napoli
+  - operatore telefonico Campania
+  - call center Napoli
+  - call center part time Napoli
+  - call center Campania
+  - customer care Napoli
+  - customer care part time Napoli
+  - supporto clienti Napoli
+  - supporto clienti Campania
 
   # GDO
   - Lidl Napoli
@@ -380,10 +493,33 @@ duckduckgo_discovery_queries:
   - Carrefour Napoli
   - addetto vendita Napoli
   - addetto vendita part time Napoli
+  - commesso Napoli
+  - commesso part time Napoli
+  - commesso Campania
+  - sales assistant Napoli
+  - sales assistant part time Napoli
+  - sales assistant Campania
+  - GDO Napoli
+  - GDO Campania
+  - banconista GDO Napoli
   - cassiere Napoli
   - cassiere part time Napoli
   - scaffalista supermercato Napoli
   - supermercato Napoli part time
+  - scaffalista Campania
+
+  # CONTABILITÀ
+  - impiegato contabile Napoli
+  - impiegata contabile Napoli
+  - impiegato contabile part time Napoli
+  - impiegata contabile part time Napoli
+  - contabilità Napoli
+  - contabilità Campania
+  - contabilità base Napoli
+  - addetto contabilità Napoli
+  - addetto contabilità Campania
+  - contabilità junior Napoli
+  - contabilità junior Campania
 
   # TURISMO
   - villaggi turistici Campania
@@ -408,11 +544,30 @@ duckduckgo_discovery_queries:
   - lavoro sera Napoli
 
   # REMOTE
+  - smart working Italia
+  - smart working Napoli
   - smart working data entry Italia
+  - lavoro da casa Italia
   - lavoro da casa inserimento dati Italia
+  - back office remoto Italia
+  - back office remoto part time
+  - data entry remoto Italia
+  - data entry remoto part time
+  - inserimento dati remoto Italia
+  - inserimento dati remoto part time
   - assistente virtuale remoto Italia
+  - virtual assistant Italia
+  - virtual assistant remote Italia
   - AI trainer remoto italiano
   - AI annotator remoto italiano
+  - data annotator remote Italia
+  - data annotation remote Italia
+  - data labeling remote Italia
+  - AI content reviewer remote Italia
+  - prompt writer remote Italia
+  - RLHF remote Italia
+  - human feedback remote Italia
+  - generative AI trainer remote Italia
   - trascrizione audio remoto italiano
   - remote customer service Italia
   - remote virtual assistant Italia

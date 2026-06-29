@@ -1,17 +1,25 @@
 from src.job_collector_registry import COLLECTOR_REGISTRY, enabled_collectors, get_collector
 
 
-def test_registry_contains_duckduckgo_indeed_subito_randstad_adecco_and_gigroup():
-    assert "duckduckgo" in COLLECTOR_REGISTRY
-    assert "indeed" in COLLECTOR_REGISTRY
-    assert "subito" in COLLECTOR_REGISTRY
-    assert "randstad" in COLLECTOR_REGISTRY
-    assert "adecco" in COLLECTOR_REGISTRY
-    assert "gigroup" in COLLECTOR_REGISTRY
+EXPECTED_STUDENT_V2_COLLECTORS = [
+    "duckduckgo",
+    "indeed",
+    "subito",
+    "randstad",
+    "adecco",
+    "gigroup",
+    "talent",
+    "jooble",
+]
+
+
+def test_registry_contains_student_v2_collectors():
+    for name in EXPECTED_STUDENT_V2_COLLECTORS:
+        assert name in COLLECTOR_REGISTRY
 
 
 def test_registry_plugins_have_required_metadata():
-    for name in ["duckduckgo", "indeed", "subito", "randstad", "adecco", "gigroup"]:
+    for name in EXPECTED_STUDENT_V2_COLLECTORS:
         plugin = get_collector(name)
 
         assert plugin.name == name
@@ -27,9 +35,5 @@ def test_registry_plugins_have_required_metadata():
 def test_enabled_collectors_returns_enabled_registry_names():
     names = enabled_collectors()
 
-    assert "duckduckgo" in names
-    assert "indeed" in names
-    assert "subito" in names
-    assert "randstad" in names
-    assert "adecco" in names
-    assert "gigroup" in names
+    for name in EXPECTED_STUDENT_V2_COLLECTORS:
+        assert name in names

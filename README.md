@@ -78,7 +78,7 @@ python -m src.collectors.duckduckgo_jobs --config configs/job_sources.yaml --out
 
 `src/collectors/indeed_jobs.py` — V2 collector для Indeed Italia по Campania part-time/data/remote направлениям. Direct mode формирует публичные Indeed search URL и делает обычные HTTP-запросы с таймаутом, без Selenium, без обхода CAPTCHA и без агрессивного scraping.
 
-Direct mode может быть ограничен сайтом: если Indeed возвращает блокировку, CAPTCHA, ошибку или пустой результат, collector не падает и переходит на fallback через DuckDuckGo по `site:it.indeed.com` запросам.
+Direct mode может быть ограничен сайтом: если Indeed возвращает блокировку, CAPTCHA, ошибку или пустой результат, collector не падает и переходит на fallback через DuckDuckGo по `site:it.indeed.com/viewjob` запросам. Fallback отдаёт только detail URL (`viewjob`, `rc/clk`, `jk=`), поэтому search pages не попадают в Candidate Pool как вакансии.
 
 Пример запуска:
 
@@ -96,7 +96,7 @@ Collector экспортирует `output/indeed_jobs.json`, `output/indeed_job
 
 `src/collectors/subito_jobs.py` — V2 collector для Subito Lavoro по локальным part-time направлениям Napoli, Pozzuoli, Bacoli и Monte di Procida. Direct mode использует публичные страницы Subito Lavoro через обычные HTTP-запросы, без Selenium и без обхода CAPTCHA.
 
-Если Subito блокирует запрос, возвращает ошибку или direct search не даёт вакансий, collector не падает и переходит на fallback через DuckDuckGo по `site:subito.it` запросам для lavoro/part-time, cameriere, pulizie, magazziniere и локальных городов.
+Если Subito блокирует запрос, возвращает ошибку или direct search не даёт вакансий, collector не падает и переходит на fallback через DuckDuckGo по `site:subito.it/offerte-lavoro/` запросам для lavoro/part-time, cameriere, pulizie, magazziniere и локальных городов. Fallback фильтрует результаты через `is_subito_job_detail_url` и оставляет только `.htm` detail pages.
 
 Пример debug-запуска:
 
@@ -114,7 +114,7 @@ python -m src.collectors.subito_jobs \
 
 `src/collectors/randstad_jobs.py` — V2 collector для Randstad Italia по направлениям data entry, back office, amministrazione, reception, hotel, magazzino, part-time Napoli, Pozzuoli и Bacoli. Direct mode использует публичные страницы Randstad через обычные HTTP-запросы, без Selenium, Playwright и без обхода CAPTCHA.
 
-Если прямой парсинг невозможен, Randstad collector не падает и переходит на fallback через DuckDuckGo по `site:randstad.it/offerte-lavoro` запросам.
+Если прямой парсинг невозможен, Randstad collector не падает и переходит на fallback через DuckDuckGo по `site:randstad.it/offerte-lavoro` запросам. Fallback пропускает только URL, которые проходят `is_randstad_job_detail_url`, поэтому страницы поиска вида `/offerte-lavoro/q-.../` отбрасываются до cleaner-а.
 
 Пример debug-запуска:
 
@@ -132,7 +132,7 @@ python -m src.collectors.randstad_jobs \
 
 `src/collectors/adecco_jobs.py` — V2 collector для Adecco Italia по направлениям data entry, back office, amministrazione, reception/front office, hotel, magazzino, part-time Napoli, Pozzuoli, Bacoli и Monte di Procida. Direct mode использует публичные страницы Adecco через обычные HTTP-запросы, без Selenium, Playwright и без обхода CAPTCHA.
 
-Если прямой парсинг недоступен, Adecco collector не падает и переходит на fallback через DuckDuckGo по `site:adecco.it/lavoro` запросам. Collector использует Job Matching для `category`, `remote`, `part_time`, `priority_bucket` и `score`, а также сразу добавляет `student_score` через Student Profile Engine.
+Если прямой парсинг недоступен, Adecco collector не падает и переходит на fallback через DuckDuckGo по `site:adecco.it/lavoro/` запросам. Fallback пропускает только URL, которые проходят `is_adecco_job_detail_url`; search pages, статьи и career pages больше не возвращаются как собранные вакансии. Collector использует Job Matching для `category`, `remote`, `part_time`, `priority_bucket` и `score`, а также сразу добавляет `student_score` через Student Profile Engine.
 
 Пример debug-запуска:
 
@@ -164,15 +164,51 @@ python -m src.collectors.gigroup_jobs \
 
 Финальный JSON/CSV/XLSX export для V2 делает aggregator.
 
+### Talent Italia Collector
+
+`src/collectors/talent_jobs.py` — V2 collector для Talent Italia по Student V2 направлениям: data entry, inserimento dati, back office, receptionist/accoglienza, magazzino, pulizie, cameriere и remote data/AI. Direct mode использует обычные HTTP-запросы к `it.talent.com`, без Selenium, Playwright и без обхода CAPTCHA.
+
+Если direct search недоступен, Talent collector переходит на DuckDuckGo fallback по `site:it.talent.com/view` запросам. Fallback пропускает только detail pages вида `https://it.talent.com/view?id=...`; search pages вроде `/jobs?k=...` не возвращаются в collector output.
+
+Пример debug-запуска:
+
+```bash
+python -m src.collectors.talent_jobs \
+  --output output/talent_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
+Финальный JSON/CSV/XLSX export для V2 делает aggregator.
+
+### Jooble Italia Collector
+
+`src/collectors/jooble_jobs.py` — V2 collector для Jooble Italia по тем же Student V2 направлениям: local Campania part-time, hospitality/service, warehouse/cleaning и remote data/AI. Direct mode использует обычные HTTP-запросы к `it.jooble.org`, без Selenium, Playwright и без обхода CAPTCHA.
+
+Если direct search недоступен, Jooble collector переходит на DuckDuckGo fallback по `site:it.jooble.org/jdp` запросам. Fallback принимает только подтверждённые detail URLs с `/jdp/`; generic search/listing pages и redirect/listing URLs не возвращаются как вакансии.
+
+Пример debug-запуска:
+
+```bash
+python -m src.collectors.jooble_jobs \
+  --output output/jooble_jobs.json \
+  --limit 5 \
+  --top 50 \
+  --campania-part-time-first
+```
+
+Финальный JSON/CSV/XLSX export для V2 делает aggregator.
+
 ### Job Aggregator V2
 
-`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed`, `subito`, `randstad`, `adecco` и `gigroup`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score`, `candidate_score` и `match_score`, затем сортирует вакансии по `match_score`, `student_score`, `candidate_score` и обычному `score` по убыванию.
+`src/job_aggregator.py` объединяет результаты V2 collectors, сейчас `duckduckgo`, `indeed`, `subito`, `randstad`, `adecco`, `gigroup`, `talent` и `jooble`, в единый список вакансий. Aggregator запускает выбранные collectors, продолжает работу если один из них упал, нормализует URL, дедуплицирует результаты, пересчитывает `priority_bucket`, добавляет `student_score`, `candidate_score` и `match_score`, затем сортирует вакансии по `match_score`, `student_score`, `candidate_score` и обычному `score` по убыванию.
 
 Пример запуска:
 
 ```bash
 python -m src.job_aggregator \
-  --collectors duckduckgo,indeed,subito,randstad,adecco,gigroup \
+  --collectors duckduckgo,indeed,subito,randstad,adecco,gigroup,talent,jooble \
   --output output/v2_jobs.json \
   --limit 5 \
   --top 50 \
@@ -233,6 +269,41 @@ Email показывает только лучшие вакансии текущ
 
 Статусы помогают быстро понять причину слабой выдачи: `healthy`, `history_only`, `needs_detail_extraction`, `cleaner_removed`, `no_real_jobs`, `error` или `inconsistent`.
 
+### Collector Recovery / Source Diversification
+
+Student V2 не должен зависеть только от DuckDuckGo как финального источника email. Для этого collectors проверяются отдельно через `src/collector_debug.py`, а fallback-ветки agency/job-board collectors фильтруют результаты до общего cleaner-а: в collector output должны попадать реальные job detail pages, а не search/category/article pages.
+
+Текущее поведение fallback:
+- Indeed fallback ищет `site:it.indeed.com/viewjob` и оставляет только detail URL (`viewjob`, `rc/clk`, `jk=`);
+- Subito fallback ищет `site:subito.it/offerte-lavoro/` и оставляет только `.htm` detail pages;
+- Randstad fallback оставляет только URL, которые проходят `is_randstad_job_detail_url`;
+- Adecco fallback оставляет только URL, которые проходят `is_adecco_job_detail_url`;
+- Gi Group direct collector обычно даёт detail pages; fallback также проверяет `is_gigroup_job_detail_url`;
+- Talent fallback ищет `site:it.talent.com/view` и оставляет только `view?id=...` detail pages;
+- Jooble fallback ищет `site:it.jooble.org/jdp` и оставляет только `/jdp/` detail pages.
+
+Диагностика collectors:
+
+```bash
+python -m src.collector_debug --collector adecco --limit 10 --output-dir output/debug/adecco
+python -m src.collector_debug --collector indeed --limit 10 --output-dir output/debug/indeed
+python -m src.collector_debug --collector subito --limit 10 --output-dir output/debug/subito
+python -m src.collector_debug --collector randstad --limit 10 --output-dir output/debug/randstad
+python -m src.collector_debug --collector gigroup --limit 10 --output-dir output/debug/gigroup
+python -m src.collector_debug --collector talent --limit 10 --output-dir output/debug/talent
+python -m src.collector_debug --collector jooble --limit 10 --output-dir output/debug/jooble
+```
+
+Последний recovery snapshot после fallback detail filtering:
+- Gi Group: `10 collected`, `10 real_job`, `0 search_page`;
+- Randstad: `10 collected`, `10 real_job`, `0 search_page`;
+- Indeed: `10 collected`, `10 real_job`, `0 search_page`;
+- Subito: `10 collected`, `10 real_job`, `0 search_page`;
+- Adecco: `0 collected` при текущем запуске, потому что direct запросы блокируются/anti-bot, а fallback не нашёл detail URLs. Это считается честным `no/error source` состоянием, а не cleaner regression: Adecco больше не протаскивает search pages и статьи в Candidate Pool.
+- Talent и Jooble подключены как самостоятельные Student V2 collectors через `src/job_collector_registry.py`; они не подключаются к legacy remote pipeline.
+
+Минимальная цель recovery — чтобы Candidate Pool получал реальные вакансии минимум из 2-3 non-DuckDuckGo sources. После текущей правки реальные detail jobs подтверждены для Gi Group, Randstad, Indeed и Subito; Talent и Jooble расширяют Student V2 source diversification; Adecco остаётся источником для отдельной доработки direct/detail extraction.
+
 ### Excel Explorer
 
 `output/v2_candidate_pool.xlsx` предназначен для ручного анализа. В Excel включены автофильтр, заморозка первой строки, подобранные ширины колонок и условное форматирование `Match Score`: зелёный для `>=90`, жёлтый для `80-89`, оранжевый для `70-79`, красный ниже `70`.
@@ -268,11 +339,16 @@ Debug suite сохраняет:
 
 `url_classification` показывает `url_result_type`, `result_type`, `location_fit`, category, base/student/candidate/match score и `rejection_reason` для каждой строки.
 
-Другие collectors:
+Полный recovery/debug набор:
 
 ```bash
-python -m src.collector_debug --collector adecco --limit 5
-python -m src.collector_debug --collector subito --limit 5
+python -m src.collector_debug --collector adecco --limit 10 --output-dir output/debug/adecco
+python -m src.collector_debug --collector indeed --limit 10 --output-dir output/debug/indeed
+python -m src.collector_debug --collector subito --limit 10 --output-dir output/debug/subito
+python -m src.collector_debug --collector randstad --limit 10 --output-dir output/debug/randstad
+python -m src.collector_debug --collector gigroup --limit 10 --output-dir output/debug/gigroup
+python -m src.collector_debug --collector talent --limit 10 --output-dir output/debug/talent
+python -m src.collector_debug --collector jooble --limit 10 --output-dir output/debug/jooble
 ```
 
 ### V2 Sent Jobs History
@@ -380,7 +456,15 @@ python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 500 --
 
 ### V2 Collector Plugin Registry
 
-V2 aggregator подключает collectors через `src/job_collector_registry.py`. Registry описывает имя collector-а, включён ли он, Python module, callable для запуска и поддерживаемые параметры (`limit`, `top`, `campania_part_time_first`). Сейчас enabled collectors: `duckduckgo`, `indeed`, `subito`, `randstad`, `adecco`, `gigroup`. Чтобы добавить новый collector, нужно добавить его metadata в registry, не меняя `src/job_aggregator.py`.
+V2 aggregator подключает collectors через `src/job_collector_registry.py`. Registry описывает имя collector-а, включён ли он, Python module, callable для запуска и поддерживаемые параметры (`limit`, `top`, `campania_part_time_first`). Сейчас enabled Student V2 collectors: `duckduckgo`, `indeed`, `subito`, `randstad`, `adecco`, `gigroup`, `talent`, `jooble`. Чтобы добавить новый collector, нужно добавить его metadata в registry, не меняя `src/job_aggregator.py`.
+
+Student workflows явно запускают этот набор через:
+
+```text
+duckduckgo,indeed,subito,randstad,adecco,gigroup,talent,jooble
+```
+
+Это относится только к Student V2 (`src.job_aggregator`). Legacy remote pipeline (`remote_jobs.yml`, remote part в `run_collectors.yml`, `scoring_jobs.py` и старые root collectors) не использует Talent/Jooble V2 collectors.
 
 Запуск всех enabled collectors из registry:
 
@@ -396,7 +480,7 @@ python -m src.job_aggregator \
 
 ```bash
 python -m src.job_aggregator \
-  --collectors duckduckgo,indeed,subito,randstad,adecco,gigroup \
+  --collectors duckduckgo,indeed,subito,randstad,adecco,gigroup,talent,jooble \
   --output output/v2_jobs.json \
   --limit 5 \
   --top 500 \

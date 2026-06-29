@@ -96,6 +96,7 @@ jobs:
           fi
           python -m src.job_aggregator \
             --search-profile local_student \
+            --collectors duckduckgo,indeed,subito,randstad,adecco,gigroup,talent,jooble \
             --output output/v2_jobs.json \
             --candidate-pool-output output/v2_candidate_pool.json \
             --history-path output/v2_sent_jobs_history.json \

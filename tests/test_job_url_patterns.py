@@ -172,6 +172,14 @@ def test_talent_view_is_real_job():
     assert classify_url("https://www.talent.com/view?id=abc123", patterns()) == "real_job"
 
 
+def test_talent_italia_view_is_real_job():
+    assert classify_url("https://it.talent.com/view?id=abc123", patterns()) == "real_job"
+
+
+def test_talent_jobs_search_is_search_page():
+    assert classify_url("https://it.talent.com/jobs?k=data-entry", patterns()) == "search_page"
+
+
 def test_jobleads_it_job_is_real_job():
     assert classify_url("https://www.jobleads.com/it/job/example", patterns()) == "real_job"
 

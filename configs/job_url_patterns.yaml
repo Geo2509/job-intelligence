@@ -174,10 +174,15 @@ manpower:
 
 talent:
   domains:
+    - it.talent.com
     - www.talent.com
     - talent.com
   job:
     - "/view?id="
+  search:
+    - "/jobs?"
+    - "/job-search"
+    - "/offerte"
 
 jobleads:
   domains:

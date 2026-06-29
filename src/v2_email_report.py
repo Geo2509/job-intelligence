@@ -99,6 +99,13 @@ TRANSCRIPTION_TERMS = ["transcription", "trascrizione", "localization", "transla
 VIRTUAL_ASSISTANT_TERMS = ["virtual assistant", "assistente virtuale"]
 SUPPORT_MODERATION_TERMS = ["customer support", "content reviewer", "moderation"]
 LOGISTICS_REMOTE_TERMS = ["logistics", "logistica", "operations", "freight forwarding"]
+DATA_ENTRY_CATEGORIES = {"data_entry", "data_office", "campania_part_time_data"}
+BACK_OFFICE_CATEGORIES = {"back_office", "administration", "accounting", "admin", "office"}
+AI_CATEGORIES = {"remote_data", "ai_data", "ai_annotation", "ai training", "ai annotation"}
+LOGISTICS_CATEGORIES = {"logistics", "warehouse"}
+HOSPITALITY_CATEGORIES = {"hospitality", "hotel", "restaurant", "reception"}
+RETAIL_CATEGORIES = {"gdo", "retail", "vendita", "sales"}
+HARD_RISK_TERMS = ["italian c1", "italiano c1", "c1 italiano", "night shift", "notturno", "turno notte"]
 
 
 def load_jobs(input_path):
@@ -228,6 +235,186 @@ def score_value(job, field):
         return 0
 
 
+def text_value(value):
+    return str(value or "").strip()
+
+
+def clean_items(items):
+    cleaned = []
+    seen = set()
+    for item in items:
+        text = text_value(item)
+        if not text or text.lower() in seen:
+            continue
+        cleaned.append(text)
+        seen.add(text.lower())
+    return cleaned
+
+
+def has_hard_candidate_risk(job):
+    text = job_text(job)
+    if job.get("location_fit") == "excluded_far":
+        return True
+    return has_any(text, HARD_RISK_TERMS)
+
+
+def recommendation_level(job):
+    rejection = str(job.get("selection_rejection_reason") or "").lower()
+    history_status = str(job.get("history_status") or "").upper()
+    match_score = score_value(job, "match_score")
+    location_fit = str(job.get("location_fit") or "").lower()
+
+    if rejection and rejection != "selected":
+        return "skip"
+    if history_status == "SEEN":
+        return "skip"
+    if match_score >= 75 and location_fit in {"allowed_local", "remote"} and not has_hard_candidate_risk(job):
+        return "apply_today"
+    if match_score >= 68:
+        return "good"
+    if match_score >= 58:
+        return "consider"
+    if match_score > 0:
+        return "watch"
+    return "skip"
+
+
+def recommendation_label(level):
+    return {
+        "apply_today": "★★★★★ Apply today",
+        "good": "★★★★ Good",
+        "consider": "★★★ Consider",
+        "watch": "★★ Watch",
+        "skip": "★ Skip",
+    }.get(level, "★★ Watch")
+
+
+def fit_reasons(job):
+    text = job_text(job)
+    category = str(job.get("category") or "").lower()
+    location_fit = str(job.get("location_fit") or "").lower()
+    reasons = []
+
+    if location_fit == "allowed_local":
+        if "pozzuoli" in text:
+            reasons.append("Pozzuoli / close to Monte di Procida")
+        elif "bacoli" in text:
+            reasons.append("Bacoli / close to Monte di Procida")
+        elif "monte di procida" in text:
+            reasons.append("Monte di Procida / very close")
+        elif "napoli" in text:
+            reasons.append("Napoli / allowed local area")
+        else:
+            reasons.append("Local area allowed by student profile")
+    if location_fit == "remote" or bool(job.get("remote")):
+        reasons.append("Remote possible")
+    if bool(job.get("part_time")) or has_any(text, ["part time", "part-time", "tempo parziale"]):
+        reasons.append("Part-time signal found")
+        reasons.append("Compatible with study")
+    if has_any(text, ["mattina", "lun-ven", "weekday", "giorno"]):
+        reasons.append("Schedule signal looks study-friendly")
+    if category in DATA_ENTRY_CATEGORIES or has_any(text, ["data entry", "inserimento dati", "excel", "google sheets"]):
+        reasons.append("Matches Excel / Google Sheets / data entry")
+    if category in BACK_OFFICE_CATEGORIES or has_any(text, ["back office", "amministrazione", "amministrativo", "segreteria"]):
+        reasons.append("Matches back office / admin experience")
+    if category in LOGISTICS_CATEGORIES or has_any(text, ["logistics", "logistica", "warehouse", "magazzino", "spedizioni"]):
+        reasons.append("Matches logistics / warehouse experience")
+    if category in HOSPITALITY_CATEGORIES or has_any(text, HOSPITALITY_TERMS):
+        reasons.append("Hospitality role, possible entry-level")
+    if category in AI_CATEGORIES or has_any(text, AI_TRAINER_TERMS):
+        reasons.append("Matches remote AI / data annotation profile")
+    if not has_any(text, ["laurea obbligatoria", "laurea richiesta", "degree required"]):
+        reasons.append("No degree required signal found")
+
+    existing = []
+    for field in ("fit_reasons", "student_reason", "candidate_reason", "positive_reason"):
+        value = job.get(field)
+        if isinstance(value, list):
+            existing.extend(value)
+        elif value:
+            existing.append(value)
+    return clean_items(existing + reasons)[:7]
+
+
+def risk_reasons(job):
+    text = job_text(job)
+    risks = []
+
+    existing = job.get("risk_reasons")
+    if isinstance(existing, list):
+        risks.extend(existing)
+    elif existing:
+        risks.append(existing)
+
+    if not (bool(job.get("part_time")) or has_any(text, ["part time", "part-time", "tempo parziale"])):
+        risks.append("Full-time / part-time not confirmed")
+    if has_any(text, ["italian b2", "italiano b2", "b2 italiano", "italian c1", "italiano c1", "c1 italiano"]):
+        risks.append("Italian B2/C1 may be required")
+    if has_any(text, ["night shift", "turno notte", "notturno", "notte"]):
+        risks.append("Night shift")
+    if job.get("location_fit") == "excluded_far":
+        risks.append("Far location")
+    if job.get("location_fit") == "unknown":
+        risks.append("Location not confirmed")
+    if not text_value(job.get("category")) or str(job.get("category")).lower() in {"general", "other", "unknown"}:
+        risks.append("Category too generic")
+    if not text_value(job.get("company")):
+        risks.append("Company missing")
+    if not text_value(job.get("location")):
+        risks.append("Location missing")
+    if not (text_value(job.get("salary_text")) or text_value(job.get("salary"))):
+        risks.append("Salary missing")
+    negative_reason = text_value(job.get("negative_reason"))
+    if negative_reason:
+        risks.append(negative_reason)
+    return clean_items(risks)[:7]
+
+
+def recommended_cv(job):
+    text = job_text(job)
+    category = str(job.get("category") or "").lower()
+    remote_category = str(job.get("normalized_remote_category") or "").lower()
+
+    if category in AI_CATEGORIES or remote_category in {"ai training", "ai annotation"} or has_any(text, AI_TRAINER_TERMS):
+        return "AI / Data Annotation CV"
+    if category in DATA_ENTRY_CATEGORIES or has_any(text, ["data entry", "inserimento dati", "excel", "google sheets"]):
+        return "Data Entry CV"
+    if category in BACK_OFFICE_CATEGORIES or has_any(text, ["back office", "amministrazione", "amministrativo", "segreteria"]):
+        return "Back Office CV"
+    if category in LOGISTICS_CATEGORIES or has_any(text, ["logistics", "logistica", "warehouse", "magazzino", "spedizioni"]):
+        return "Logistics CV"
+    if category in HOSPITALITY_CATEGORIES or has_any(text, HOSPITALITY_TERMS):
+        return "Hospitality CV"
+    if category in RETAIL_CATEGORIES or has_any(text, ["gdo", "retail", "vendita", "cassiere", "scaffalista", "supermercato"]):
+        return "Retail / GDO CV"
+    return "Generic CV"
+
+
+def recommended_cover_letter(job):
+    cv = recommended_cv(job)
+    return {
+        "AI / Data Annotation CV": "AI Trainer / Annotator cover letter",
+        "Data Entry CV": "Data Processing cover letter",
+        "Back Office CV": "Back Office / Administration cover letter",
+        "Logistics CV": "Logistics cover letter",
+        "Hospitality CV": "Hospitality short message",
+        "Retail / GDO CV": "Retail short message",
+        "Generic CV": "Generic short message",
+    }[cv]
+
+
+def enrich_email_job(job):
+    enriched = dict(job)
+    enriched["recommendation_level"] = enriched.get("recommendation_level") or recommendation_level(enriched)
+    enriched["fit_reasons"] = fit_reasons(enriched)
+    enriched["risk_reasons"] = risk_reasons(enriched)
+    enriched["recommended_cv"] = enriched.get("recommended_cv") or recommended_cv(enriched)
+    enriched["recommended_cover_letter"] = (
+        enriched.get("recommended_cover_letter") or recommended_cover_letter(enriched)
+    )
+    return enriched
+
+
 def sorted_jobs(jobs):
     return sorted(
         jobs,
@@ -254,10 +441,10 @@ def selection_reason_order(job):
 
 def match_label(match_score):
     if match_score >= 90:
-        return "⭐⭐⭐⭐⭐ Strong match"
+        return "★★★★★ Strong match"
     if match_score >= 80:
-        return "⭐⭐⭐⭐ Good match"
-    return "⭐⭐⭐ Consider"
+        return "★★★★ Good match"
+    return "★★★ Consider"
 
 
 def history_status_label(status):
@@ -274,19 +461,55 @@ def email_summary(jobs):
     recommended_count = sum(
         1
         for job in jobs
-        if score_value(job, "match_score") >= 80
+        if recommendation_level(job) == "apply_today"
     )
     return top_match_score, recommended_count
+
+
+def main_action_reason(jobs):
+    if not jobs:
+        return "No selected jobs in this email."
+    best = max(jobs, key=lambda job: score_value(job, "match_score"))
+    reasons = fit_reasons(best)
+    if reasons:
+        return reasons[0]
+    return "Highest match score in the current selection."
+
+
+def render_action_plan(jobs, stats=None):
+    stats = stats or {}
+    counts = {
+        "apply_today": 0,
+        "watch": 0,
+        "skip": 0,
+    }
+    for job in jobs:
+        level = recommendation_level(job)
+        if level == "apply_today":
+            counts["apply_today"] += 1
+        elif level == "watch":
+            counts["watch"] += 1
+        elif level == "skip":
+            counts["skip"] += 1
+    top_match_score = max((score_value(job, "match_score") for job in jobs), default=0)
+    stats_skip = int(stats.get("seen_skipped") or 0) + int(stats.get("removed_far") or 0) + int(stats.get("removed_unknown") or 0)
+    skip_total = counts["skip"] + stats_skip
+    return (
+        "<h2>Today's Action Plan</h2>"
+        "<ul>"
+        f"<li><strong>Apply today:</strong> {counts['apply_today']}</li>"
+        f"<li><strong>Watch:</strong> {counts['watch']}</li>"
+        f"<li><strong>Skip:</strong> {skip_total}</li>"
+        f"<li><strong>Best match:</strong> {top_match_score}</li>"
+        f"<li><strong>Main reason:</strong> {html.escape(main_action_reason(jobs))}</li>"
+        "</ul>"
+    )
 
 
 def render_run_stats(stats):
     if not stats:
         return ""
     collector_rows = stats.get("collector_stats") or []
-    contribution = "".join(
-        f"<li>{html.escape(str(row.get('collector', '')))}: {int(row.get('email_jobs') or 0)}</li>"
-        for row in collector_rows
-    )
     history_skipped = int(stats.get("seen_skipped") or 0)
     new_jobs = int(stats.get("new_jobs") or 0)
     updated_jobs = int(stats.get("updated_jobs") or 0)
@@ -308,9 +531,61 @@ def render_run_stats(stats):
         f"<p><strong>Updated jobs:</strong> {updated_jobs}</p>"
         f"<p><strong>Seen jobs:</strong> {seen_jobs}</p>"
         "<h3>Collector contribution</h3>"
-        f"<ul>{contribution}</ul>"
+        f"{render_collector_contribution(stats)}"
         f"{render_collector_health(stats.get('collector_health') or [])}"
+        f"{render_next_resurfacing(stats)}"
     )
+
+
+def health_by_collector(stats):
+    return {
+        str(row.get("collector") or "").lower(): row
+        for row in stats.get("collector_health") or []
+    }
+
+
+def render_collector_contribution(stats):
+    collector_rows = stats.get("collector_stats") or []
+    if not collector_rows:
+        return "<p>No collector stats available.</p>"
+    health_rows = health_by_collector(stats)
+    items = []
+    for row in collector_rows:
+        collector = str(row.get("collector", "") or "unknown")
+        health = health_rows.get(collector.lower(), {})
+        status = str(health.get("collector_health_status") or row.get("collector_health_status") or "unknown")
+        collected = int(row.get("collected") or row.get("raw_collected") or 0)
+        real_jobs = int(row.get("real_jobs") or 0)
+        candidate_pool = int(row.get("candidate_pool") or health.get("candidate_pool") or 0)
+        email_jobs = int(row.get("email_jobs") or row.get("email") or 0)
+        items.append(
+            "<li>"
+            f"<strong>{html.escape(collector.title())}</strong>: "
+            f"collected: {collected} | real jobs: {real_jobs} | "
+            f"candidate pool: {candidate_pool} | email: {email_jobs} | "
+            f"reason: {html.escape(status)}"
+            "</li>"
+        )
+    return "<ul>" + "".join(items) + "</ul>"
+
+
+def render_next_resurfacing(stats):
+    rotation_days = int(stats.get("rotation_days") or 0)
+    if not rotation_days:
+        return ""
+    rows = stats.get("collector_health") or []
+    seen_collectors = [
+        str(row.get("collector") or "unknown")
+        for row in rows
+        if int(row.get("seen") or row.get("removed_by_history") or 0) > 0
+    ]
+    if not seen_collectors:
+        return ""
+    items = "".join(
+        f"<li>{html.escape(name.title())}: Seen jobs may resurface after {rotation_days} days.</li>"
+        for name in seen_collectors
+    )
+    return "<h3>Next resurfacing</h3><ul>" + items + "</ul>"
 
 
 def render_collector_health(rows):
@@ -347,31 +622,53 @@ def render_collector_health(rows):
     return "<h2>Collector Health</h2><ul>" + "".join(items) + "</ul>"
 
 
+def render_list(title, items):
+    items = clean_items(items)
+    if not items:
+        return ""
+    rendered = "".join(f"<li>{html.escape(item)}</li>" for item in items)
+    return f"<p><strong>{html.escape(title)}:</strong></p><ul>{rendered}</ul>"
+
+
+def render_field(label, value):
+    text = text_value(value)
+    if not text or text.lower() == "none":
+        return ""
+    return f"<p><strong>{html.escape(label)}:</strong> {html.escape(text)}</p>"
+
+
+def render_link(label, url):
+    url = text_value(url)
+    if not url:
+        return ""
+    escaped = html.escape(url, quote=True)
+    return f'<p><strong>{html.escape(label)}:</strong> <a href="{escaped}">{escaped}</a></p>'
+
+
 def render_job(job):
+    job = enrich_email_job(job)
     title = html.escape(str(job.get("title", "") or ""))
-    company = html.escape(str(job.get("company", "") or ""))
-    location = html.escape(str(job.get("location", "") or ""))
-    score = html.escape(str(job.get("score", "") or ""))
+    company = str(job.get("company", "") or "")
+    location = str(job.get("location", "") or "")
+    score = str(job.get("score", "") or "")
     raw_match_score = score_value(job, "match_score")
-    match_score = html.escape(str(job.get("match_score", "") or ""))
-    student_score = html.escape(str(job.get("student_score", "") or ""))
-    candidate_score = html.escape(str(job.get("candidate_score", "") or ""))
-    remote_score = html.escape(str(job.get("remote_score", "") or ""))
-    remote = html.escape(str(job.get("remote", "")))
-    remote_reason = html.escape(str(job.get("remote_reason", "") or "none"))
-    part_time = html.escape(str(job.get("part_time", "")))
-    location_fit = html.escape(str(job.get("location_fit", "") or ""))
-    category = html.escape(str(job.get("category", "") or ""))
-    rejection_reason = html.escape(str(job.get("rejection_reason", "") or ""))
-    country = html.escape(str(job.get("country_restriction", "") or ""))
-    employment = html.escape(str(job.get("employment_type", "") or ""))
-    salary = html.escape(str(job.get("salary_text", "") or ""))
-    remote_category = html.escape(str(job.get("normalized_remote_category", "") or ""))
-    positive_reason = html.escape(str(job.get("positive_reason", "") or ""))
-    negative_reason = html.escape(str(job.get("negative_reason", "") or ""))
-    source = html.escape(str(job.get("source", "") or ""))
-    url = html.escape(str(job.get("url", "") or ""), quote=True)
-    match = html.escape(match_label(raw_match_score))
+    match_score = str(job.get("match_score", "") or "")
+    student_score = str(job.get("student_score", "") or "")
+    candidate_score = str(job.get("candidate_score", "") or "")
+    remote_score = str(job.get("remote_score", "") or "")
+    remote = str(job.get("remote", ""))
+    remote_reason = str(job.get("remote_reason", "") or "none")
+    part_time = str(job.get("part_time", ""))
+    location_fit = str(job.get("location_fit", "") or "")
+    category = str(job.get("category", "") or "")
+    rejection_reason = str(job.get("rejection_reason", "") or "")
+    country = str(job.get("country_restriction", "") or "")
+    employment = str(job.get("employment_type", "") or "")
+    salary = str(job.get("salary_text", "") or job.get("salary", "") or "")
+    remote_category = str(job.get("normalized_remote_category", "") or "")
+    source = str(job.get("source", "") or "")
+    url = str(job.get("url", "") or "")
+    recommendation = html.escape(recommendation_label(job["recommendation_level"]))
     history_status = html.escape(history_status_label(job.get("history_status")))
     selection_reason = html.escape(str(job.get("selection_reason", "") or ""))
     days_since_last_sent = html.escape(str(job.get("days_since_last_sent", "") or ""))
@@ -382,41 +679,76 @@ def render_job(job):
         if days_since_last_sent
         else ""
     )
+    meta = " | ".join(
+        item
+        for item in [
+            f"Match: {match_score}" if match_score else "",
+            f"Student: {student_score}" if student_score else "",
+            f"Candidate: {candidate_score}" if candidate_score else "",
+            f"Score: {score}" if score else "",
+        ]
+        if item
+    )
 
     return (
         "<li>"
         f"<h3>{title}</h3>"
+        f"<p><strong>{recommendation}</strong></p>"
+        f"<p>{html.escape(meta)}</p>"
         f"{status_line}"
         f"{selection_line}"
         f"{days_since_line}"
-        f"<p><strong>{match}</strong></p>"
-        f"<p><strong>Match:</strong> {match_score}</p>"
-        f"<p><strong>Student:</strong> {student_score}</p>"
-        f"<p><strong>Candidate:</strong> {candidate_score}</p>"
-        f"<p><strong>Remote:</strong> {remote}</p>"
-        f"<p><strong>Remote reason:</strong> {remote_reason}</p>"
-        f"<p><strong>Part time:</strong> {part_time}</p>"
-        f"<p><strong>Remote score:</strong> {remote_score}</p>"
-        f"<p><strong>Location fit:</strong> {location_fit}</p>"
-        f"<p><strong>Rejection reason:</strong> {rejection_reason}</p>"
-        f"<p><strong>Source:</strong> {source}</p>"
-        f"<p><strong>Category:</strong> {category}</p>"
-        f"<p><strong>Remote category:</strong> {remote_category}</p>"
-        f"<p><strong>Country:</strong> {country}</p>"
-        f"<p><strong>Employment:</strong> {employment}</p>"
-        f"<p><strong>Salary:</strong> {salary}</p>"
-        f"<p><strong>Positive reasons:</strong> {positive_reason}</p>"
-        f"<p><strong>Negative reasons:</strong> {negative_reason}</p>"
-        f'<p><strong>URL:</strong> <a href="{url}">{url}</a></p>'
-        f"<p><strong>Company:</strong> {company}</p>"
-        f"<p><strong>Location:</strong> {location}</p>"
-        f"<p><strong>Score:</strong> {score}</p>"
+        f"{render_field('Location fit', location_fit)}"
+        f"{render_field('Source', source)}"
+        f"{render_field('Category', category)}"
+        f"{render_field('Remote category', remote_category)}"
+        f"{render_field('Remote', remote)}"
+        f"{render_field('Remote reason', remote_reason)}"
+        f"{render_field('Part time', part_time)}"
+        f"{render_field('Remote score', remote_score)}"
+        f"{render_field('Rejection reason', rejection_reason)}"
+        f"{render_field('Country', country)}"
+        f"{render_field('Employment', employment)}"
+        f"{render_field('Salary', salary)}"
+        f"{render_field('Positive reasons', job.get('positive_reason'))}"
+        f"{render_field('Negative reasons', job.get('negative_reason'))}"
+        f"{render_link('URL', url)}"
+        f"{render_field('Company', company)}"
+        f"{render_field('Location', location)}"
+        f"{render_list('Why it fits Yurii', job.get('fit_reasons') or [])}"
+        f"{render_list('Risks', job.get('risk_reasons') or [])}"
+        f"{render_field('Recommended CV', job.get('recommended_cv'))}"
+        f"{render_field('Recommended message', job.get('recommended_cover_letter'))}"
+        "</li>"
+    )
+
+
+def empty_block_diagnostics(block, run_stats=None):
+    stats = run_stats or {}
+    collector_rows = stats.get("collector_stats") or []
+    found = int(stats.get("candidate_pool_jobs") or 0)
+    already_seen = sum(int(row.get("history_seen") or row.get("seen") or 0) for row in collector_rows)
+    rejected_history = int(stats.get("seen_skipped") or 0) + already_seen
+    rejected_profile = sum(int(row.get("rejected_by_profile") or 0) for row in stats.get("collector_health") or [])
+    rejected_cleaner_location = (
+        int(stats.get("removed_far") or 0)
+        + int(stats.get("removed_unknown") or 0)
+        + sum(max(0, int(row.get("collected") or 0) - int(row.get("after_cleaner") or 0)) for row in collector_rows)
+    )
+    return (
+        "<li>"
+        "<strong>No new jobs selected.</strong>"
+        f"<br>Found in candidate pool: {found}"
+        f"<br>Already seen: {already_seen}"
+        f"<br>Rejected by history: {rejected_history}"
+        f"<br>Rejected by profile: {rejected_profile}"
+        f"<br>Rejected by cleaner/location: {rejected_cleaner_location}"
         "</li>"
     )
 
 
 def build_email_html(jobs, run_stats=None, search_profile=LOCAL_STUDENT_PROFILE):
-    jobs = sorted_jobs(jobs)
+    jobs = sorted_jobs([enrich_email_job(job) for job in jobs])
     top_match_score, recommended_count = email_summary(jobs)
     groups = grouped_jobs(jobs, search_profile)
     blocks = []
@@ -425,12 +757,13 @@ def build_email_html(jobs, run_stats=None, search_profile=LOCAL_STUDENT_PROFILE)
         if block_jobs:
             items = "".join(render_job(job) for job in block_jobs)
         else:
-            items = "<li>No jobs in this block.</li>"
+            items = empty_block_diagnostics(block, run_stats)
         blocks.append(f"<h2>{html.escape(block)}</h2><ol>{items}</ol>")
 
     return (
         "<html><body>"
         "<h1>Job Intelligence V2</h1>"
+        f"{render_action_plan(jobs, run_stats or {})}"
         f"<p><strong>Total jobs in email:</strong> {len(jobs)}</p>"
         f"<p><strong>Top match score:</strong> {top_match_score}</p>"
         f"<p><strong>Recommended to apply today:</strong> {recommended_count}</p>"

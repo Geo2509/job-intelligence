@@ -199,12 +199,10 @@ def test_email_body_contains_required_job_fields():
 
     assert "Data Entry Napoli" in body
     assert "https://example.com/data-entry" in body
-    assert "⭐⭐⭐⭐⭐ Strong match" in body
-    assert "<strong>Match:</strong> 95" in body
-    assert "<strong>Student:</strong> 90" in body
-    assert "<strong>Candidate:</strong> 100" in body
+    assert "★★★★★ Apply today" in body
+    assert "Match: 95 | Student: 90 | Candidate: 100" in body
     assert "<strong>Remote:</strong> False" in body
-    assert "<strong>Remote reason:</strong> none" in body
+    assert "<strong>Remote reason:</strong> none" not in body
     assert "<strong>Location fit:</strong> allowed_local" in body
     assert "<strong>Source:</strong> indeed" in body
     assert "<strong>Category:</strong> general" in body
@@ -223,10 +221,8 @@ def test_email_body_contains_summary_metrics():
 
     assert "<strong>Total jobs in email:</strong> 3" in body
     assert "<strong>Top match score:</strong> 91" in body
-    assert "<strong>Recommended to apply today:</strong> 2" in body
-    assert "⭐⭐⭐⭐⭐ Strong match" in body
-    assert "⭐⭐⭐⭐ Good match" in body
-    assert "⭐⭐⭐ Consider" in body
+    assert "<strong>Recommended to apply today:</strong> 3" in body
+    assert "★★★★★ Apply today" in body
 
 
 def test_email_body_contains_collector_health():
@@ -257,6 +253,84 @@ def test_email_body_contains_collector_health():
     assert "Collector Health" in body
     assert "<strong>gigroup</strong> (healthy) - 37 email / 37 real jobs / 37 candidate pool" in body
     assert "<strong>indeed</strong> (needs_detail_extraction) - 0 real jobs" in body
+
+
+def test_email_action_plan_block():
+    body = v2_email_report.build_email_html(
+        [
+            job("Apply", match_score=80, location_fit="allowed_local"),
+            job("Watch", match_score=50, location_fit="unknown"),
+        ]
+    )
+
+    assert "Today's Action Plan" in body
+    assert "<strong>Apply today:</strong>" in body
+    assert "<strong>Watch:</strong>" in body
+    assert "<strong>Best match:</strong> 80" in body
+
+
+def test_email_hides_empty_fields():
+    body = v2_email_report.build_email_html(
+        [
+            job(
+                "No company",
+                company="",
+                salary_text="",
+                salary="",
+            )
+        ]
+    )
+
+    assert "<strong>Company:</strong>" not in body
+    assert "<strong>Salary:</strong>" not in body
+
+
+def test_recommendation_level_apply_today():
+    level = v2_email_report.recommendation_level(
+        job("Back Office Napoli", match_score=75, location_fit="allowed_local")
+    )
+
+    assert level == "apply_today"
+
+
+def test_recommended_cv_data_entry():
+    cv = v2_email_report.recommended_cv(
+        job("Data Entry Excel", category="data_entry")
+    )
+
+    assert cv in {"Data Entry CV", "Back Office CV"}
+
+
+def test_recommended_cv_ai():
+    cv = v2_email_report.recommended_cv(
+        job("AI trainer data annotation", category="ai_annotation", remote=True)
+    )
+
+    assert cv == "AI / Data Annotation CV"
+
+
+def test_empty_block_explains_reason():
+    body = v2_email_report.build_email_html(
+        [job("Remote AI data annotator", remote=True)],
+        run_stats={
+            "candidate_pool_jobs": 12,
+            "seen_skipped": 3,
+            "removed_far": 2,
+            "collector_stats": [
+                {
+                    "collector": "gigroup",
+                    "collected": 20,
+                    "after_cleaner": 15,
+                    "history_seen": 4,
+                }
+            ],
+        },
+    )
+
+    assert "No jobs in this block." not in body
+    assert "No new jobs selected." in body
+    assert "Found in candidate pool: 12" in body
+    assert "Rejected by history:" in body
 
 
 def test_email_body_contains_history_status_label():

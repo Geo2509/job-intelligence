@@ -209,6 +209,13 @@ Aggregator экспортирует:
 - `output/v2_collector_stats.json`
 - `output/v2_collector_stats.xlsx`
 - `output/v2_run_stats.json`
+- `output/collector_health.json`
+- `output/collector_health.xlsx`
+- `output/collector_recommendations.md`
+- `output/url_pattern_debug.json`
+- `output/url_pattern_debug.xlsx`
+- `output/unknown_urls.xlsx`
+- `output/url_pattern_recommendations.md`
 
 ### Candidate Pool
 
@@ -219,6 +226,12 @@ Email показывает только лучшие вакансии текущ
 ### Collector Analytics
 
 `output/v2_collector_stats.json` и `output/v2_collector_stats.xlsx` показывают вклад каждого collector: сколько строк собрано, сколько осталось реальных вакансий после cleaner, сколько было `allowed_local`, `remote`, `excluded_far`, `unknown_location`, сколько найдено search/category/career/company/article/excluded-domain страниц, а также history-состояния и количество вакансий, попавших в email.
+
+### Collector Health
+
+`src/collector_health.py` строит диагностический слой поверх collector stats и Candidate Pool. Он сохраняет `output/collector_health.json`, `output/collector_health.xlsx` и `output/collector_recommendations.md`, где для каждого collector видны `raw_collected`, `after_cleaner`, `real_jobs`, `candidate_pool`, history-состояния, удаление cleaner/location/history и итоговый `collector_health_status`.
+
+Статусы помогают быстро понять причину слабой выдачи: `healthy`, `history_only`, `needs_detail_extraction`, `cleaner_removed`, `no_real_jobs`, `error` или `inconsistent`.
 
 ### Excel Explorer
 
@@ -351,16 +364,18 @@ Cleaner не собирает вакансии и не меняет collectors. 
 
 Поддерживаемые URL-типы: `real_job`, `search_page`, `category_page`, `aggregator_page`, `article`, `profile`, `company_page`, `career_page`, `excluded_domain`, `unknown`. В discovery clean export попадают реальные вакансии и trusted discovery pages; в email clean export попадают реальные вакансии и только ограниченные trusted career pages; в strict clean export попадают только `real_job`.
 
+`src/url_pattern_debug.py` дополнительно экспортирует общий URL diagnostics dashboard: `output/url_pattern_debug.json`, `output/url_pattern_debug.xlsx`, `output/unknown_urls.xlsx` и `output/url_pattern_recommendations.md`. Эти файлы показывают, какой pattern сработал, какой тип URL был определён, попал ли результат в email/Candidate Pool или был отклонён, и какие unknown URL стоит добавить в `configs/job_url_patterns.yaml`.
+
 Рекомендуемый запуск V2 aggregator для daily discovery:
 
 ```bash
-python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 50 --campania-part-time-first --clean-results
+python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 500 --campania-part-time-first --clean-results
 ```
 
 Рекомендуемый запуск V2 aggregator для email/export:
 
 ```bash
-python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 50 --campania-part-time-first --email-clean-results
+python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 500 --campania-part-time-first --email-clean-results
 ```
 
 ### V2 Collector Plugin Registry
@@ -373,7 +388,7 @@ V2 aggregator подключает collectors через `src/job_collector_regi
 python -m src.job_aggregator \
   --output output/v2_jobs.json \
   --limit 5 \
-  --top 50 \
+  --top 500 \
   --campania-part-time-first
 ```
 
@@ -384,7 +399,7 @@ python -m src.job_aggregator \
   --collectors duckduckgo,indeed,subito,randstad,adecco,gigroup \
   --output output/v2_jobs.json \
   --limit 5 \
-  --top 50 \
+  --top 500 \
   --campania-part-time-first
 ```
 
@@ -456,13 +471,14 @@ python -m src.job_aggregator \
 - pandas
 - requests
 - ddgs
+- PyYAML
 
 Если используется виртуальное окружение, активируйте его перед запуском.
 
 Пример установки зависимостей:
 
 ```bash
-python -m pip install pandas requests ddgs
+python -m pip install -r requirements.txt
 ```
 
 ## Как запускать
@@ -598,9 +614,9 @@ python scoring_jobs.py
 
 Для ежедневного использования доступны три one-click workflow без параметров:
 
-- **Student Jobs** — поиск локальной работы в Napoli/Campania, совместимой с учёбой. Использует Student V2, `local_student`, Location Guard, clean results, fair selection fallback и отдельное V2 письмо.
-- **Remote Jobs** — поиск удалённой работы через старый remote legacy pipeline. Использует legacy collectors, `scoring_jobs.py`, старую историю `output/sent_jobs_history.json` и старое remote email.
-- **Daily Job Search** — запускает оба сценария последовательно: сначала Student Jobs и Student email, затем Remote Jobs и Remote email.
+- **Student Jobs** (`.github/workflows/student_jobs.yml`) — поиск локальной работы в Napoli/Campania, совместимой с учёбой. Использует Student V2, `local_student`, Location Guard, clean results, fair selection fallback и отдельное V2 письмо.
+- **Remote Jobs** (`.github/workflows/remote_jobs.yml`) — поиск удалённой работы через старый remote legacy pipeline. Использует legacy collectors, `scoring_jobs.py`, старую историю `output/sent_jobs_history.json` и старое remote email.
+- **Daily Job Search** (`.github/workflows/full_daily_jobs.yml`) — запускает оба сценария последовательно: сначала Student Jobs и Student email, затем Remote Jobs и Remote email.
 
 Для запуска:
 
@@ -608,7 +624,7 @@ python scoring_jobs.py
 2. Выберите `Student Jobs`, `Remote Jobs` или `Daily Job Search`.
 3. Нажмите `Run workflow`.
 
-**Advanced Job Search** — режим разработчика. В нём оставлены все параметры: config paths, включение потоков, V2 limits, clean/drop flags и email toggle.
+**Advanced Job Search** (`.github/workflows/run_collectors.yml`) — режим разработчика. В нём оставлены все параметры: config paths, включение потоков, V2 limits, clean/drop flags и email toggle.
 
 ## Удалённый запуск через GitHub Actions
 
@@ -684,14 +700,30 @@ configs/scoring.yaml
 3. Скачайте нужный artifact.
 
 Student V2 artifact содержит:
+- `output/v2_jobs.json`;
+- `output/v2_jobs.csv`;
 - `output/v2_jobs.xlsx`;
+- `output/v2_candidate_pool.json`;
 - `output/v2_candidate_pool.xlsx`;
-- `output/v2_run_stats.json`.
+- `output/v2_collector_stats.json`;
+- `output/v2_collector_stats.xlsx`;
+- `output/v2_sent_jobs_history.json`;
+- `output/v2_run_stats.json`;
+- `output/collector_health.json`;
+- `output/collector_health.xlsx`;
+- `output/collector_recommendations.md`;
+- `output/url_pattern_debug.json`;
+- `output/url_pattern_debug.xlsx`;
+- `output/unknown_urls.xlsx`;
+- `output/url_pattern_recommendations.md`.
 
 Remote legacy artifact содержит:
+- `output/latest/jobs_scored.csv`;
 - `output/latest/jobs_scored.xlsx`;
+- `output/latest/top_50_jobs.csv`;
 - `output/latest/top_jobs.xlsx`;
-- `output/latest/run_summary.md`.
+- `output/latest/run_summary.md`;
+- `output/sent_jobs_history.json`.
 
 ### Student V2 from GitHub Actions
 
@@ -704,7 +736,7 @@ Student V2 запускается из workflow `Student Jobs` в one-click ре
 5. Установите inputs:
    - `run_student_v2`: `true`;
    - `v2_limit`: сколько результатов брать у коллектора, по умолчанию `2`;
-   - `v2_top`: максимум вакансий в экспорте и email, по умолчанию `100`;
+   - `v2_top`: максимум вакансий в экспорте, по умолчанию `500`;
    - `v2_clean_results`: `true`, чтобы включить email clean перед V2 email/export;
    - `v2_drop_far_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать дальние non-remote вакансии из V2 export/email;
    - `v2_drop_unknown_locations`: `true`, рекомендовано для Yurii/student mode, чтобы убрать unknown non-remote вакансии из V2 export/email;
@@ -717,20 +749,25 @@ Student V2 запускается из workflow `Student Jobs` в one-click ре
 python -m src.job_aggregator \
   --search-profile local_student \
   --output output/v2_jobs.json \
+  --candidate-pool-output output/v2_candidate_pool.json \
+  --history-path output/v2_sent_jobs_history.json \
+  --run-stats-path output/v2_run_stats.json \
   --limit "$v2_limit" \
   --top "$v2_top" \
+  --email-target 50 \
+  --email-min-match 50 \
+  --rotation-days 7 \
   --campania-part-time-first \
   --email-clean-results \
   --drop-far-locations \
   --drop-unknown-locations \
-  --selection-fallback true \
-  --history-path output/v2_sent_jobs_history.json \
-  --min-remote 20
+  --selection-fallback true
 
 python -m src.v2_email_report \
   --search-profile local_student \
   --input output/v2_jobs.json \
-  --top "$v2_top"
+  --stats output/v2_run_stats.json \
+  --top 50
 ```
 
 GitHub Student V2 workflow по умолчанию использует email clean через `--email-clean-results` и применяет `--drop-far-locations`, если `v2_drop_far_locations=true`, а также `--drop-unknown-locations`, если `v2_drop_unknown_locations=true`. Это рекомендовано для Yurii/student mode: `excluded_far` и unknown non-remote вакансии не попадают в `output/v2_jobs.json`, XLSX/CSV и V2 email. Workflow также включает fair selection fallback через `--selection-fallback true`, чтобы не отправлять пустое письмо, когда Candidate Pool содержит валидные вакансии с `match_score >= email_min_match`. Workflow также использует `output/v2_sent_jobs_history.json`, пишет `output/v2_run_stats.json` и коммитит обновлённую V2 history после успешной отправки email. Discovery clean (`--clean-results`) остаётся локальным режимом для анализа более широкой выдачи.
@@ -772,7 +809,7 @@ python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --
 Локальный пример для email/export:
 
 ```bash
-python -m src.job_aggregator --output output/v2_jobs.json --limit 2 --top 100 --campania-part-time-first --email-clean-results --drop-far-locations --drop-unknown-locations --history-path output/v2_sent_jobs_history.json --min-remote 20
+python -m src.job_aggregator --output output/v2_jobs.json --limit 5 --top 500 --campania-part-time-first --email-clean-results --drop-far-locations --drop-unknown-locations --history-path output/v2_sent_jobs_history.json --min-remote 20
 ```
 
 Для email нужны GitHub Actions secrets:
@@ -788,7 +825,11 @@ EMAIL_TO
 
 V2 письмо отправляется только если `email_enabled=true`, `EMAIL_ENABLED=true` в окружении workflow и все SMTP secrets заполнены. Если `output/v2_jobs.json` пустой, письмо не отправляется, а в лог выводится `No V2 jobs to email`.
 
-V2 email показывает summary по письму (`Total jobs in email`, `Top match score`, `Recommended to apply today`) и для каждой вакансии выводит `history_status`, `match_score`, `student_score`, `candidate_score`, `location_fit`, source, category и URL. Вакансии в письме сортируются по `history_status`, затем `match_score`, `student_score`, `candidate_score` и обычному `score`.
+V2 email начинается с блока `Today's Action Plan`: сколько вакансий стоит отправить сегодня, сколько оставить в watch, сколько пропущено, какой лучший `match_score` и главная причина выбора. Для каждой вакансии письмо показывает компактную карточку с уровнем рекомендации: `★★★★★ Apply today`, `★★★★ Good`, `★★★ Consider`, `★★ Watch` или `★ Skip`.
+
+Карточка объясняет, почему вакансия подходит Yurii (`Why it fits Yurii`), какие есть сомнения (`Risks`), какой CV использовать (`Recommended CV`) и какой короткий cover/message отправить (`Recommended message`). Пустые поля вроде пустой компании, зарплаты или отсутствующих reasons не показываются.
+
+Если в секции вроде `Campania part-time` нет новых выбранных вакансий, письмо показывает диагностическую причину вместо `No jobs in this block`: сколько было в Candidate Pool, сколько уже seen, сколько отклонено history/profile/cleaner/location. Collector contribution также показывает не только email count, но и `collected`, `real jobs`, `candidate pool`, `email` и health reason.
 
 Тема V2 письма:
 
@@ -803,8 +844,17 @@ Job Intelligence V2: Napoli Student Jobs
 - `output/v2_jobs.xlsx`;
 - `output/v2_candidate_pool.json`;
 - `output/v2_candidate_pool.xlsx`;
+- `output/v2_collector_stats.json`;
+- `output/v2_collector_stats.xlsx`;
 - `output/v2_sent_jobs_history.json`;
-- `output/v2_run_stats.json`.
+- `output/v2_run_stats.json`;
+- `output/collector_health.json`;
+- `output/collector_health.xlsx`;
+- `output/collector_recommendations.md`;
+- `output/url_pattern_debug.json`;
+- `output/url_pattern_debug.xlsx`;
+- `output/unknown_urls.xlsx`;
+- `output/url_pattern_recommendations.md`.
 
 Для старого remote потока скачайте artifact `remote-legacy-results`; внутри будут:
 
@@ -922,6 +972,8 @@ python -m src.collectors.duckduckgo_jobs --config configs/job_sources.yaml --out
 ### Источники данных
 
 Проект собирает данные из следующих платформ:
+
+Legacy remote pipeline:
 - ArbeitNow
 - Remotive
 - Remotejobs.org
@@ -934,6 +986,14 @@ python -m src.collectors.duckduckgo_jobs --config configs/job_sources.yaml --out
 - Himalayas
 - Reddit
 - DuckDuckGo
+
+V2 pipeline:
+- DuckDuckGo Discovery
+- Indeed Italia
+- Subito Lavoro
+- Randstad Italia
+- Adecco Italia
+- Gi Group Italia
 
 ### Итальянские источники
 

@@ -65,6 +65,20 @@ def test_fallback_dedup_by_title_company_location():
     assert len(deduped) == 1
 
 
+def test_unwanted_title_stays_rejected_after_aggregator_scoring():
+    normalized = job_aggregator.normalize_job(
+        job("Call Center Part Time Napoli", location="Napoli", part_time=True)
+    )
+
+    assert normalized["profile_match"] is False
+    assert normalized["profile_reason"] == "unwanted_title"
+    assert normalized["selection_rejection_reason"] == "unwanted_title"
+    assert normalized["student_score"] == 0
+    assert normalized["candidate_score"] == 0
+    assert normalized["match_score"] == 0
+    assert job_aggregator.is_profile_rejected(normalized) is True
+
+
 def rotation_job(title, status, match_score=80, **extra):
     item = job(
         title,

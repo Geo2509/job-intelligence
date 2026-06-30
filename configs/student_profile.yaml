@@ -12,6 +12,53 @@ profile:
     - Pozzuoli
     - Bacoli
     - Monte di Procida
+  preferred_titles:
+    - data entry
+    - inserimento dati
+    - impiegato data entry
+    - back office
+    - front office
+    - impiegato amministrativo
+    - amministrazione
+    - amministrativa
+    - segreteria
+    - receptionist
+    - reception
+    - accoglienza
+    - impiegato contabile
+    - contabilità
+    - accounting
+    - logistics
+    - logistica
+    - warehouse
+    - magazzino
+    - magazziniere
+    - customer support
+    - ai trainer
+    - ai annotator
+    - ai annotation
+    - data annotation
+    - data labeling
+    - content reviewer
+    - virtual assistant
+  unwanted_titles:
+    - operatore telefonico
+    - operatrice telefonica
+    - call center
+    - call centre
+    - teleseller
+    - telemarketing
+    - vendita telefonica
+    - consulente telefonico
+    - promoter telefonia
+    - promoter commerciale
+    - promoter
+    - procacciatore
+    - porta a porta
+    - agente porta a porta
+    - recupero crediti
+    - outbound
+    - inbound commerciale
   allowed_locations:
     - Napoli
     - Pozzuoli

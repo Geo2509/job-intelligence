@@ -387,6 +387,8 @@ V2 aggregator ведёт историю отправленных ваканси�
 
 Location Guard добавляет поле `location_fit`: `remote`, `allowed_local`, `excluded_far` или `unknown`. Remote и локальные вакансии Campania/Napoli идут выше, неизвестные локации ниже, а явно далёкие города вроде Milano, Roma, Bologna, Prato и Valsamoggia уходят в конец. Для `excluded_far` `student_score` ограничен максимумом `40`, для `unknown` максимумом `70`; remote-вакансии могут получать высокий score.
 
+Title Guard читает опциональные списки `preferred_titles` и `unwanted_titles` из `configs/student_profile.yaml`. Совпадения ищутся в заголовке вакансии без учета регистра, с нормализацией пробелов и пунктуации. `unwanted_titles` отклоняет вакансию с `profile_reason=unwanted_title`, `selection_rejection_reason=unwanted_title`, `candidate_score=0` и `student_score=0`; `preferred_titles` не фильтрует вакансию, а добавляет небольшой профильный бонус.
+
 V2 aggregator добавляет `location_fit` и `student_score` в JSON, CSV и XLSX exports. `student_score` также участвует в итоговом `match_score`.
 
 ### Candidate Profile Engine

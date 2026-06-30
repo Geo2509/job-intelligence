@@ -1,4 +1,9 @@
-from src.student_profile import detect_location_fit, evaluate_student_score, load_student_profile
+from src.student_profile import (
+    PREFERRED_TITLE_BONUS,
+    detect_location_fit,
+    evaluate_student_score,
+    load_student_profile,
+)
 
 
 def test_load_student_profile():
@@ -205,3 +210,53 @@ def test_url_bacoli_is_allowed_local():
     }, load_student_profile())
 
     assert fit == "allowed_local"
+
+
+def test_unwanted_titles_are_rejected_with_diagnostics():
+    titles = [
+        "Operatore telefonico Napoli",
+        "Call Center Part Time",
+        "Teleseller",
+        "Telemarketing",
+        "Vendita telefonica",
+        "Recupero crediti",
+    ]
+
+    for title in titles:
+        job = {"title": title, "location": "Napoli", "part_time": True}
+
+        assert evaluate_student_score(job) == 0
+        assert job["profile_match"] is False
+        assert job["selection_rejection_reason"] == "unwanted_title"
+        assert job["profile_reason"] == "unwanted_title"
+        assert job["candidate_score"] == 0
+        assert job["matched_keyword"]
+
+
+def test_unwanted_title_matching_normalizes_punctuation_and_whitespace():
+    job = {"title": "Call-Center   Part Time", "location": "Napoli", "part_time": True}
+
+    assert evaluate_student_score(job) == 0
+    assert job["matched_keyword"] == "call center"
+
+
+def test_preferred_titles_get_small_bonus_and_diagnostics():
+    preferred_titles = [
+        "Impiegato amministrativo",
+        "Back Office",
+        "Receptionist",
+        "Data Entry",
+        "Magazziniere",
+    ]
+
+    for title in preferred_titles:
+        preferred_job = {"title": title, "location": "Napoli"}
+        generic_job = {"title": "Impiegato generico", "location": "Napoli"}
+
+        preferred_score = evaluate_student_score(preferred_job)
+        generic_score = evaluate_student_score(generic_job)
+
+        assert preferred_score >= generic_score + PREFERRED_TITLE_BONUS
+        assert preferred_job["profile_match"] is True
+        assert preferred_job["profile_reason"] == "preferred_title"
+        assert preferred_job["matched_keyword"]

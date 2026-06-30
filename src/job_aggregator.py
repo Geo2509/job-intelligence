@@ -298,7 +298,10 @@ def normalize_job(job, include_profile_scores=True, search_profile=LOCAL_STUDENT
             job["normalized_category"] = job["category"]
     if include_profile_scores:
         job["student_score"] = int(evaluate_student_score(job))
-        job["candidate_score"] = int(evaluate_candidate_score(job))
+        if is_unwanted_title_rejected(job):
+            apply_unwanted_title_rejection(job)
+        else:
+            job["candidate_score"] = int(evaluate_candidate_score(job))
         apply_profile_scores(job, search_profile)
     job["priority_bucket"] = detect_priority_bucket(
         searchable,
@@ -353,8 +356,27 @@ def calculate_remote_score(job):
     return score
 
 
+def is_unwanted_title_rejected(job):
+    return (
+        str(job.get("profile_reason") or "").lower() == "unwanted_title"
+        and job.get("profile_match") is False
+    ) or str(job.get("selection_rejection_reason") or "").lower() == "unwanted_title"
+
+
+def apply_unwanted_title_rejection(job):
+    job["profile_match"] = False
+    job["profile_reason"] = "unwanted_title"
+    job["selection_rejection_reason"] = "unwanted_title"
+    job["student_score"] = 0
+    job["candidate_score"] = 0
+    job["match_score"] = 0
+    return job
+
+
 def apply_profile_scores(job, search_profile=LOCAL_STUDENT_PROFILE):
     job["search_profile"] = search_profile
+    if is_unwanted_title_rejected(job):
+        return apply_unwanted_title_rejection(job)
     if search_profile == REMOTE_PROFILE:
         job["remote_score"] = int(calculate_remote_score(job))
         job["match_score"] = int(round(
@@ -494,7 +516,10 @@ def add_profile_scores(jobs):
                 job["normalized_category"] = job["category"]
         job["location_fit"] = detect_location_fit(job, load_student_profile())
         job["student_score"] = int(evaluate_student_score(job))
-        job["candidate_score"] = int(evaluate_candidate_score(job))
+        if is_unwanted_title_rejected(job):
+            apply_unwanted_title_rejection(job)
+        else:
+            job["candidate_score"] = int(evaluate_candidate_score(job))
         apply_profile_scores(job, job.get("search_profile") or LOCAL_STUDENT_PROFILE)
         scored.append(job)
     return scored
@@ -731,6 +756,8 @@ def is_location_rejected(job):
 def is_profile_rejected(job):
     negative_reason = str(job.get("negative_reason") or "").lower()
     return (
+        is_unwanted_title_rejected(job)
+        or
         "country" in negative_reason
         or "seniority" in negative_reason
         or "excluded title" in negative_reason

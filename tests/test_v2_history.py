@@ -37,7 +37,7 @@ def history_for(item, **extra):
         "source": item["source"],
         "first_seen": "2026-06-20T00:00:00+00:00",
         "last_seen": "2026-06-20T00:00:00+00:00",
-        "last_sent": extra.pop("last_sent", "2026-06-23T00:00:00+00:00"),
+        "last_sent": extra.pop("last_sent", "2026-06-29T00:00:00+00:00"),
         "sent_count": extra.pop("sent_count", 1),
         "content_hash": extra.pop("content_hash", job_aggregator.content_hash(item)),
         "match_score": extra.pop("match_score", item["match_score"]),

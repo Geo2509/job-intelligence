@@ -105,6 +105,9 @@ OUTPUT_FIELDS = [
     "student_score",
     "candidate_score",
     "match_score",
+    "profile_match",
+    "profile_reason",
+    "matched_keyword",
     "location_fit",
     "found_at",
 ]
@@ -455,6 +458,9 @@ def normalize_gigroup_result(result, query, found_at=None):
     job["student_score"] = int(evaluate_student_score(job))
     job["candidate_score"] = int(evaluate_candidate_score(job))
     job["match_score"] = calculate_match_score(job["student_score"], job["candidate_score"])
+    job.setdefault("profile_match", "")
+    job.setdefault("profile_reason", "")
+    job.setdefault("matched_keyword", "")
     return job
 
 

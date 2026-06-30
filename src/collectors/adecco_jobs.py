@@ -64,6 +64,9 @@ OUTPUT_FIELDS = [
     "priority_bucket",
     "location_fit",
     "student_score",
+    "profile_match",
+    "profile_reason",
+    "matched_keyword",
     "score",
     "found_at",
 ]
@@ -180,6 +183,9 @@ def normalize_adecco_result(result, query, found_at=None):
     }
     job["location_fit"] = detect_location_fit(job, load_student_profile())
     job["student_score"] = evaluate_student_score(job)
+    job.setdefault("profile_match", "")
+    job.setdefault("profile_reason", "")
+    job.setdefault("matched_keyword", "")
     return job
 
 

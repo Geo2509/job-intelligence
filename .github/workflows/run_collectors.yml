@@ -146,22 +146,6 @@ jobs:
             --stats output/v2_run_stats.json \
             --top 50
 
-      - name: Commit Student V2 sent jobs history
-        if: ${{ success() && inputs.email_enabled == 'true' }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -f output/v2_sent_jobs_history.json ]; then
-            git add output/v2_sent_jobs_history.json
-          fi
-          if git diff --cached --quiet; then
-            echo "No Student V2 sent jobs history changes to commit."
-          else
-            git commit -m "Update student V2 sent jobs history"
-            git pull --rebase
-            git push
-          fi
-
       - name: Upload Student V2 results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

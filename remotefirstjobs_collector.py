@@ -1,13 +1,27 @@
-import requests
 import pandas as pd
 
 from config_loader import load_queries_config
 from job_queries import MARITIME_QUERIES
+from legacy_request_utils import safe_get, safe_json
 
 
 _QUERY_CONFIG = load_queries_config().get("remotefirstjobs", {})
 URL = "https://remotefirstjobs.com/api/search-jobs"
 MAX_PAGES = _QUERY_CONFIG.get("max_pages", 2)
+COLUMNS = [
+    "source",
+    "query",
+    "title",
+    "company",
+    "category",
+    "seniority",
+    "location",
+    "salary_min",
+    "salary_max",
+    "url",
+    "posted_at",
+    "description",
+]
 
 BASE_QUERIES = _QUERY_CONFIG.get("base", [
     "data annotation",
@@ -71,18 +85,14 @@ for query in QUERIES:
             "page": page,
         }
 
-        try:
-            response = requests.get(URL, params=params, headers=HEADERS, timeout=30)
-            print("Status code:", response.status_code, "Query:", query, "Page:", page)
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            print("RemoteFirstJobs query failed:", query, "Page:", page, "|", exc)
+        response = safe_get("remotefirstjobs", URL, params=params, headers=HEADERS, timeout=30)
+        if response is None:
             break
 
-        try:
-            data = response.json()
-        except ValueError as exc:
-            print("RemoteFirstJobs JSON parse failed:", query, "Page:", page, "|", exc)
+        print("Status code:", response.status_code, "Query:", query, "Page:", page)
+
+        data = safe_json("remotefirstjobs", response)
+        if data is None:
             break
 
         jobs = data.get("jobs") or []
@@ -111,7 +121,7 @@ for query in QUERIES:
             break
 
 
-df = pd.DataFrame(all_jobs)
+df = pd.DataFrame(all_jobs, columns=COLUMNS)
 
 if not df.empty:
     df = df.drop_duplicates(subset=["url"], keep="first")

@@ -1,10 +1,21 @@
-import requests
 import pandas as pd
 
 from config_loader import load_queries_config
+from legacy_request_utils import safe_get, safe_json
 
 
 URL = "https://jobicy.com/api/v2/remote-jobs"
+COLUMNS = [
+    "source",
+    "title",
+    "company",
+    "category",
+    "location",
+    "job_type",
+    "url",
+    "posted_at",
+    "description",
+]
 _QUERY_CONFIG = load_queries_config().get("jobicy", {})
 
 QUERIES = _QUERY_CONFIG.get("params", [
@@ -19,11 +30,14 @@ QUERIES = _QUERY_CONFIG.get("params", [
 all_jobs = []
 
 for params in QUERIES:
-    response = requests.get(URL, params=params, timeout=30)
+    response = safe_get("jobicy", URL, params=params, timeout=30)
+    if response is None:
+        break
     print("Status code:", response.status_code, "Params:", params)
-    response.raise_for_status()
 
-    data = response.json()
+    data = safe_json("jobicy", response)
+    if data is None:
+        break
     jobs = data.get("jobs", [])
     print("Jobs received:", len(jobs))
 
@@ -41,7 +55,7 @@ for params in QUERIES:
         })
 
 
-df = pd.DataFrame(all_jobs)
+df = pd.DataFrame(all_jobs, columns=COLUMNS)
 
 if not df.empty:
     df = df.drop_duplicates(subset=["url"], keep="first")

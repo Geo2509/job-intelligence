@@ -1,20 +1,26 @@
-import requests
 import pandas as pd
+
+from legacy_request_utils import safe_get, safe_json
 
 
 URL = "https://www.arbeitnow.com/api/job-board-api"
+COLUMNS = ["title", "company", "location", "remote", "url", "tags", "job_types", "description"]
 
 
-response = requests.get(URL, timeout=30)
+response = safe_get("arbeitnow", URL, timeout=30)
 
-print("Status code:", response.status_code)
-response.raise_for_status()
+if response is None:
+    jobs = []
+else:
+    print("Status code:", response.status_code)
 
-data = response.json()
+    data = safe_json("arbeitnow", response)
+    if data is None:
+        jobs = []
+    else:
+        print("Keys:", data.keys())
 
-print("Keys:", data.keys())
-
-jobs = data.get("data", [])
+        jobs = data.get("data", [])
 
 print("Jobs received:", len(jobs))
 
@@ -35,7 +41,7 @@ for job in jobs:
     })
 
 
-df = pd.DataFrame(all_jobs)
+df = pd.DataFrame(all_jobs, columns=COLUMNS)
 
 if not df.empty:
     print(df[[

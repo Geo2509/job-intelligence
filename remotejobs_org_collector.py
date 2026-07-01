@@ -1,5 +1,6 @@
-import requests
 import pandas as pd
+
+from legacy_request_utils import safe_get, safe_json
 
 
 URL = "https://remotejobs.org/api/v1/jobs"
@@ -25,10 +26,6 @@ def empty_jobs_frame():
     return pd.DataFrame(columns=COLUMNS)
 
 
-def request_url(params):
-    return requests.Request("GET", URL, params=params).prepare().url
-
-
 def collect_jobs():
     all_jobs = []
 
@@ -37,17 +34,16 @@ def collect_jobs():
             "limit": LIMIT,
             "offset": offset,
         }
-        url = request_url(params)
 
-        try:
-            response = requests.get(URL, params=params, timeout=30)
-            print("Status code:", response.status_code, "Offset:", offset)
-            response.raise_for_status()
-        except (requests.exceptions.HTTPError, requests.exceptions.RequestException) as exc:
-            print(f"Warning: remotejobs.org API request failed for {url}: {exc}")
+        response = safe_get("remotejobs_org", URL, params=params, timeout=30)
+        if response is None:
             return empty_jobs_frame()
 
-        data = response.json()
+        print("Status code:", response.status_code, "Offset:", offset)
+
+        data = safe_json("remotejobs_org", response)
+        if data is None:
+            return empty_jobs_frame()
         jobs = data.get("data", [])
         print("Jobs received:", len(jobs))
 

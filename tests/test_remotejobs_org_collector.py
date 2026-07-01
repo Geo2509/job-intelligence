@@ -1,5 +1,6 @@
 import requests
 
+import legacy_request_utils
 import remotejobs_org_collector as collector
 from src import main as legacy_main
 
@@ -9,6 +10,7 @@ class FakeResponse:
         self.payload = payload or {}
         self.status_code = status_code
         self.error = error
+        self.url = "https://remotejobs.org/api/v1/jobs?limit=50&offset=0"
 
     def raise_for_status(self):
         if self.error:
@@ -19,21 +21,52 @@ class FakeResponse:
 
 
 def test_collect_jobs_returns_empty_frame_when_api_fails(monkeypatch, capsys):
-    error = requests.exceptions.HTTPError("500 Server Error")
-
     def fake_get(url, params, timeout):
-        return FakeResponse(status_code=500, error=error)
+        return FakeResponse(status_code=500)
 
-    monkeypatch.setattr(collector.requests, "get", fake_get)
+    monkeypatch.setattr(legacy_request_utils.requests, "get", fake_get)
 
     df = collector.collect_jobs()
 
     assert df.empty
     assert df.columns.tolist() == collector.COLUMNS
     output = capsys.readouterr().out
-    assert "Warning: remotejobs.org API request failed" in output
+    assert "remotejobs_org: source unavailable: HTTP 500" in output
     assert "https://remotejobs.org/api/v1/jobs?limit=50&offset=0" in output
-    assert "500 Server Error" in output
+
+
+def test_collect_jobs_returns_empty_frame_when_api_times_out(monkeypatch, capsys):
+    def fake_get(url, params, timeout):
+        raise requests.exceptions.Timeout("request timed out")
+
+    monkeypatch.setattr(legacy_request_utils.requests, "get", fake_get)
+
+    df = collector.collect_jobs()
+
+    assert df.empty
+    assert df.columns.tolist() == collector.COLUMNS
+    output = capsys.readouterr().out
+    assert "remotejobs_org: request failed: timeout" in output
+    assert "request timed out" in output
+
+
+def test_collect_jobs_returns_empty_frame_when_json_is_invalid(monkeypatch, capsys):
+    class InvalidJsonResponse(FakeResponse):
+        def json(self):
+            raise ValueError("invalid json")
+
+    def fake_get(url, params, timeout):
+        return InvalidJsonResponse(status_code=200)
+
+    monkeypatch.setattr(legacy_request_utils.requests, "get", fake_get)
+
+    df = collector.collect_jobs()
+
+    assert df.empty
+    assert df.columns.tolist() == collector.COLUMNS
+    output = capsys.readouterr().out
+    assert "remotejobs_org: invalid JSON" in output
+    assert "invalid json" in output
 
 
 def test_collect_jobs_maps_successful_response(monkeypatch):
@@ -59,7 +92,7 @@ def test_collect_jobs_maps_successful_response(monkeypatch):
     def fake_get(url, params, timeout):
         return FakeResponse(payload=payload)
 
-    monkeypatch.setattr(collector.requests, "get", fake_get)
+    monkeypatch.setattr(legacy_request_utils.requests, "get", fake_get)
 
     df = collector.collect_jobs()
 

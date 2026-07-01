@@ -1,8 +1,10 @@
-import requests
 import pandas as pd
+
+from legacy_request_utils import safe_get, safe_json
 
 
 BASE_URL = "https://himalayas.app/jobs/api"
+COLUMNS = ["source", "title", "company", "location", "url", "pub_date", "description"]
 
 all_jobs = []
 
@@ -17,12 +19,15 @@ for offset in range(0, 1000, 20):
         "offset": offset,
     }
 
-    response = requests.get(BASE_URL, params=params, timeout=30)
+    response = safe_get("himalayas", BASE_URL, params=params, timeout=30)
+    if response is None:
+        break
 
     print("Status:", response.status_code, "Offset:", offset)
-    response.raise_for_status()
 
-    data = response.json()
+    data = safe_json("himalayas", response)
+    if data is None:
+        break
 
     jobs = data.get("jobs", [])
 
@@ -42,7 +47,7 @@ for offset in range(0, 1000, 20):
         })
 
 
-df = pd.DataFrame(all_jobs)
+df = pd.DataFrame(all_jobs, columns=COLUMNS)
 
 print("Total jobs:", len(df))
 if not df.empty:

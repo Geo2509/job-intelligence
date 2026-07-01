@@ -3,12 +3,22 @@ import time
 import xml.etree.ElementTree as ET
 
 import pandas as pd
-import requests
 
 from config_loader import load_queries_config
+from legacy_request_utils import safe_get
 
 
 _QUERY_CONFIG = load_queries_config().get("workanywhere", {})
+COLUMNS = [
+    "source",
+    "feed_category",
+    "title",
+    "company",
+    "location",
+    "url",
+    "posted_at",
+    "description",
+]
 
 FEEDS = [
     (feed["category"], feed["url"])
@@ -48,15 +58,17 @@ def split_title(value):
 all_jobs = []
 
 for category, url in FEEDS:
-    response = requests.get(url, headers=HEADERS, timeout=30)
-    print("Status code:", response.status_code, "Feed:", category)
-    if response.status_code == 429:
-        print("Skipped rate-limited feed:", category)
+    response = safe_get("workanywhere", url, headers=HEADERS, timeout=30)
+    if response is None:
+        print("Skipped unavailable feed:", category)
         continue
+    print("Status code:", response.status_code, "Feed:", category)
 
-    response.raise_for_status()
-
-    root = ET.fromstring(response.content)
+    try:
+        root = ET.fromstring(response.content)
+    except ET.ParseError as exc:
+        print(f"workanywhere: invalid XML for {getattr(response, 'url', url)}: {exc}")
+        continue
     items = root.findall("./channel/item")
     print("Jobs received:", len(items))
 
@@ -78,7 +90,7 @@ for category, url in FEEDS:
     time.sleep(2)
 
 
-df = pd.DataFrame(all_jobs)
+df = pd.DataFrame(all_jobs, columns=COLUMNS)
 
 if not df.empty:
     df = df.drop_duplicates(subset=["url"], keep="first")

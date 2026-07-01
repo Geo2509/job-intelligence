@@ -29,7 +29,7 @@ def load_discovery_queries(config_path=DEFAULT_CONFIG_PATH, search_profile="loca
     data = yaml.safe_load(Path(config_path).read_text(encoding="utf-8")) or {}
     if search_profile == "remote":
         return list(data.get("remote_discovery_queries") or [])
-    return list(data.get("duckduckgo_discovery_queries") or [])
+    return list(data.get("duckduckgo_discovery_queries") or []) + list(data.get("student_services") or [])
 
 
 def result_url(result):

@@ -252,6 +252,15 @@ remote_discovery_queries:
   - Toloka AI trainer Italian
   - TSMG Ukrainian transcription
 
+student_services:
+  - babysitter
+  - baby sitter
+  - tata
+  - tata part time
+  - assistenza bambini
+  - educatrice part time
+  - aiuto compiti
+
 duckduckgo_discovery_queries:
   # DATA / OFFICE
   - data entry Campania part time

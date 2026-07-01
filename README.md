@@ -504,6 +504,8 @@ python -m src.job_aggregator \
 Главные файлы:
 - `scoring_jobs.py` — основной скрипт нормализации, подсчета баллов и экспорта результата;
 - `duckduckgo_collector.py` — ищет вакансии и карьерные страницы через DuckDuckGo;
+- `src/collectors/github_jobs.py` — V1 collector для remote leads из публичных GitHub Issues;
+- `legacy_request_utils.py` — безопасные HTTP/JSON helpers для Remote Legacy collectors;
 - `job_queries.py` — общие поисковые запросы для морской логистики и Naples-направления;
 - `export_search_queries.py` — экспортирует поисковые запросы в `search_queries.csv`;
 - `filter_jobs.py` — фильтр для Reddit-постов, сохраняет `filtered_jobs.csv`;
@@ -534,6 +536,18 @@ python -m src.job_aggregator \
 
 ## Последние изменения
 
+- Remote Legacy collectors теперь устойчивы к временным сбоям внешних источников:
+  HTTP 429/500/502/503/504, timeout, connection error и другие
+  `requests.RequestException` логируются как warning, но не валят весь workflow.
+- `remotejobs_org_collector.py` при ошибке API или invalid JSON создаёт
+  `remotejobs_org_jobs.csv` с обычными колонками и завершает работу с кодом 0.
+- Аналогичная защита добавлена для `remotive`, `jobicy`, `arbeitnow`,
+  `himalayas`, `workanywhere`, `remotefirstjobs` и Arca24-based collectors
+  вроде `smartjobspa`.
+- Добавлен GitHub Remote Jobs Collector V1: `src/collectors/github_jobs.py`.
+  Он ищет remote leads в публичных GitHub Issues без token, фильтрует developer-heavy
+  и non-job issues, добавляет GitHub-specific score/reasons и может попадать в
+  V2 Candidate Pool через collector registry.
 - Добавлен `duckduckgo_collector.py` и входной файл `duckduckgo_jobs.csv`.
 - DuckDuckGo collector расширен до 182 уникальных поисковых запросов.
 - В DuckDuckGo-запросы добавлены направления из существующих collector-ов:
@@ -885,6 +899,110 @@ python scoring_jobs.py
 ```
 
 После scoring workflow формирует старые `output/latest/jobs_scored.xlsx`, `output/latest/top_jobs.xlsx` и `output/latest/run_summary.md`, затем отправляет legacy email через существующую логику `src.main`. История remote legacy остаётся старой: `output/sent_jobs_history.json`.
+
+### Устойчивость Remote Legacy collectors
+
+Remote Legacy должен продолжать работу, даже если один внешний источник временно недоступен. Это особенно важно для `remotejobs.org`: раньше HTTP 500 на URL вроде
+`https://remotejobs.org/api/v1/jobs?limit=50&offset=0` приводил к traceback из
+`response.raise_for_status()` и падению всего `remote-jobs / remote-legacy` job.
+
+Теперь сетевые и source-level ошибки считаются нормальной временной недоступностью источника:
+
+- HTTP `429`, `500`, `502`, `503`, `504` и любые другие HTTP status `>= 400`;
+- timeout;
+- connection/DNS error;
+- любые `requests.RequestException`;
+- invalid JSON для API sources;
+- invalid XML для RSS source `workanywhere`.
+
+В таких случаях collector:
+
+- пишет понятный warning без полного traceback;
+- возвращает пустой или частичный результат;
+- создаёт свой output file, если этот collector обычно пишет файл;
+- даёт следующему collector-у, scoring, report generation, artifact upload и email продолжить работу.
+
+Примеры warning:
+
+```text
+remotejobs_org: source unavailable: HTTP 500 for https://remotejobs.org/api/v1/jobs?limit=50&offset=0
+remotejobs_org: request failed: timeout for https://remotejobs.org/api/v1/jobs?limit=50&offset=0
+remotejobs_org: invalid JSON for https://remotejobs.org/api/v1/jobs?limit=50&offset=0
+```
+
+Покрытые Remote Legacy collectors:
+
+- `remotejobs_org_collector.py`;
+- `remotive_collector.py`;
+- `jobicy_collector.py`;
+- `arbeitnow_collector.py`;
+- `himalayas_collector.py`;
+- `workanywhere_collector.py`;
+- `remotefirstjobs_collector.py`;
+- `arca24_collector.py`, включая thin wrappers вроде `smartjobspa_collector.py`.
+
+Общая логика request/JSON handling вынесена в `legacy_request_utils.py`. Она намеренно ловит только внешние request/data failures. Ошибки нашей собственной логики parsing/scoring не маскируются и должны падать как настоящие code bugs.
+
+Проверка вручную:
+
+```bash
+.venv/bin/python remotejobs_org_collector.py
+```
+
+Ожидаемое поведение при недоступном `remotejobs.org`: warning в логах, `Total jobs: 0`, файл `remotejobs_org_jobs.csv` создан, exit code `0`.
+
+Полная проверка после изменений:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall .
+git diff --check
+```
+
+### GitHub Remote Jobs Collector V1
+
+`src/collectors/github_jobs.py` — отдельный V1 collector для remote opportunities из публичных GitHub Issues. Он не требует GitHub token и по умолчанию ограничен безопасным небольшим объёмом:
+
+```bash
+.venv/bin/python -m src.collectors.github_jobs --github-limit 50 --top 100 --output output/github_jobs.json
+```
+
+Ограничения:
+
+- `--github-limit 50` — лимит на query;
+- не больше 100 GitHub results за один run;
+- при HTTP 403/429 или network error collector пишет warning и возвращает пустой/частичный список;
+- email layout не меняется.
+
+Ищутся remote leads по темам:
+
+- AI annotation / AI trainer / AI evaluator / LLM evaluator;
+- data annotation / data labeling / data entry;
+- virtual assistant / admin / back office / operations;
+- research assistant / web research / data collection;
+- transcription / Ukrainian / Russian / language evaluator / translation / localization.
+
+Каждая строка нормализуется в job-like dict с полями `title`, `company`, `location`, `url`, `source=github`, `snippet`, `description`, `created_at`, `collected_at`, `query`, `remote`, `category`, `normalized_category`, `job_type`, `language_signals`, `payment_signals`, `negative_signals` и `score_reason`.
+
+Фильтрация GitHub V1 консервативная:
+
+- отбрасываются developer-heavy issues вроде senior/backend/frontend/fullstack/DevOps/Kubernetes/blockchain/Solidity;
+- отбрасываются non-job issues вроде bug, feature request, good first issue, hacktoberfest, open source contribution, contributor needed;
+- `help wanted` само по себе не считается вакансией;
+- unpaid/volunteer получает сильный penalty или отбрасывается низким GitHub score.
+
+GitHub collector подключён к V2 collector registry как `github`, поэтому его можно запускать через агрегатор явно:
+
+```bash
+.venv/bin/python -m src.job_aggregator \
+  --search-profile remote \
+  --collectors github \
+  --output output/v2_remote_jobs.json \
+  --candidate-pool-output output/v2_remote_candidate_pool.json \
+  --history-path output/v2_remote_sent_jobs_history.json \
+  --run-stats-path output/v2_remote_run_stats.json \
+  --email-clean-results
+```
 
 V2 export использует balanced TOP, чтобы расширенные Campania запросы не вытесняли remote/data/AI вакансии из `v2_jobs.json`, `v2_jobs.csv` и `v2_jobs.xlsx`. Перед финальным добором по score агрегатор берёт квоты:
 

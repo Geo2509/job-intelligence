@@ -1,5 +1,7 @@
 import builtins
 
+import yaml
+
 from src.collectors import duckduckgo_jobs
 
 
@@ -31,6 +33,21 @@ def test_scoring_local_city():
     )
 
     assert score >= 20
+
+
+def test_load_discovery_queries_includes_student_services(tmp_path):
+    config_path = tmp_path / "job_sources.yaml"
+    config_path.write_text(
+        yaml.safe_dump({
+            "duckduckgo_discovery_queries": ["data entry Napoli"],
+            "student_services": ["babysitter", "aiuto compiti"],
+        }),
+        encoding="utf-8",
+    )
+
+    queries = duckduckgo_jobs.load_discovery_queries(config_path)
+
+    assert queries == ["data entry Napoli", "babysitter", "aiuto compiti"]
 
 
 def test_bad_job_exclusion():

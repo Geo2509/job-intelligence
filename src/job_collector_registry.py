@@ -4,6 +4,7 @@ from typing import Callable
 from src.collectors import (
     adecco_jobs,
     duckduckgo_jobs,
+    github_jobs,
     gigroup_jobs,
     indeed_jobs,
     jooble_jobs,
@@ -116,6 +117,18 @@ COLLECTOR_REGISTRY = {
         supports_top=True,
         supports_limit=True,
         default_kwargs={"direct_pause_seconds": 0},
+    ),
+    "github": CollectorPlugin(
+        name="github",
+        enabled=True,
+        module="src.collectors.github_jobs",
+        function="collect_jobs",
+        callable=github_jobs.collect_jobs,
+        supports_campania_part_time_first=True,
+        supports_top=True,
+        supports_limit=True,
+        default_kwargs={"pause_seconds": 0},
+        supports_search_profile=True,
     ),
 }
 

@@ -49,6 +49,8 @@ POOL_FIELDS = [
     ("Collector", "collector"),
     ("Category", "category"),
     ("Normalized Category", "normalized_category"),
+    ("Score Reason", "score_reason"),
+    ("Payment Signal", "payment_signals"),
     ("Priority Bucket", "priority_bucket"),
     ("URL", "url"),
     ("History Status", "history_status"),

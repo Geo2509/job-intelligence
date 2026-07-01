@@ -10,6 +10,7 @@ EXPECTED_STUDENT_V2_COLLECTORS = [
     "gigroup",
     "talent",
     "jooble",
+    "github",
 ]
 
 

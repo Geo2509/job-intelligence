@@ -51,6 +51,8 @@ POOL_FIELDS = [
     ("Normalized Category", "normalized_category"),
     ("Score Reason", "score_reason"),
     ("Payment Signal", "payment_signals"),
+    ("Subreddit", "subreddit"),
+    ("Author", "author"),
     ("Priority Bucket", "priority_bucket"),
     ("URL", "url"),
     ("History Status", "history_status"),

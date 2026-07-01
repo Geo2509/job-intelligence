@@ -11,6 +11,7 @@ EXPECTED_STUDENT_V2_COLLECTORS = [
     "talent",
     "jooble",
     "github",
+    "reddit",
 ]
 
 

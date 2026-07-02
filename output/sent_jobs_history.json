@@ -1,11 +1,27 @@
 {
+  "https://dailyremote.com/remote-job/data-annotation-qc-and-crawling-russian-language-4502043": {
+    "content_hash": "fba74913e2d1bed93343cb055087f5518642ab6105a96e109e291cbf25599a22",
+    "sent_at": "2026-07-02"
+  },
+  "https://freelancer.ypai.ai/jobs/russian/annotation": {
+    "content_hash": "f442fea63ed23fc395611277265fc5f3f90739dcb1f40e1e4fd1baac42d2163e",
+    "sent_at": "2026-07-02"
+  },
   "https://freelancer.ypai.ai/jobs/ukrainian/annotation": {
     "content_hash": "5febc2f672c432f87c3e2c7847c383ea0c5c6926a7855241e835aac16adb3999",
     "sent_at": "2026-06-30"
   },
+  "https://newyork.craigslist.org/brk/wrg/d/brooklyn-ukrainian-language-data/7917640862.html": {
+    "content_hash": "889f3d8688d5ca1e4da11b5de524889f53a09008b72e381fedb1437b16cdd1ea",
+    "sent_at": "2026-07-02"
+  },
   "https://remotefirstjobs.com/companies/20four7va/jobs/cpt11184-logistics-inventory-management-virtual-assistant-829330": {
     "content_hash": "87fea7b5d32c63074737e7e58fb916c12b9f823cdbb35471010020f341bf24e1",
     "sent_at": "2026-06-30"
+  },
+  "https://remotefirstjobs.com/companies/20four7va/jobs/cpt11207-freight-brokerage-operations-virtual-assistant-830348": {
+    "content_hash": "b08cbe19a0b7df1ae1f691f361f0bec6e71af33a05a558eab35aae47ed63b339",
+    "sent_at": "2026-07-02"
   },
   "https://remotefirstjobs.com/companies/cargoone/jobs/content-operations-qa-analyst-831063": {
     "content_hash": "904b233fc80a8b7c0f8945dc4b570d3e3baf91117e4141090747b9bd282a569f",
@@ -14,6 +30,10 @@
   "https://remotefirstjobs.com/companies/control-risks/jobs/geopolitical-country-risk-analyst-kyiv-827239": {
     "content_hash": "58f6567a7e5ef54eb364c473a9b3f4d1f6b9039164ee80acb1f5e0a9a20047bd",
     "sent_at": "2026-06-30"
+  },
+  "https://remotefirstjobs.com/companies/ennovationhub/jobs/junior-logistic-fulfilment-associate-belgrade-825467": {
+    "content_hash": "829aa1cd4c817a973aa7a6b71a2a237b82c40da2580d07966d540c01a03ac2d5",
+    "sent_at": "2026-07-02"
   },
   "https://remotefirstjobs.com/companies/fictiv/jobs/vp-logistics-warehousing-us-remote-814988": {
     "content_hash": "989bea2e74b04c32ec54408472f4d8c88d74cd4a1bf03be72c4eaa391be38c8f",
@@ -31,6 +51,14 @@
     "content_hash": "d80c2267bfe5325cee0222c4f9d377117a811ab4ce6ca08ea2ba38b0f899cd81",
     "sent_at": "2026-06-30"
   },
+  "https://remotefirstjobs.com/companies/neowork/jobs/outbound-logistics-coordinator-823727": {
+    "content_hash": "a036351048e73facdf900ae15a6648210e05e526594148db150f65fc4c78a8dd",
+    "sent_at": "2026-07-02"
+  },
+  "https://remotefirstjobs.com/companies/pavago/jobs/contracts-administrator-804621": {
+    "content_hash": "49b11a597c74ea121102c62bd357abe3acf1f708a42c99b931b2624aa96362ca",
+    "sent_at": "2026-07-02"
+  },
   "https://remotefirstjobs.com/companies/pavago/jobs/data-entry-specialist-820869": {
     "content_hash": "8ef3b9268582c99f122a43500dfa31f1566c3ee21944bebf92103309e70e998e",
     "sent_at": "2026-06-30"
@@ -47,13 +75,33 @@
     "content_hash": "c752a4a3569d9f15f196254e554dd33d28d7b94e93f1214c0ffb96d501e235c6",
     "sent_at": "2026-06-30"
   },
+  "https://remotefirstjobs.com/companies/pavago/jobs/logistics-operations-data-specialist-788614": {
+    "content_hash": "f8182b793f51c701da1c2c0f1346092f2c1255563f2858d42f7b676285d04e44",
+    "sent_at": "2026-07-02"
+  },
   "https://remotefirstjobs.com/companies/pearl-talent/jobs/fba-operations-coordinator-805269": {
     "content_hash": "5a73bd89396fb12be2726926032e618ea6c2cf504221640ee14e7c9c91e0af6e",
     "sent_at": "2026-06-30"
   },
+  "https://remotefirstjobs.com/companies/pushpay/jobs/supply-chain-analyst-1-resi-826888": {
+    "content_hash": "336eec1a248c1cf3caec1bb7ef461181ba12f5ffdda439887dfc2bbc5530298b",
+    "sent_at": "2026-07-02"
+  },
   "https://remotefirstjobs.com/companies/quip/jobs/supply-demand-planning-analyst-829355": {
     "content_hash": "974d62d6d53113f3cf8803a1e49c45a217609a127841a3c79043977f6034b3cf",
     "sent_at": "2026-06-30"
+  },
+  "https://remotefirstjobs.com/companies/securityscorecard/jobs/threat-intelligence-researcher-777747": {
+    "content_hash": "63e2241ead1080217bf90a1bdeb48e0e7b96c96cca7c5ec888ef5f2cd0d1ee88",
+    "sent_at": "2026-07-02"
+  },
+  "https://remotefirstjobs.com/companies/smartcat/jobs/ai-solutions-builder-806976": {
+    "content_hash": "bcb7b7704956e2cac1b3111d5fd9d7b5013e5998a94e5efb4af662ce7f626041",
+    "sent_at": "2026-07-02"
+  },
+  "https://remotefirstjobs.com/companies/spreetail/jobs/outbound-specialist-eu-799594": {
+    "content_hash": "848983292774122793adfa6ab449e0d36a2cf14afa84f9886f85dee5b8a87c4d",
+    "sent_at": "2026-07-02"
   },
   "https://remotefirstjobs.com/companies/trafilea-tech-e-commerce-group/jobs/wholesale-operations-specialist-593275": {
     "content_hash": "4f6183c18c11c51416764624a830883dccad34501b0836fc1828dc872a5e8cf5",
@@ -63,9 +111,33 @@
     "content_hash": "b4704814aced5ebf3f53949a9fb8753a5b5c209ab5b415ddc1c90b50ab57f3f5",
     "sent_at": "2026-06-30"
   },
+  "https://remotefirstjobs.com/companies/tutor-me-la-llc/jobs/data-operations-coordinator-night-shift-830244": {
+    "content_hash": "0d3982b27e0fd133ebff0cf3580d1aca5aedb481e28ba82788679cb169a394ea",
+    "sent_at": "2026-07-02"
+  },
+  "https://remotefirstjobs.com/companies/xai/jobs/ai-tutor-russian-779727": {
+    "content_hash": "ac0838e597f54e4b5fec4d41b5dd22e241566bbc92ff087badd740de98c1e248",
+    "sent_at": "2026-07-02"
+  },
+  "https://remotefirstjobs.com/companies/zelh/jobs/customer-operations-representative-801220": {
+    "content_hash": "af31b5757275f7f816362b17996dc22fd5e77c42734efb657b3a48ce4bf2d177",
+    "sent_at": "2026-07-02"
+  },
+  "https://remotefirstjobs.com/companies/zicasso/jobs/office-administrator-827775": {
+    "content_hash": "b4103f3b8a021b77d9a889bf0617a79b482389f82d73648ea736dd6863bf56ca",
+    "sent_at": "2026-07-02"
+  },
+  "https://schoolsupreme101.blogspot.com/2025/04/ukrainian-transcribers-remote-flexible.html": {
+    "content_hash": "24ba961ac1ece48dc5612276ae5f735bfbe165b44a93d6084e4d39f3a7a95b3a",
+    "sent_at": "2026-07-02"
+  },
   "https://www.experis.com/en/job/389302/data-annotator-russian-language-": {
     "content_hash": "5667defed14cb5596d4a4fa081cf6f1f7d6be08d5a6568049d828237b962b4d0",
     "sent_at": "2026-06-30"
+  },
+  "https://www.linkedin.com/jobs/view/data-annotator-russian-language-at-experis-4320737427": {
+    "content_hash": "e5e44499e795195c6e133273d9ec1d620ca1bf31ee6424fff87f134a9f876362",
+    "sent_at": "2026-07-02"
   },
   "https://www.linkedin.com/jobs/view/data-annotator-russian-language-at-experis-4326351256?pageNum=0": {
     "content_hash": "3247edb058cf02ba7c5de891209e6878641b0ae68aeceece60c912f0d8d9573a",

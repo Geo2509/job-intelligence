@@ -1,15 +1,23 @@
 {
+  "https://aitrainer.work/jobs/ukrainian": {
+    "content_hash": "bc0fde6ee7bcc36e5202c353d0861177e45f59fa96bbbfe0e5cf3216840e4b3c",
+    "sent_at": "2026-07-13"
+  },
   "https://dailyremote.com/remote-job/data-annotation-qc-and-crawling-russian-language-4502043": {
     "content_hash": "fba74913e2d1bed93343cb055087f5518642ab6105a96e109e291cbf25599a22",
-    "sent_at": "2026-07-02"
+    "sent_at": "2026-07-13"
   },
   "https://freelancer.ypai.ai/jobs/russian/annotation": {
-    "content_hash": "f442fea63ed23fc395611277265fc5f3f90739dcb1f40e1e4fd1baac42d2163e",
-    "sent_at": "2026-07-02"
+    "content_hash": "ed4c008b4120696ccff5d60976ffb7d0cdabdd5dcc682ac7e9ad23ce764e6543",
+    "sent_at": "2026-07-13"
   },
   "https://freelancer.ypai.ai/jobs/ukrainian/annotation": {
-    "content_hash": "5febc2f672c432f87c3e2c7847c383ea0c5c6926a7855241e835aac16adb3999",
-    "sent_at": "2026-06-30"
+    "content_hash": "b3d3a02fd74e13223f290da4fdcd629d97bae9c7d004949b172537e932b0098b",
+    "sent_at": "2026-07-13"
+  },
+  "https://jobs.trainaijobs.com/jobs/ukrainian-linguistic-projects-remote-sigma-ai-ddf4c6dc": {
+    "content_hash": "c1218d690004728fca7a4d78216a098c08139000e38c4170ef1c8521649ae906",
+    "sent_at": "2026-07-13"
   },
   "https://newyork.craigslist.org/brk/wrg/d/brooklyn-ukrainian-language-data/7917640862.html": {
     "content_hash": "889f3d8688d5ca1e4da11b5de524889f53a09008b72e381fedb1437b16cdd1ea",
@@ -85,11 +93,11 @@
   },
   "https://remotefirstjobs.com/companies/kpler/jobs/junior-container-shipping-analyst-770786": {
     "content_hash": "3478a16f42b093073758b17571b5572c4c1cbc6be68533b80d649b31439084f9",
-    "sent_at": "2026-06-30"
+    "sent_at": "2026-07-13"
   },
   "https://remotefirstjobs.com/companies/kyivstar/jobs/business-analyst-825001": {
     "content_hash": "bbddafa3f88f67e940125433e8a24627640af28bb7c8f47f82f1525bad1e106f",
-    "sent_at": "2026-06-30"
+    "sent_at": "2026-07-13"
   },
   "https://remotefirstjobs.com/companies/loadsmart/jobs/ai-automation-specialist-remote-brazil-820776": {
     "content_hash": "d80c2267bfe5325cee0222c4f9d377117a811ab4ce6ca08ea2ba38b0f899cd81",
@@ -107,17 +115,21 @@
     "content_hash": "34fd4b1ea1efbf6b8f690d091fca60f55d2e595653537c31a2be55b967437860",
     "sent_at": "2026-07-11"
   },
+  "https://remotefirstjobs.com/companies/pavago/jobs/ai-automation-specialist-835456": {
+    "content_hash": "843271d660f6059852504ddc6f4ea2961326befe286dace4dfa12d3e0fce217d",
+    "sent_at": "2026-07-13"
+  },
   "https://remotefirstjobs.com/companies/pavago/jobs/contracts-administrator-804621": {
     "content_hash": "49b11a597c74ea121102c62bd357abe3acf1f708a42c99b931b2624aa96362ca",
     "sent_at": "2026-07-02"
   },
   "https://remotefirstjobs.com/companies/pavago/jobs/data-entry-specialist-820869": {
     "content_hash": "8ef3b9268582c99f122a43500dfa31f1566c3ee21944bebf92103309e70e998e",
-    "sent_at": "2026-06-30"
+    "sent_at": "2026-07-13"
   },
   "https://remotefirstjobs.com/companies/pavago/jobs/ecommerce-operations-and-data-analyst-794814": {
     "content_hash": "805d38961e63273e918e636da7c711712e2f66e41e40aa192e4dbc9ee456b2eb",
-    "sent_at": "2026-06-30"
+    "sent_at": "2026-07-13"
   },
   "https://remotefirstjobs.com/companies/pavago/jobs/financial-data-analyst-828542": {
     "content_hash": "9ffd8f50a5feaeb38ff4d21d029bbaa016a80d7b4c5817b3d73ff670ea4d190d",
@@ -135,6 +147,10 @@
     "content_hash": "693e1f39e59b11898e9e95c0b8bab05bc331c2bdf9a4b85b534dcc0820c6a977",
     "sent_at": "2026-07-09"
   },
+  "https://remotefirstjobs.com/companies/pavago/jobs/operations-coordinator-835445": {
+    "content_hash": "868827f6ca0c0130c10c69bb4ba3ae6a52d7ccc03edbf4fa64342fb9b9714ecf",
+    "sent_at": "2026-07-13"
+  },
   "https://remotefirstjobs.com/companies/pearl-talent/jobs/fba-operations-coordinator-805269": {
     "content_hash": "5a73bd89396fb12be2726926032e618ea6c2cf504221640ee14e7c9c91e0af6e",
     "sent_at": "2026-07-11"
@@ -144,8 +160,8 @@
     "sent_at": "2026-07-09"
   },
   "https://remotefirstjobs.com/companies/precision-medicine-group/jobs/inhouse-cra-ii-mexico-833151": {
-    "content_hash": "9a10798d405bfc0941c694c8490481116badfd0d6db67ec0a1f803244a15fc04",
-    "sent_at": "2026-07-11"
+    "content_hash": "e3ddca6cc839e860abe269080b731c1eca8e3fd4526b2b8db75c50096835bd40",
+    "sent_at": "2026-07-13"
   },
   "https://remotefirstjobs.com/companies/pushpay/jobs/supply-chain-analyst-1-resi-826888": {
     "content_hash": "336eec1a248c1cf3caec1bb7ef461181ba12f5ffdda439887dfc2bbc5530298b",
@@ -196,8 +212,8 @@
     "sent_at": "2026-07-11"
   },
   "https://remotefirstjobs.com/companies/tutor-me-la-llc/jobs/data-operations-coordinator-night-shift-830244": {
-    "content_hash": "0d3982b27e0fd133ebff0cf3580d1aca5aedb481e28ba82788679cb169a394ea",
-    "sent_at": "2026-07-02"
+    "content_hash": "06e4c339cc228b222d86f18972b6b0ad2feddda4d37f6df9289a8adda6ffe623",
+    "sent_at": "2026-07-13"
   },
   "https://remotefirstjobs.com/companies/urrly/jobs/data-analyst-830226": {
     "content_hash": "dd19f045799e2f2aae3ea42c7c78b3d00d0c65df2ec8fc71677092de89dc197f",
@@ -219,6 +235,10 @@
     "content_hash": "0274271d4b898db5faf1887bc8e27e15c5ded1550c69297e1c132a8aca511f88",
     "sent_at": "2026-07-11"
   },
+  "https://remotejobs.org/remote-jobs/associate-operations-analyst-fortive": {
+    "content_hash": "163ae49dfa2834dac8b399031dbd057710f4a34da01f33ba890d31d98a8e8696",
+    "sent_at": "2026-07-13"
+  },
   "https://remotejobs.org/remote-jobs/category-management-business-systems-analyst-zayo-group": {
     "content_hash": "1461d3e1472a693504aeba36fb1196e3ff9374a3408fee7a595a17589e5b8621",
     "sent_at": "2026-07-11"
@@ -237,22 +257,22 @@
   },
   "https://www.experis.com/en/job/389302/data-annotator-russian-language-": {
     "content_hash": "5667defed14cb5596d4a4fa081cf6f1f7d6be08d5a6568049d828237b962b4d0",
-    "sent_at": "2026-06-30"
+    "sent_at": "2026-07-13"
   },
   "https://www.linkedin.com/jobs/view/data-annotator-russian-language-at-experis-4320737427": {
     "content_hash": "e5e44499e795195c6e133273d9ec1d620ca1bf31ee6424fff87f134a9f876362",
     "sent_at": "2026-07-11"
   },
   "https://www.linkedin.com/jobs/view/data-annotator-russian-language-at-experis-4326351256?pageNum=0": {
-    "content_hash": "3247edb058cf02ba7c5de891209e6878641b0ae68aeceece60c912f0d8d9573a",
-    "sent_at": "2026-06-30"
+    "content_hash": "726d75c47daf9909279d849c47f957d48cc2cd5ede8e9f519396c9b72b87a19a",
+    "sent_at": "2026-07-13"
   },
   "https://www.linkedin.com/jobs/view/ukrainian-gen-ai-data-annotation-analyst-at-imerit-technology-4236233326": {
     "content_hash": "6f5172ccfea4db6f9ff53b34fbc18d734d4e4429daac754d9e7f6d291ac89092",
     "sent_at": "2026-06-30"
   },
   "https://www.simplyhired.com/job/ttKgk1ywSY4ChB6dM6UHINalGqwekYwvdanjqZmy1p-bOoHg8CEekQ": {
-    "content_hash": "d22d7ae416189df7def0d789c28f5cca3378d1d5031b636777ee4c39531ce3cb",
-    "sent_at": "2026-06-30"
+    "content_hash": "e4fe0d55444de3f4053c32bbdbd9cb61a7bd13a11d6f7aec95b98a7b86c13b90",
+    "sent_at": "2026-07-13"
   }
 }
